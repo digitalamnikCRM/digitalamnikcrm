@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Amnik – Agency Operating System & CRM</title>
+  <meta name="description" content="Digital Amnik Elite CRM — High-performance Employee Operations, Project Assignment, and Attendance Studio." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6.1.0" />
+</head>
+<body>
+
+<!-- Ambient Atmospheric Glows -->
+<div class="ambient-glow bg-glow-1"></div>
+<div class="ambient-glow bg-glow-2"></div>
+<div class="ambient-glow bg-glow-3"></div>
+<div class="cursor-spotlight" id="cursor-spotlight"></div>
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ===================== EMPLOYEE STUDIO LOGIN MODAL ===================== -->
+<div class="onboard-overlay show" id="emp-login-overlay" style="display:none">
+  <div class="onboard-modal" style="max-width:440px">
+    <div class="onboard-header-glow"></div>
+    <div class="onboard-logo">
+      <div class="logo-capsule">
+        <img src="logo.png" alt="Digital Amnik" class="onboard-logo-img"
+             onerror="this.style.display='none';document.getElementById('ob-logo-txt').style.display='block'" />
+        <span id="ob-logo-txt" class="logo-da-txt" style="display:none">Digital<span>Amnik</span></span>
+      </div>
+      <span class="onboard-ver-badge">Studio Access</span>
+    </div>
+    <div class="onboard-body">
+      <div class="onboard-welcome-meta" style="text-align:center;margin-bottom:20px">
+        <h2 class="onboard-title" style="font-size:22px">Employee Studio Login</h2>
+        <p class="onboard-sub" style="font-size:12.5px">Enter your official Employee ID and Password assigned by Agency Administration to access your workspace.</p>
+      </div>
+
+      <form onsubmit="handleEmployeeLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Employee ID <span class="req">*</span></label>
+          <input type="text" class="form-input" id="emp-login-id" placeholder="e.g. EMP-001" autocomplete="username" autofocus />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span class="req">*</span></label>
+          <input type="password" class="form-input" id="emp-login-pass" placeholder="Enter your password" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn-primary btn-glow" style="width:100%;margin-top:10px;justify-content:center">
+          <span>Log In to Studio Workspace</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        </button>
+      </form>
+
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);text-align:center">
+        <span style="font-size:11.5px;color:var(--text-muted)">Need an account or credentials? Contact <strong>Admin Amaan Khan</strong></span>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">🔒 Authorized Agency Personnel Only • Encrypted Portal</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SIDEBAR ===================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <img src="logo.png?v=3" alt="Digital Amnik" class="logo-img"
+           style="width:100%;max-width:240px;height:auto;max-height:80px;object-fit:contain;display:block;"
+           onerror="this.style.display='none';document.getElementById('logo-text').style.display='flex'" />
+      <div id="logo-text" class="logo-text-fallback" style="display:none">
+        <span class="logo-da">Digital<span>Amnik</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee profile card -->
+  <div class="sidebar-employee-card">
+    <div class="emp-avatar-wrapper">
+      <div class="emp-avatar" id="sidebar-avatar">DA</div>
+      <span class="avatar-status-dot" id="avatar-status-dot" title="Active"></span>
+    </div>
+    <div class="emp-info">
+      <div class="emp-name-row">
+        <span class="emp-name" id="sidebar-name">Team Member</span>
+      </div>
+      <div class="emp-meta-row">
+        <span class="emp-id" id="sidebar-id">EMP-001</span>
+        <span class="emp-bullet">·</span>
+        <span class="emp-status-text" id="sidebar-status-text">Offline</span>
+      </div>
+      <!-- Role tag badge with edit pencil button -->
+      <div class="emp-role-row">
+        <span class="emp-role-tag" id="sidebar-role-tag">
+          <span id="sidebar-role-icon">🎬</span>
+          <span id="sidebar-role-label">Video Editor</span>
+        </span>
+        <button class="edit-profile-btn" onclick="logoutEmployee()" title="Sign Out / Switch Employee" style="color:#f87171">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-category-label">WORKSPACE</div>
+    <a href="javascript:void(0)" class="nav-item active" data-section="dashboard" onclick="showSection('dashboard',this)">
+      <div class="nav-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+      </div>
+      <span class="nav-label">Dashboard</span>
+      <span class="nav-shortcut">⌘1</span>
+    </a>
+    <a href="javascript:void(0)" class="nav-item" data-section="attendance" onclick="showSection('attendance',this)">
+      <div class="nav-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+      </div>
+      <span class="nav-label">Attendance Tracker</span>
+      <span class="nav-shortcut">⌘2</span>
+    </a>
+    <a href="javascript:void(0)" class="nav-item" data-section="projects" onclick="showSection('projects',this)">
+      <div class="nav-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      </div>
+      <span class="nav-label">Projects</span>
+      <span class="nav-badge" id="nav-proj-badge">0</span>
+      <span class="nav-shortcut">⌘3</span>
+    </a>
+    <a href="javascript:void(0)" class="nav-item" data-section="calendars" onclick="showSection('calendars',this)">
+      <div class="nav-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg>
+      </div>
+      <span class="nav-label">Social Calendars</span>
+      <span class="nav-badge" id="nav-cal-badge">0</span>
+      <span class="nav-shortcut">⌘4</span>
+    </a>
+  </nav>
+
+  <!-- Sidebar Footer -->
+  <div class="sidebar-footer">
+    <div class="footer-credit-card">
+      <div class="credit-glow"></div>
+      <div class="credit-header">
+        <span class="credit-icon">⚡</span>
+        <span class="credit-title">Digital Amnik OS</span>
+      </div>
+      <div class="credit-author">
+        <span class="credit-by-label">Engineered by</span>
+        <strong class="credit-author-name">Mohammad Ilhan</strong>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ===================== MAIN ===================== -->
+<div class="main-wrap">
+
+  <header class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()" title="Toggle Navigation">
+      <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
+    <div class="topbar-left">
+      <div class="topbar-title-block">
+        <h1 class="page-title" id="page-title">Executive Dashboard</h1>
+        <span class="page-date" id="live-date">Saturday, 17 October</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Agency Founder & Owner Elite Showcase -->
+      <div class="topbar-owner-showcase" title="Agency Founder &amp; Owner — Amaan Khan">
+        <div class="owner-crest-medallion">
+          <span class="owner-crown-gem">👑</span>
+        </div>
+        <div class="owner-identity-block">
+          <div class="owner-name-row">
+            <span class="owner-leader-name">Amaan Khan</span>
+            <span class="owner-star-seal">✦</span>
+          </div>
+          <span class="owner-prestige-subtitle">Agency Founder &amp; Owner</span>
+        </div>
+      </div>
+
+      <!-- Focus Sound Studio Station (10 Ambient Soundscapes) -->
+      <div class="focus-audio-capsule" id="focus-audio-capsule">
+        <button class="ambient-audio-btn" id="ambient-audio-btn" onclick="toggleAmbientAudio()" title="Play / Pause Focus Audio">
+          <span class="audio-wave">
+            <span></span><span></span><span></span>
+          </span>
+          <span id="audio-btn-txt">Focus Audio</span>
+        </button>
+        <select class="focus-sound-select" id="focus-sound-select" onchange="changeFocusSound(this.value)" title="Choose from 10 Focus Soundscapes">
+          <option value="rain" selected>🌧️ Gentle Studio Rain</option>
+          <option value="waves">🌊 Deep Ocean Surf</option>
+          <option value="cafe">☕ Cozy Creative Cafe</option>
+          <option value="alpha">🧠 Alpha Waves (10Hz)</option>
+          <option value="theta">🧘 Theta Meditation (6Hz)</option>
+          <option value="forest">🌲 Forest Breeze &amp; Pines</option>
+          <option value="space">🌌 Deep Space Drone</option>
+          <option value="fire">🔥 Fireplace Crackle</option>
+          <option value="white">💨 Studio White Noise</option>
+          <option value="lofi">🪟 Lo-Fi Vinyl Night Rain</option>
+        </select>
+      </div>
+
+      <!-- Active Working Task Capsule (Shows when any project timer is running) -->
+      <div class="topbar-active-task" id="topbar-active-task" style="display:none">
+        <span class="active-pulse-dot"></span>
+        <span class="active-task-label" id="topbar-active-task-name">Working on: Deliverable</span>
+        <span class="active-task-timer" id="topbar-active-task-timer">00:00:00</span>
+        <button class="active-task-stop-chip" onclick="stopActiveProjectWork()" title="Stop Active Work">⏹ Stop</button>
+      </div>
+
+      <!-- Live Cyber Clock -->
+      <div class="live-clock-pill">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+        <span class="live-clock" id="live-clock">18:30:00</span>
+      </div>
+
+      <!-- Supabase Cloud Connection Status Badge -->
+      <div class="supabase-status-badge connected" title="Supabase Cloud Database Connected">
+        <span class="sb-dot connected"></span>
+        <span>Cloud Live</span>
+      </div>
+
+      <div class="notif-btn" title="System Notifications" onclick="toast('All systems operational. No unread alerts.', 'info')">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <span class="notif-dot"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- ====== DASHBOARD ====== -->
+    <section class="section active" id="section-dashboard">
+      
+      <!-- HERO COCKPIT -->
+      <div class="hero-cockpit">
+        <div class="cockpit-glow-orb"></div>
+        <div class="cockpit-content">
+          <p class="welcome-greet" id="greet-text">Good Afternoon ⚡</p>
+          <h2 class="welcome-name" id="welcome-name">Team Member</h2>
+          
+          <div class="welcome-role-row">
+            <span class="welcome-role-badge" id="welcome-role-badge">🎬 Video Editor</span>
+          </div>
+
+          <!-- Live Shift Mini Progress HUD -->
+          <div class="cockpit-shift-hud">
+            <div class="shift-hud-header">
+              <span class="shift-hud-label">Daily Shift Window: <strong>10:00 AM – 07:00 PM</strong></span>
+              <span class="shift-hud-val" id="shift-hud-pct">Shift Progress</span>
+            </div>
+            <div class="shift-hud-bar">
+              <div class="shift-hud-fill" id="shift-hud-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FREE-FLOATING MOTIVATIONAL QUOTE (NO BOX, CLEAN MINIMALIST) -->
+        <div class="cockpit-quote-free" id="cockpit-quote-free">
+          <div class="quote-free-content">
+            <span class="quote-free-mark">“</span>
+            <p class="quote-free-text" id="hourly-quote-text">Discipline is choosing between what you want now and what you want most.</p>
+          </div>
+          <div class="quote-free-meta">
+            <span class="quote-free-author" id="hourly-quote-author">— Discipline Law</span>
+          </div>
+        </div>
+
+        <div class="cockpit-visual">
+          <div class="hologram-crystal">
+            <div class="crystal-face f1"></div>
+            <div class="crystal-face f2"></div>
+            <div class="crystal-face f3"></div>
+            <div class="crystal-ring"></div>
+            <div class="crystal-core"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAT CARDS (4 HOLOGRAPHIC CARDS) -->
+      <div class="stats-grid">
+        
+        <!-- 1: Today's Status -->
+        <div class="stat-card stat-status" onclick="showSection('attendance', document.querySelector('[data-section=attendance]'))">
+          <div class="stat-glow"></div>
+          <div class="stat-header">
+            <div class="stat-icon-wrapper green">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+            </div>
+            <div class="stat-badge" id="dash-status-badge">Absent</div>
+          </div>
+          <div class="stat-body">
+            <span class="stat-label">Attendance Status</span>
+            <div class="stat-val-row">
+              <span class="stat-val" id="dash-status">Not Checked In</span>
+            </div>
+            <span class="stat-subtext" id="dash-status-sub">Click to Punch In for today</span>
+          </div>
+        </div>
+
+        <!-- 2: Total Work Hours with Circular SVG Meter -->
+        <div class="stat-card stat-hours">
+          <div class="stat-glow"></div>
+          <div class="stat-header">
+            <div class="stat-icon-wrapper purple">
+              <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm.01 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+            </div>
+            <div class="stat-badge purple">Target: 8.0h</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-hours-split">
+              <div>
+                <span class="stat-label">Tracked Work Time</span>
+                <span class="stat-val" id="dash-workhrs">0h 0m</span>
+                <span class="stat-subtext">Active shift accumulated</span>
+              </div>
+              <div class="mini-progress-ring">
+                <svg viewBox="0 0 36 36" class="circular-chart">
+                  <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path class="circle" id="hours-ring-fill" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <span class="ring-center-txt" id="ring-center-txt">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3: Active Projects -->
+        <div class="stat-card stat-projects" onclick="showSection('projects', document.querySelector('[data-section=projects]'))">
+          <div class="stat-glow"></div>
+          <div class="stat-header">
+            <div class="stat-icon-wrapper blue">
+              <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            </div>
+            <div class="stat-badge blue" id="dash-active-badge">Projects</div>
+          </div>
+          <div class="stat-body">
+            <span class="stat-label">Active Deliverables</span>
+            <div class="stat-val-row">
+              <span class="stat-val" id="dash-proj-count">0</span>
+              <span class="stat-unit">In Flight</span>
+            </div>
+            <span class="stat-subtext">Click to view project board</span>
+          </div>
+        </div>
+
+        <!-- 4: My Role & Delegation Rights -->
+        <div class="stat-card stat-role" onclick="openProfileEdit()">
+          <div class="stat-glow"></div>
+          <div class="stat-header">
+            <div class="stat-icon-wrapper orange">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+            </div>
+            <div class="stat-badge orange" id="dash-role-badge">Domain</div>
+          </div>
+          <div class="stat-body">
+            <span class="stat-label">Assigned Specialty</span>
+            <div class="stat-val-row">
+              <span class="stat-val" id="dash-role-val">Video Editor</span>
+            </div>
+            <div class="role-action-pill">
+              <span>Change Domain</span>
+              <svg viewBox="0 0 24 24" width="12" height="12"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+
+      <!-- TODAY'S ACTIVITY FEED -->
+      <div class="section-header mt-lg">
+        <div>
+          <h3>Live Activity Stream</h3>
+          <span class="section-sub">Real-time log of your actions today</span>
+        </div>
+      </div>
+      <div class="activity-timeline-card">
+        <div class="activity-timeline" id="activity-timeline">
+          <div class="timeline-empty">
+            <svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+            <p>No activity yet today. Check in to initiate your session!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== ATTENDANCE ====== -->
+    <section class="section" id="section-attendance">
+      <div class="section-header">
+        <div>
+          <h2>Attendance Command Station</h2>
+          <span class="section-sub" id="att-date-label">Saturday, 17 October</span>
+        </div>
+        <div class="agency-shift-badge">
+          <span>Official Shift:</span>
+          <strong>10:00 AM – 07:00 PM</strong>
+        </div>
+      </div>
+
+      <!-- Modern Cyber Attendance Hub -->
+      <div class="attendance-hub-card">
+        
+        <!-- Live Chronometer Display -->
+        <div class="att-chronometer-banner">
+          <div class="chronometer-left">
+            <div class="radar-ping-dot" id="att-dot"></div>
+            <div>
+              <span class="chrono-label">Current Work State</span>
+              <h3 class="chrono-status" id="att-status-text">Not Checked In</h3>
+            </div>
+          </div>
+
+          <div class="chronometer-center">
+            <span class="chrono-timer-label">SESSION ELAPSED TIME</span>
+            <div class="chrono-digits" id="att-elapsed">00:00:00</div>
+          </div>
+
+          <div class="chronometer-right">
+            <div class="chrono-date-chip">Attendance Command Station</div>
+          </div>
+        </div>
+
+        <!-- 4-Stage Interactive Milestone Journey -->
+        <div class="att-milestones-track">
+          
+          <div class="milestone-step" id="step-checkin">
+            <div class="milestone-badge">1</div>
+            <div class="milestone-body">
+              <span class="milestone-name">Check In</span>
+              <strong class="milestone-val" id="att-checkin-val">--:--</strong>
+            </div>
+          </div>
+
+          <div class="milestone-line" id="line-1"></div>
+
+          <div class="milestone-step" id="step-lunch-start">
+            <div class="milestone-badge">2</div>
+            <div class="milestone-body">
+              <span class="milestone-name">Lunch Start</span>
+              <strong class="milestone-val" id="att-lunch-start-val">--:--</strong>
+            </div>
+          </div>
+
+          <div class="milestone-line" id="line-2"></div>
+
+          <div class="milestone-step" id="step-lunch-end">
+            <div class="milestone-badge">3</div>
+            <div class="milestone-body">
+              <span class="milestone-name">Lunch Resume</span>
+              <strong class="milestone-val" id="att-lunch-end-val">--:--</strong>
+            </div>
+          </div>
+
+          <div class="milestone-line" id="line-3"></div>
+
+          <div class="milestone-step" id="step-checkout">
+            <div class="milestone-badge">4</div>
+            <div class="milestone-body">
+              <span class="milestone-name">Check Out</span>
+              <strong class="milestone-val" id="att-checkout-val">--:--</strong>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Punch Buttons -->
+        <div class="att-action-buttons">
+          <button class="att-action-btn checkin-btn" id="btn-checkin" onclick="openCheckInPhotoModal()">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Punch Check In (Photo Verify)</span>
+          </button>
+          
+          <button class="att-action-btn lunch-btn" id="btn-lunch" onclick="doLunch()" disabled>
+            <svg viewBox="0 0 24 24"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8.61-15.03-8.61-15.03 0h15.03zM1 17h15v2H1v-2z"/></svg>
+            <span id="lunch-btn-txt">Take Lunch Break</span>
+          </button>
+
+          <button class="att-action-btn checkout-btn" id="btn-checkout" onclick="doCheckOut()" disabled>
+            <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            <span>Punch Check Out</span>
+          </button>
+        </div>
+
+        <!-- Shift Summary Banner (on checkout) -->
+        <div class="att-summary-strip" id="att-summary" style="display:none">
+          <div class="summary-metric">
+            <span>Productive Work Hours</span>
+            <strong id="att-total-work">0h 0m</strong>
+          </div>
+          <div class="summary-metric">
+            <span>Lunch Time Deducted</span>
+            <strong id="att-lunch-dur">0m</strong>
+          </div>
+          <div class="summary-metric">
+            <span>Shift Status</span>
+            <strong class="green-txt">Completed Successfully</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- History Table -->
+      <div class="section-header mt-lg">
+        <div>
+          <h3>Shift History &amp; Attendance Logs</h3>
+          <span class="section-sub">Locally saved shift records</span>
+        </div>
+        <button class="btn-small btn-ghost-danger" onclick="clearAttLog()">Clear Logs</button>
+      </div>
+
+      <div class="glass-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Date</th><th>Check In</th><th>Lunch Time</th><th>Check Out</th><th>Effective Hours</th><th>Status</th></tr>
+          </thead>
+          <tbody id="att-log-body">
+            <tr><td colspan="6" class="empty-td">No attendance logs yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====== PROJECTS ====== -->
+    <section class="section" id="section-projects">
+      <div class="section-header">
+        <div>
+          <h2>Deliverables &amp; Project Board</h2>
+          <span class="section-sub">Manage creative tasks, campaigns, and deadlines</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn-small btn-ghost-danger" onclick="clearAllProjects()" title="Clear all deliverables">Clear All</button>
+          <button class="btn-primary btn-glow" onclick="openProjectModal()">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <span>Create New Project</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Role-based delegation notice banner -->
+      <div class="role-notice" id="role-notice">
+        <div class="role-notice-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+        </div>
+        <div class="role-notice-body" id="role-notice-text">
+          Project assignment options are determined by your domain role.
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-chips">
+          <button class="filter-btn active" onclick="filterProjects('all', this)">All Deliverables</button>
+          <button class="filter-btn" onclick="filterProjects('my', this)">👤 My Tasks</button>
+          <button class="filter-btn" onclick="filterProjects('In Progress', this)">In Progress</button>
+          <button class="filter-btn" onclick="filterProjects('Completed', this)">Completed</button>
+          <button class="filter-btn" onclick="filterProjects('Review', this)">In Review</button>
+          <button class="filter-btn" onclick="filterProjects('Cancelled', this)">Cancelled</button>
+        </div>
+        <div class="search-input-box">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" class="search-input" id="proj-search" placeholder="Search by name, client, service..." oninput="renderProjects()" />
+        </div>
+      </div>
+
+      <div class="projects-list-wrap" id="projects-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ====== SOCIAL MEDIA CALENDARS ====== -->
+    <section class="section" id="section-calendars">
+      <div class="section-header">
+        <div>
+          <h2>Social Media Calendars</h2>
+          <span class="section-sub">Client monthly content schedules, publishing plans &amp; campaign PDFs</span>
+        </div>
+        <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+          <span>Upload Client Calendar</span>
+        </button>
+      </div>
+
+      <!-- Quick Agency Info Banner -->
+      <div class="cal-banner-card">
+        <div class="cal-banner-icon">📅</div>
+        <div class="cal-banner-body">
+          <strong>Universal Agency Content Hub:</strong>
+          <span>Access and review all active client social media calendars for any month. Team members can upload new monthly PDF schedules or download approved calendars.</span>
+        </div>
+      </div>
+
+      <!-- Filter & Search Controls -->
+      <div class="filter-bar">
+        <div class="filter-chips" id="cal-filter-chips">
+          <button class="filter-btn active" onclick="filterCalendars('all', this)">All Calendars</button>
+          <button class="filter-btn" onclick="filterCalendars('current', this)">Current Month</button>
+        </div>
+        <div class="search-input-box">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" class="search-input" id="cal-search" placeholder="Search by client, month, title..." oninput="renderCalendars()" />
+        </div>
+      </div>
+
+      <!-- Calendars Grid -->
+      <div class="calendars-grid" id="calendars-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============= PROJECT MODAL ============= -->
+<div class="modal-overlay" id="project-modal" onclick="closeModalOutside(event,'project-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag">DELIVERABLE</span>
+        <h3 id="proj-modal-title">Create New Project</h3>
+      </div>
+      <button class="modal-close" onclick="closeModal('project-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Project Title <span class="req">*</span></label>
+        <input type="text" class="form-input" id="proj-name" placeholder="e.g. Instagram Reels Campaign – Client Brand X" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Client / Account Name</label>
+          <input type="text" class="form-input" id="proj-client" placeholder="e.g. Nike, Luxe Living, Self" list="clients-datalist" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority Level</label>
+          <select class="form-select" id="proj-priority">
+            <option value="High">🔥 High Priority</option>
+            <option value="Medium" selected>⚡ Medium Priority</option>
+            <option value="Low">🌱 Standard / Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Service Domain</label>
+          <select class="form-select" id="proj-service">
+            <option value="Social Media Management">📱 Social Media Management</option>
+            <option value="Paid Ads">💰 Paid Ads</option>
+            <option value="SEO">🔍 SEO</option>
+            <option value="Content Creation">✍️ Content Creation</option>
+            <option value="Graphic Design">🎨 Graphic Design</option>
+            <option value="Web Development">💻 Web Development</option>
+            <option value="Video Editing" selected>🎬 Video Editing</option>
+            <option value="Admin">🗂️ Admin</option>
+            <option value="Other">✨ Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input type="date" class="form-input" id="proj-deadline" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Project Scope &amp; Brief</label>
+        <textarea class="form-textarea" id="proj-desc" placeholder="Deliverable details, aspect ratios, sound cues, key requirements..."></textarea>
+      </div>
+
+      <!-- Role-based assignment chips rendered by JS -->
+      <div class="form-group" id="assign-group">
+        <label class="form-label">Assign To</label>
+        <div class="assign-options" id="assign-options"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('project-modal')">Cancel</button>
+      <button class="btn-primary btn-glow" onclick="saveProject()">Save Deliverable</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= PROJECT DETAIL MODAL ============= -->
+<div class="modal-overlay" id="proj-detail-modal" onclick="closeModalOutside(event,'proj-detail-modal')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag">PROJECT INSPECTOR</span>
+        <h3 id="proj-detail-title">Project Details</h3>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="form-select status-select" id="proj-status-change" onchange="changeProjectStatus()">
+          <option value="Assigned">Assigned</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Review">In Review</option>
+          <option value="Revision Required">Revision Required</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+        <button class="modal-close" onclick="closeModal('proj-detail-modal')">&#10005;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="proj-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn-danger" onclick="deleteProject()">Delete</button>
+      <span id="proj-detail-timer-btn-wrap"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============= CALENDAR UPLOAD MODAL ============= -->
+<div class="modal-overlay" id="calendar-upload-modal" onclick="closeModalOutside(event,'calendar-upload-modal')">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag">SOCIAL MEDIA CALENDARS</span>
+        <h3>Upload Client Monthly Calendar</h3>
+      </div>
+      <button class="modal-close" onclick="closeModal('calendar-upload-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Client Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="cal-client-input" placeholder="e.g. Nike, Luxe Living, Amnik Tech" list="clients-datalist" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calendar Month &amp; Year <span class="req">*</span></label>
+          <input type="month" class="form-input" id="cal-month-input" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Calendar Title <span class="req">*</span></label>
+        <input type="text" class="form-input" id="cal-title-input" placeholder="e.g. October Reels &amp; Carousel Publishing Calendar" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Calendar PDF <span class="req">*</span></label>
+        <div class="file-dropzone" id="cal-file-dropzone" onclick="document.getElementById('cal-pdf-file').click()">
+          <input type="file" id="cal-pdf-file" accept="application/pdf" style="display:none" onchange="handleCalendarFileSelect(this)" />
+          <div class="dropzone-icon">📄</div>
+          <div class="dropzone-text" id="cal-dropzone-text">
+            <strong>Click to upload PDF</strong> or drag &amp; drop
+            <span>Standard PDF format (Content Plan, Shoot Dates, Posts)</span>
+          </div>
+          <div class="dropzone-pill" id="cal-dropzone-pill" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes &amp; Strategy Guidelines (Optional)</label>
+        <textarea class="form-textarea" id="cal-notes-input" placeholder="Key hashtags, deliverables, target posting times, reel audio links..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('calendar-upload-modal')">Cancel</button>
+      <button class="btn-primary btn-glow" onclick="saveCalendarUpload()">Add Calendar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= PDF VIEWER MODAL ============= -->
+<div class="modal-overlay" id="pdf-viewer-modal" onclick="closeModalOutside(event,'pdf-viewer-modal')">
+  <div class="modal modal-xl" style="height:90vh;max-width:1100px;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag">CALENDAR PDF VIEWER</span>
+        <h3 id="pdf-viewer-title">Client Content Calendar</h3>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a id="pdf-viewer-external-link" href="#" target="_blank" class="btn-small btn-ghost" title="Open in New Tab">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          <span>Open Fullscreen</span>
+        </a>
+        <button class="modal-close" onclick="closeModal('pdf-viewer-modal')">&#10005;</button>
+      </div>
+    </div>
+    <div class="modal-body" style="flex:1;padding:0;overflow:hidden;background:#0f172a;position:relative">
+      <iframe id="pdf-viewer-frame" style="width:100%;height:100%;border:none" src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+<!-- ============= LATE LUNCH REASON MODAL (POST 3:00 PM) ============= -->
+<div class="modal-overlay" id="late-lunch-modal" onclick="closeModalOutside(event,'late-lunch-modal')">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4)">⚠️ ATTENDANCE PROTOCOL</span>
+        <h3 style="color:#fff">Late Lunch Resumption Justification</h3>
+      </div>
+      <button class="modal-close" onclick="closeModal('late-lunch-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:20px;line-height:1">🕒</span>
+        <div style="font-size:12.5px;color:#fde68a;line-height:1.5">
+          <strong>Attention: Current time is past 3:00 PM (<span id="late-lunch-time-label">--:--</span>).</strong><br />
+          Agency policy mandates that all lunch breaks must conclude by 3:00 PM. Please state the operational justification for resuming lunch after 3:00 PM. This reason will be logged for <strong>Admin Amaan Khan</strong>.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Quick Justification</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🎬 Client Shoot / Recording Overrun')">🎬 Client Shoot Overrun</button>
+          <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('⚡ Urgent Deliverable Revision Sprint')">⚡ Urgent Deliverable Sprint</button>
+          <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🚗 Transit / Studio Travel Delay')">🚗 Travel Delay</button>
+          <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🏥 Personal / Medical Emergency')">🏥 Medical / Emergency</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Operational Justification / Reason <span class="req">*</span></label>
+        <textarea class="form-textarea" id="late-lunch-reason-text" placeholder="Explain the specific client deliverable or reason why lunch ended after 3:00 PM..." style="min-height:90px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('late-lunch-modal')">Cancel (Stay on Lunch)</button>
+      <button class="btn-primary btn-glow" onclick="submitLateLunchReason()">Confirm &amp; Resume Work</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CHECK-IN SELFIE / OFFICE PHOTO VERIFICATION ===================== -->
+<div class="modal-overlay" id="checkin-photo-modal" onclick="closeModalOutside(event, 'checkin-photo-modal')">
+  <div class="modal-card" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3)">PRESENCE VERIFICATION</span>
+        <h3>📸 Check-in Selfie / Office Photo</h3>
+      </div>
+      <button class="modal-close" onclick="cancelCheckInPhoto()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+        Mandatory presence verification: Please snap a live selfie or upload an office picture to punch in for today.
+        <span style="display:block;margin-top:4px;color:var(--cyan-400);font-size:11px">✨ Photos are auto-compressed to ~30KB &amp; automatically refreshed every 7 days to preserve storage.</span>
+      </p>
+
+      <!-- Mode Switcher (Live Camera vs Upload File) -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button type="button" class="btn-small btn-secondary" id="btn-mode-camera" onclick="startCameraSelfie()" style="flex:1;justify-content:center">
+          <span>📷 Open Live Camera</span>
+        </button>
+        <button type="button" class="btn-small btn-secondary" id="btn-mode-upload" onclick="triggerSelfieFileUpload()" style="flex:1;justify-content:center">
+          <span>📁 Upload Picture</span>
+        </button>
+      </div>
+
+      <!-- Hidden file input -->
+      <input type="file" id="selfie-file-input" accept="image/*" capture="user" style="display:none" onchange="handleSelfieFileInput(event)" />
+
+      <!-- Live Camera Stream Box -->
+      <div id="camera-stream-box" style="display:none;position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px;border:1px solid rgba(124,58,237,0.4)">
+        <video id="selfie-video" autoplay playsinline style="width:100%;height:250px;object-fit:cover;display:block"></video>
+        <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:10px">
+          <button type="button" class="btn-primary btn-glow btn-small" onclick="snapCameraPhoto()">
+            <span>📸 Snap Photo</span>
+          </button>
+          <button type="button" class="btn-ghost btn-small" onclick="stopCameraStream()">
+            <span>Cancel Camera</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Captured / Uploaded Preview Box -->
+      <div id="selfie-preview-box" style="display:none;position:relative;background:rgba(0,0,0,0.5);border-radius:12px;overflow:hidden;margin-bottom:14px;border:1px solid rgba(16,185,129,0.5);text-align:center;padding:8px">
+        <img id="selfie-preview-img" src="" alt="Check-in Photo Preview" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;display:block;margin:0 auto" />
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:0 4px">
+          <span style="font-size:11.5px;color:#34d399;display:inline-flex;align-items:center;gap:4px">
+            <span>✅ Compressed &amp; Ready</span>
+            <span id="selfie-size-pill" style="color:var(--text-muted);font-family:monospace"></span>
+          </span>
+          <button type="button" class="btn-ghost btn-small" onclick="resetSelfieCapture()" style="color:#f87171;padding:2px 8px;font-size:11px">
+            🔄 Retake
+          </button>
+        </div>
+      </div>
+
+      <!-- Instruction placeholder if nothing active -->
+      <div id="selfie-placeholder-box" style="background:rgba(255,255,255,0.02);border:2px dashed rgba(255,255,255,0.12);border-radius:12px;padding:30px 16px;text-align:center;margin-bottom:14px">
+        <div style="font-size:36px;margin-bottom:8px">📸</div>
+        <strong style="color:#fff;display:block;margin-bottom:4px">No Photo Captured Yet</strong>
+        <p style="font-size:12px;color:var(--text-muted);margin:0">Click 'Open Live Camera' to take a quick selfie or 'Upload Picture' from your device.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="cancelCheckInPhoto()">Cancel</button>
+      <button class="btn-primary btn-glow" id="btn-confirm-checkin-photo" onclick="confirmCheckInWithPhoto()" disabled>
+        <span>Punch Check In with Photo 🟢</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<datalist id="clients-datalist"></datalist>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===================== FLOATING BORDERLESS KEEP QUIET MASCOT ===================== -->
+<div class="floating-quiet-mascot" id="floating-quiet-mascot" onclick="toast('🤫 Studio Focus Mode: Keep quiet &amp; stay productive', 'info')" title="Keep Quiet — Studio Focus Protocol">
+  <div class="fq-mascot-avatar-wrap">
+    <img src="keep_quiet_model.jpg" alt="Keep Quiet Model" class="fq-mascot-img" />
+  </div>
+  <div class="fq-mascot-text">
+    <span class="fq-mascot-shhh">🤫</span>
+    <span class="fq-mascot-label">Keep Quiet</span>
+  </div>
+</div>
+</div>
+
+
+<script>
+  // Redirect to Dedicated Admin Portal if #admin, #admiin, or ?admin is specified
+  if (window.location.hash.toLowerCase().includes('admin') || 
+      window.location.hash.toLowerCase().includes('admiin') || 
+      window.location.search.toLowerCase().includes('admin') ||
+      window.location.search.toLowerCase().includes('admiin')) {
+    window.location.href = 'admin/';
+  }
+
+  // Immediate localStorage cleanup for any cached mock data (real data only)
+  try {
+    const raw = localStorage.getItem('da_crm_state_v3') || localStorage.getItem('da_crm_state_v2');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      let changed = false;
+      if (Array.isArray(parsed.projects)) {
+        const filteredProjects = parsed.projects.filter(p =>
+          p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3' &&
+          !/techvibe|luxe|reel|product launch|growth campaign|testimonial/i.test((p.name || '') + ' ' + (p.client || ''))
+        );
+        if (filteredProjects.length !== parsed.projects.length) {
+          parsed.projects = filteredProjects;
+          changed = true;
+        }
+      }
+      if (Array.isArray(parsed.clients)) {
+        const filteredClients = parsed.clients.filter(c =>
+          c && c.id !== 'c-1' && c.id !== 'c-2' && c.id !== 'c-3' && c.id !== 'c-4' &&
+          !/nike|luxe living|amnik tech/i.test(c.name || '')
+        );
+        if (filteredClients.length !== parsed.clients.length) {
+          parsed.clients = filteredClients;
+          changed = true;
+        }
+      }
+      if (Array.isArray(parsed.team)) {
+        const filteredTeam = parsed.team.filter(m =>
+          m && (m.id === 'EMP-000' || (!['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'].includes(m.id) &&
+          !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || '')))
+        );
+        if (filteredTeam.length !== parsed.team.length) {
+          parsed.team = filteredTeam;
+          changed = true;
+        }
+      }
+      if (Array.isArray(parsed.calendars)) {
+        const filteredCals = parsed.calendars.filter(c => c && c.id !== 'cal-sample-1');
+        if (filteredCals.length !== parsed.calendars.length) {
+          parsed.calendars = filteredCals;
+          changed = true;
+        }
+      }
+      if (changed) {
+        localStorage.setItem('da_crm_state_v3', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="quotes-data.js?v=1.0.6"></script>
+<script src="app.js?v=3.0.0"></script>
+</body>
+</html>

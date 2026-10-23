@@ -1,0 +1,3329 @@
+/* =========================================================
+   DIGITAL AMNIK CRM — AGENCY OPERATING SYSTEM & CRM
+   Digital Amnik Agency Workspace
+   ========================================================= */
+
+// ========================
+// DOMAIN ROLES
+// ========================
+const DOMAIN_ROLES = [
+  { label: 'Video Editor', icon: '🎬', isManager: false, desc: 'Reels, YouTube, Long & Short form edits' },
+  { label: 'Social Media Management', icon: '📱', isManager: true, desc: 'Strategy, client campaigns & project delegation' },
+  { label: 'Graphic Design', icon: '🎨', isManager: false, desc: 'Thumbnails, banners, social posts' },
+  { label: 'Paid Ads Specialist', icon: '💰', isManager: false, desc: 'Meta Ads, Google PPC campaigns, ROAS' },
+  { label: 'SEO Specialist', icon: '🔍', isManager: false, desc: 'Search rankings, keywords, audit reports' },
+  { label: 'Content Creator / Writer', icon: '✍️', isManager: false, desc: 'Scripts, captions, creative copy' },
+  { label: 'Web Developer', icon: '💻', isManager: false, desc: 'Landing pages, web applications, tech' },
+  { label: 'Admin', icon: '🗂️', isManager: true, desc: 'Operations, client assignments & tasks' },
+];
+
+// ========================
+// DELIVERABLES INITIAL SEED
+// ========================
+const DEFAULT_PROJECTS = [];
+
+// ========================
+// ADMIN CLIENTS INITIAL SEED (CLEAN - REAL DATA)
+// ========================
+const DEFAULT_CLIENTS = [];
+
+// ========================
+// ADMIN TEAM & ROSTER INITIAL SEED (REAL FOUNDER ONLY)
+// ========================
+const DEFAULT_TEAM = [
+  {
+    id: 'EMP-000',
+    name: 'Amaan Khan',
+    role: 'Admin',
+    shift: '09:30 AM – 07:30 PM',
+    password: 'amnik2026',
+    isFounder: true,
+    addedAt: Date.now(),
+  },
+];
+
+// ========================
+// STATE MANAGEMENT
+// ========================
+const STATE = {
+  employee: {
+    name: 'Amaan Khan',
+    id: 'EMP-000',
+    role: 'Admin',
+    icon: '🗂️',
+    initials: 'AK',
+  },
+  attendance: {
+    status: 'out', // out | in | lunch | done
+    checkInTime: null,
+    lunchStartTime: null,
+    lunchEndTime: null,
+    checkOutTime: null,
+    lateLunchReason: null,
+    elapsedInterval: null,
+    log: [],
+  },
+  activeProjectTimer: null,
+  projects: [],
+  calendars: [],
+  clients: [],
+  team: [],
+  timeLogs: [],
+  activityLog: [],
+  currentFilter: 'all',
+  editingProjectId: null,
+  viewingProjectId: null,
+  audioPlaying: false,
+};
+
+let _selectedOnboardRole = 'Video Editor';
+let _selectedEditRole = 'Video Editor';
+let _audioCtx = null;
+let _audioNode = null;
+
+// ========================
+// FORMATTERS & UTILITIES
+// ========================
+function fmt(ts) {
+  if (!ts) return '--:--';
+  const d = new Date(ts);
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtDuration(ms) {
+  if (!ms || ms < 0) return '0h 0m';
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function fmtHHMMSS(ms) {
+  if (!ms || ms < 0) ms = 0;
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600).toString().padStart(2, '0');
+  const m = Math.floor((t % 3600) / 60).toString().padStart(2, '0');
+  const s = (t % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function computeInitials(name) {
+  if (!name) return 'DA';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function isManagerRole(roleName) {
+  const emp = STATE.employee || {};
+  if (emp.isFounder || emp.id === 'EMP-000') return true;
+  const r = (roleName || emp.role || '').toLowerCase();
+  const domains = Array.isArray(emp.domains)
+    ? emp.domains.map(d => String(d).trim().toLowerCase())
+    : (emp.role ? String(emp.role).split(',').map(s => s.trim().toLowerCase()) : []);
+  const hasSMM = domains.some(d => d.includes('social media'));
+  const hasOwnerOrAdmin = domains.some(d => d.includes('admin') || d.includes('founder') || d.includes('owner'));
+  return r.includes('social media') || r.includes('admin') || r.includes('founder') || r.includes('owner') || hasSMM || hasOwnerOrAdmin;
+}
+
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'toast'; }, 3200);
+}
+
+function addActivity(text, color = 'purple') {
+  const now = Date.now();
+  STATE.activityLog.unshift({ text, color, time: now });
+  if (STATE.activityLog.length > 20) STATE.activityLog.pop();
+  renderActivity();
+  save();
+}
+
+// ========================
+// PERSISTENCE (LocalStorage)
+// ========================
+function save() {
+  const toSave = {
+    employee: STATE.employee,
+    projects: STATE.projects,
+    calendars: STATE.calendars,
+    clients: STATE.clients,
+    team: STATE.team,
+    timeLogs: STATE.timeLogs,
+    activityLog: STATE.activityLog,
+    activeProjectTimer: STATE.activeProjectTimer ? {
+      projectId: STATE.activeProjectTimer.projectId,
+      startTime: STATE.activeProjectTimer.startTime,
+    } : null,
+    attendance: {
+      status: STATE.attendance.status,
+      checkInTime: STATE.attendance.checkInTime,
+      lunchStartTime: STATE.attendance.lunchStartTime,
+      lunchEndTime: STATE.attendance.lunchEndTime,
+      checkOutTime: STATE.attendance.checkOutTime,
+      lateLunchReason: STATE.attendance.lateLunchReason,
+      log: STATE.attendance.log,
+    },
+  };
+  localStorage.setItem('da_crm_state_v3', JSON.stringify(toSave));
+}
+
+function load() {
+  const raw = localStorage.getItem('da_crm_state_v3') || localStorage.getItem('da_crm_state_v2');
+  if (!raw) {
+    STATE.projects = [];
+    STATE.calendars = [];
+    STATE.clients = [];
+    STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+    return;
+  }
+  try {
+    const data = JSON.parse(raw);
+    
+    // Clean Real Clients (Strip any legacy mock clients)
+    if (Array.isArray(data.clients)) {
+      STATE.clients = data.clients.filter(c =>
+        c && c.id !== 'c-1' && c.id !== 'c-2' && c.id !== 'c-3' && c.id !== 'c-4' &&
+        !/nike|luxe living|amnik tech/i.test(c.name || '')
+      );
+    } else {
+      STATE.clients = [];
+    }
+
+    // Clean Real Team (Only registered real members, keep Founder Amaan Khan)
+    if (Array.isArray(data.team)) {
+      STATE.team = data.team.filter(m =>
+        m && m.id === 'EMP-000' ||
+        (!['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'].includes(m.id) &&
+         !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || ''))
+      );
+      if (!STATE.team.some(m => m.id === 'EMP-000')) {
+        STATE.team.unshift(DEFAULT_TEAM[0]);
+      }
+    } else {
+      STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+    }
+
+    // Ensure all team members have a password
+    STATE.team.forEach(m => {
+      if (!m.password) {
+        m.password = m.isFounder ? 'amnik2026' : '123';
+      }
+    });
+
+    // Check logged in employee session
+    const loggedInId = localStorage.getItem('da_logged_in_emp') || 'EMP-000';
+    let member = STATE.team.find(m => m.id.toLowerCase() === loggedInId.toLowerCase());
+    if (!member) member = STATE.team[0];
+    if (member) {
+      const roleObj = DOMAIN_ROLES.find(r => r.label === member.role);
+      STATE.employee = {
+        name: member.name,
+        id: member.id,
+        role: member.role,
+        icon: roleObj ? roleObj.icon : '🗂️',
+        initials: computeInitials(member.name),
+      };
+      STATE.team.forEach(m => {
+        m.isCurrent = (m.id.toLowerCase() === member.id.toLowerCase());
+      });
+    }
+
+    if (Array.isArray(data.projects)) {
+      // Filter out any leftover sample/mock projects from previous versions
+      STATE.projects = data.projects.filter(p =>
+        p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3' &&
+        !/techvibe|luxe|reel|product launch|growth campaign|testimonial/i.test((p.name || '') + ' ' + (p.client || ''))
+      );
+    } else {
+      STATE.projects = [];
+    }
+
+    // Clean Real Calendars (No fake mock sample PDF)
+    if (Array.isArray(data.calendars)) {
+      STATE.calendars = data.calendars.filter(c => c && c.id !== 'cal-sample-1');
+    } else {
+      STATE.calendars = [];
+    }
+
+    if (Array.isArray(data.timeLogs)) {
+      STATE.timeLogs = data.timeLogs.filter(l => l && l.projectId !== 'p-1' && l.projectId !== 'p-2' && l.projectId !== 'p-3');
+    } else {
+      STATE.timeLogs = [];
+    }
+
+    if (Array.isArray(data.activityLog)) {
+      STATE.activityLog = data.activityLog.filter(a => a && !/tech brand|ilhan/i.test(a.text || ''));
+    } else {
+      STATE.activityLog = [];
+    }
+
+    if (data.activeProjectTimer && data.activeProjectTimer.projectId) {
+      STATE.activeProjectTimer = {
+        projectId: data.activeProjectTimer.projectId,
+        startTime: data.activeProjectTimer.startTime,
+      };
+    } else {
+      STATE.activeProjectTimer = null;
+    }
+
+    if (data.attendance) {
+      STATE.attendance.status = data.attendance.status || 'out';
+      STATE.attendance.checkInTime = data.attendance.checkInTime;
+      STATE.attendance.lunchStartTime = data.attendance.lunchStartTime;
+      STATE.attendance.lunchEndTime = data.attendance.lunchEndTime;
+      STATE.attendance.checkOutTime = data.attendance.checkOutTime;
+      STATE.attendance.lateLunchReason = data.attendance.lateLunchReason || null;
+      STATE.attendance.log = data.attendance.log || [];
+    }
+  } catch (e) {
+    console.warn('Storage parse error, resetting clean:', e);
+    STATE.projects = [];
+    STATE.clients = [];
+    STATE.calendars = [];
+    STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
+  }
+  // Immediately persist cleaned state so stale projects don't linger
+  save();
+}
+
+// ========================
+// PROFILE & DOMAIN SYNCHRONIZATION
+// ========================
+function syncProfileUI() {
+  const emp = STATE.employee;
+  emp.initials = computeInitials(emp.name);
+
+  const domains = Array.isArray(emp.domains) && emp.domains.length > 0
+    ? emp.domains
+    : (emp.role ? String(emp.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
+
+  const primaryDomain = domains[0] || emp.role || 'Video Editor';
+  const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
+  emp.icon = roleObj.icon;
+
+  // Sidebar
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (avatarEl) avatarEl.textContent = emp.initials;
+
+  const nameEl = document.getElementById('sidebar-name');
+  if (nameEl) nameEl.textContent = emp.name;
+
+  const idEl = document.getElementById('sidebar-id');
+  if (idEl) idEl.textContent = emp.id;
+
+  const roleIconEl = document.getElementById('sidebar-role-icon');
+  const roleLabelEl = document.getElementById('sidebar-role-label');
+  const oldTag = document.getElementById('sidebar-role-tag');
+
+  // Render multiple domain pills in sidebar if assigned more than 1 domain
+  const roleRow = document.querySelector('.emp-role-row');
+  if (roleRow) {
+    let wrap = roleRow.querySelector('.emp-roles-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'emp-roles-wrap';
+      roleRow.appendChild(wrap);
+    }
+    if (domains.length > 1) {
+      wrap.innerHTML = domains.map(d => {
+        const obj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === d.toLowerCase()) || { icon: '💼' };
+        return `<span class="emp-role-tag-pill">${obj.icon} ${d}</span>`;
+      }).join('');
+      wrap.style.display = 'flex';
+      if (oldTag) oldTag.style.display = 'none';
+    } else {
+      wrap.style.display = 'none';
+      if (oldTag) oldTag.style.display = 'inline-flex';
+      if (roleIconEl) roleIconEl.textContent = emp.icon || '🎬';
+      if (roleLabelEl) roleLabelEl.textContent = domains[0] || emp.role;
+    }
+  }
+
+  // Welcome banner in Dashboard
+  const welcomeName = document.getElementById('welcome-name');
+  if (welcomeName) welcomeName.textContent = emp.name;
+
+  const welcomeBadge = document.getElementById('welcome-role-badge');
+  if (welcomeBadge) {
+    if (domains.length > 1) {
+      welcomeBadge.textContent = domains.map(d => {
+        const obj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === d.toLowerCase()) || { icon: '💼' };
+        return `${obj.icon} ${d}`;
+      }).join(' • ');
+    } else {
+      welcomeBadge.textContent = `${emp.icon || '🎬'} ${emp.role}`;
+    }
+  }
+
+  // Stat card "My Role"
+  const dashRoleVal = document.getElementById('dash-role-val');
+  if (dashRoleVal) dashRoleVal.textContent = domains.join(', ') || emp.role;
+
+  const dashRoleBadge = document.getElementById('dash-role-badge');
+  if (dashRoleBadge) {
+    if (isManagerRole()) {
+      dashRoleBadge.textContent = '👑 Manager / Owner Access';
+      dashRoleBadge.className = 'stat-badge green';
+    } else {
+      dashRoleBadge.textContent = `${domains.length} Domain(s)`;
+      dashRoleBadge.className = 'stat-badge orange';
+    }
+  }
+
+  // Toggle '+ New Deliverable' button based strictly on Owner / Social Media Manager rights
+  const newDelivBtn = document.querySelector('#section-projects .section-header .btn-primary');
+  if (newDelivBtn) {
+    if (isManagerRole()) {
+      newDelivBtn.style.display = 'inline-flex';
+    } else {
+      newDelivBtn.style.display = 'none';
+    }
+  }
+
+  // Role notice in Projects section
+  renderRoleNotice();
+
+  // Sync current member in team roster
+  if (Array.isArray(STATE.team)) {
+    const curr = STATE.team.find(m => m.id === emp.id || m.isCurrent);
+    if (curr) {
+      curr.name = emp.name;
+      curr.role = emp.role;
+      curr.id = emp.id;
+      curr.isCurrent = true;
+    }
+  }
+}
+
+function renderRoleNotice() {
+  const noticeEl = document.getElementById('role-notice');
+  const noticeText = document.getElementById('role-notice-text');
+  if (!noticeEl || !noticeText) return;
+
+  const isMgr = isManagerRole();
+  if (isMgr) {
+    noticeEl.className = 'role-notice manager';
+    noticeText.innerHTML = `<strong>👑 Manager / Owner Access Active (${STATE.employee.name}):</strong> You have full delegation rights. You can create new deliverables and assign tasks across agency specialists.`;
+  } else {
+    noticeEl.className = 'role-notice';
+    noticeText.innerHTML = `<strong>Domain: ${STATE.employee.role}</strong> — Only the <strong>Social Media Manager</strong> or <strong>Agency Owner (Amaan Khan)</strong> has rights to create and assign deliverables. You can track time, log sessions and update statuses on your assigned deliverables.`;
+  }
+}
+
+// ========================
+// EMPLOYEE STUDIO AUTHENTICATION GATE
+// ========================
+function checkEmployeeLogin() {
+  const overlay = document.getElementById('emp-login-overlay');
+  const loggedInId = localStorage.getItem('da_logged_in_emp');
+
+  if (loggedInId) {
+    const member = (STATE.team || []).find(m => m.id.toLowerCase() === loggedInId.toLowerCase());
+    if (member) {
+      const empDomains = Array.isArray(member.domains) && member.domains.length > 0
+        ? member.domains
+        : (member.role ? String(member.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
+      const primaryDomain = empDomains[0] || 'Video Editor';
+      const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
+      STATE.employee = {
+        name: member.name,
+        id: member.id,
+        role: member.role || empDomains.join(', '),
+        domains: empDomains,
+        isFounder: Boolean(member.isFounder || member.id === 'EMP-000'),
+        icon: roleObj ? roleObj.icon : '🎬',
+        initials: computeInitials(member.name),
+      };
+      if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+      }
+      document.body.style.overflow = '';
+      syncProfileUI();
+      return;
+    }
+  }
+
+  // Not logged in -> show login gate
+  if (overlay) {
+    overlay.classList.add('show');
+    overlay.style.display = 'flex';
+  }
+  document.body.style.overflow = 'hidden';
+}
+
+async function handleEmployeeLogin(e) {
+  if (e) e.preventDefault();
+  const idInput = document.getElementById('emp-login-id');
+  const passInput = document.getElementById('emp-login-pass');
+  const id = (idInput?.value || '').trim();
+  const pass = (passInput?.value || '').trim();
+
+  if (!id) {
+    toast('⚠️ Please enter your Employee ID (e.g. EMP-000)', 'error');
+    if (idInput) idInput.focus();
+    return;
+  }
+  if (!pass) {
+    toast('⚠️ Please enter your password', 'error');
+    if (passInput) passInput.focus();
+    return;
+  }
+
+  // 1. Try finding in loaded team state
+  let member = (STATE.team || []).find(m => m.id.toLowerCase() === id.toLowerCase());
+
+  // 2. Query Supabase directly for real-time authentication
+  if (window.sbClient) {
+    try {
+      const { data, error } = await window.sbClient
+        .from('team_members')
+        .select('*')
+        .ilike('id', id)
+        .maybeSingle();
+
+      if (!error && data) {
+        if (!member) {
+          member = {
+            id: data.id,
+            name: data.name,
+            role: data.role,
+            shift: data.shift,
+            password: data.password,
+            isFounder: data.is_founder,
+            email: data.email,
+            phone: data.phone,
+          };
+          if (!STATE.team) STATE.team = [];
+          STATE.team.push(member);
+        } else {
+          // Keep password synchronized with latest in database
+          member.password = data.password;
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase auth fallback:', err);
+    }
+  }
+
+  if (!member) {
+    toast(`❌ Employee ID "${id}" does not exist. Only Admin Amaan Khan can add team members!`, 'error');
+    if (idInput) {
+      idInput.classList.add('error');
+      setTimeout(() => idInput.classList.remove('error'), 600);
+    }
+    return;
+  }
+
+  // Check custom local override if any
+  const adminSecret = localStorage.getItem('agency_admin_secret_key');
+  const isFounderMatch = (member.isFounder || member.id === 'EMP-000') && adminSecret && pass === adminSecret;
+
+  const expectedPass = member.password || (member.isFounder ? 'amnik2026' : '123');
+  if (pass !== expectedPass && !isFounderMatch) {
+    toast('❌ Incorrect password! Please request credentials from Admin Amaan Khan.', 'error');
+    if (passInput) {
+      passInput.classList.add('error');
+      setTimeout(() => passInput.classList.remove('error'), 600);
+    }
+    return;
+  }
+
+  // Login successful
+  localStorage.setItem('da_logged_in_emp', member.id);
+  const empDomains = Array.isArray(member.domains) && member.domains.length > 0
+    ? member.domains
+    : (member.role ? String(member.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
+  const primaryDomain = empDomains[0] || 'Video Editor';
+  const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
+  STATE.employee = {
+    name: member.name,
+    id: member.id,
+    role: member.role || empDomains.join(', '),
+    domains: empDomains,
+    isFounder: Boolean(member.isFounder || member.id === 'EMP-000'),
+    icon: roleObj ? roleObj.icon : '🎬',
+    initials: computeInitials(member.name),
+  };
+
+  (STATE.team || []).forEach(m => {
+    m.isCurrent = (m.id.toLowerCase() === member.id.toLowerCase());
+  });
+
+  save();
+  const overlay = document.getElementById('emp-login-overlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+    overlay.style.display = 'none';
+  }
+  document.body.style.overflow = '';
+
+  syncProfileUI();
+  renderProjects();
+  addActivity(`Team member logged in: ${member.name} (${member.role})`, 'purple');
+  triggerConfetti();
+  toast(`Welcome back, ${member.name}! Studio access authorized.`, 'success');
+}
+
+function logoutEmployee() {
+  if (!confirm(`Sign out from ${STATE.employee.name} (${STATE.employee.id})?`)) return;
+  localStorage.removeItem('da_logged_in_emp');
+  const overlay = document.getElementById('emp-login-overlay');
+  if (overlay) {
+    overlay.classList.add('show');
+    overlay.style.display = 'flex';
+  }
+  document.body.style.overflow = 'hidden';
+  const idInput = document.getElementById('emp-login-id');
+  const passInput = document.getElementById('emp-login-pass');
+  if (idInput) idInput.value = '';
+  if (passInput) passInput.value = '';
+  toast('Signed out of Studio workspace.', 'info');
+}
+
+// ========================
+// LATE LUNCH PROTOCOL (POST 3:00 PM)
+// ========================
+function openLateLunchModal() {
+  const textarea = document.getElementById('late-lunch-reason-text');
+  if (textarea) {
+    textarea.value = '';
+    textarea.classList.remove('error');
+  }
+  openModal('late-lunch-modal');
+}
+
+function setLateLunchReason(val) {
+  const textarea = document.getElementById('late-lunch-reason-text');
+  if (textarea) {
+    textarea.value = val;
+    textarea.focus();
+  }
+}
+
+function submitLateLunchReason() {
+  const textarea = document.getElementById('late-lunch-reason-text');
+  const reason = (textarea?.value || '').trim();
+  if (!reason) {
+    if (textarea) textarea.classList.add('error');
+    toast('⚠️ Mandatory: Please provide an operational reason for ending lunch after 3:00 PM', 'error');
+    return;
+  }
+  const nowMs = Date.now();
+  closeModal('late-lunch-modal');
+  finishLunch(nowMs, reason);
+}
+
+function finishLunch(nowMs, reason) {
+  STATE.attendance.status = 'in';
+  STATE.attendance.lunchEndTime = nowMs;
+
+  if (reason) {
+    STATE.attendance.lateLunchReason = reason;
+    if (Array.isArray(STATE.team)) {
+      const curr = STATE.team.find(m => m.id === STATE.employee.id || m.isCurrent);
+      if (curr) {
+        curr.lateLunchReason = reason;
+        curr.lateLunchTime = nowMs;
+      }
+    }
+    addActivity(`Resumed work at ${fmt(nowMs)} · Late Lunch Reason (Post 3 PM): "${reason}"`, 'orange');
+    toast(`Late lunch justification logged: "${reason}". Momentum resumed!`, 'info');
+  } else {
+    addActivity(`Resumed work at ${fmt(nowMs)}`, 'green');
+    toast('Welcome back! Productive momentum resumed.', 'success');
+  }
+
+  syncAttendanceUI();
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.logAttendance({
+      date: fmtDate(nowMs),
+      lunchEnd: nowMs,
+      lateLunchReason: reason || null,
+      status: 'in'
+    });
+  }
+}
+
+// ========================
+// LIVE CLOCK & SHIFT PROGRESS
+// ========================
+function updateClock() {
+  const now = new Date();
+  const clockEl = document.getElementById('live-clock');
+  if (clockEl) clockEl.textContent = now.toLocaleTimeString('en-IN', { hour12: false });
+
+  const dateStr = now.toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  const liveDate = document.getElementById('live-date');
+  if (liveDate) liveDate.textContent = dateStr;
+
+  const attDate = document.getElementById('att-date-label');
+  if (attDate) attDate.textContent = dateStr;
+
+  const h = now.getHours();
+  let greet = 'Good Morning ☀️';
+  if (h >= 12 && h < 17) greet = 'Good Afternoon ⚡';
+  else if (h >= 17) greet = 'Good Evening 🌙';
+
+  const greetEl = document.getElementById('greet-text');
+  if (greetEl) greetEl.textContent = greet;
+
+  // Calculate Shift Progress (10:00 AM to 07:00 PM)
+  const shiftStart = 10;
+  const shiftEnd = 19;
+  const curHours = h + now.getMinutes() / 60;
+  let pct = 0;
+  if (curHours >= shiftEnd) pct = 100;
+  else if (curHours > shiftStart) {
+    pct = Math.round(((curHours - shiftStart) / (shiftEnd - shiftStart)) * 100);
+  }
+  const hudFill = document.getElementById('shift-hud-fill');
+  if (hudFill) hudFill.style.width = `${pct}%`;
+  const hudPct = document.getElementById('shift-hud-pct');
+  if (hudPct) hudPct.textContent = `${pct}% of Day Window`;
+}
+
+// ========================
+// MOTIVATIONAL SPARK ENGINE (100% EMPLOYEE DISCIPLINE — 30-MIN ROTATION)
+// ========================
+let _quoteIndex = -1;
+let _quote30MinTimer = null;
+const QUOTE_INTERVAL_MS = 30 * 60 * 1000; // Half an hour (30 minutes)
+
+function rotateQuote() {
+  const quoteTextEl = document.getElementById('hourly-quote-text');
+  const quoteAuthorEl = document.getElementById('hourly-quote-author');
+  if (!quoteTextEl || !quoteAuthorEl) return;
+
+  const pool = (typeof HOURLY_QUOTES !== 'undefined' && Array.isArray(HOURLY_QUOTES) && HOURLY_QUOTES.length > 0)
+    ? HOURLY_QUOTES
+    : [
+        { t: "Discipline is choosing between what you want now and what you want most.", a: "Discipline Law" },
+        { t: "Focus on being productive instead of busy.", a: "Tim Ferriss" },
+        { t: "Discipline equals freedom. Own your day before it owns you.", a: "Jocko Willink" },
+        { t: "Don't stop when you're tired. Stop when the deliverable is done.", a: "David Goggins" },
+        { t: "You do not rise to your goals; you fall to your systems.", a: "James Clear" },
+        { t: "Work hard in silence, let your finished projects make the noise.", a: "Workplace Axiom" }
+      ];
+
+  if (_quoteIndex === -1) {
+    // Pick initial quote based on 30-minute time slice
+    const timeSlice = Math.floor(Date.now() / QUOTE_INTERVAL_MS);
+    const hash = ((timeSlice ^ 0x5DEECE66D) * 25214903917) >>> 0;
+    _quoteIndex = hash % pool.length;
+  } else {
+    // Progressive cycle through the pool
+    _quoteIndex = (_quoteIndex + 1) % pool.length;
+  }
+
+  const item = pool[_quoteIndex];
+
+  // Smooth fade transition
+  quoteTextEl.classList.add('fade-out');
+  quoteAuthorEl.classList.add('fade-out');
+
+  setTimeout(() => {
+    quoteTextEl.textContent = item.t;
+    quoteAuthorEl.textContent = `— ${item.a}`;
+    quoteTextEl.classList.remove('fade-out');
+    quoteAuthorEl.classList.remove('fade-out');
+  }, 200);
+}
+
+// Auto-rotate every half hour (30 minutes)
+if (_quote30MinTimer) clearInterval(_quote30MinTimer);
+_quote30MinTimer = setInterval(rotateQuote, QUOTE_INTERVAL_MS);
+
+setInterval(updateClock, 1000);
+updateClock();
+
+// ========================
+// CURSOR SPOTLIGHT TRACKER
+// ========================
+document.addEventListener('mousemove', (e) => {
+  const spot = document.getElementById('cursor-spotlight');
+  if (spot) {
+    spot.style.left = `${e.clientX}px`;
+    spot.style.top = `${e.clientY}px`;
+  }
+});
+
+// ========================
+// SIDEBAR & NAVIGATION
+// ========================
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const mw = document.querySelector('.main-wrap');
+  if (window.innerWidth <= 860) {
+    sb.classList.toggle('open');
+  } else {
+    sb.classList.toggle('collapsed');
+    mw.classList.toggle('full');
+  }
+}
+
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const target = document.getElementById('section-' + name);
+  if (target) target.classList.add('active');
+  if (el) el.classList.add('active');
+
+  const titles = {
+    dashboard: 'Executive Dashboard',
+    attendance: 'Attendance Command Station',
+    projects: 'Deliverables & Project Board',
+    calendars: 'Social Media Content Calendars',
+  };
+  const titleEl = document.getElementById('page-title');
+  if (titleEl) titleEl.textContent = titles[name] || name;
+
+  if (name === 'projects') renderProjects();
+  if (name === 'attendance') renderAttLog();
+  if (name === 'calendars') renderCalendars();
+}
+
+// Keyboard shortcuts (⌘1, ⌘2, ⌘3, ⌘4)
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    if (e.key === '1') { e.preventDefault(); showSection('dashboard', document.querySelector('[data-section=dashboard]')); }
+    if (e.key === '2') { e.preventDefault(); showSection('attendance', document.querySelector('[data-section=attendance]')); }
+    if (e.key === '3') { e.preventDefault(); showSection('projects', document.querySelector('[data-section=projects]')); }
+    if (e.key === '4') { e.preventDefault(); showSection('calendars', document.querySelector('[data-section=calendars]')); }
+  }
+});
+
+// ========================
+// ATTENDANCE LOGIC
+// ========================
+function updateMilestonesUI() {
+  const att = STATE.attendance;
+  const s1 = document.getElementById('step-checkin');
+  const s2 = document.getElementById('step-lunch-start');
+  const s3 = document.getElementById('step-lunch-end');
+  const s4 = document.getElementById('step-checkout');
+  const l1 = document.getElementById('line-1');
+  const l2 = document.getElementById('line-2');
+  const l3 = document.getElementById('line-3');
+
+  [s1, s2, s3, s4].forEach(s => s && s.classList.remove('done'));
+  [l1, l2, l3].forEach(l => l && l.classList.remove('done'));
+
+  if (att.checkInTime) {
+    if (s1) s1.classList.add('done');
+    if (l1) l1.classList.add('done');
+  }
+  if (att.lunchStartTime) {
+    if (s2) s2.classList.add('done');
+    if (l2) l2.classList.add('done');
+  }
+  if (att.lunchEndTime) {
+    if (s3) s3.classList.add('done');
+    if (l3) l3.classList.add('done');
+  }
+  if (att.checkOutTime) {
+    if (s4) s4.classList.add('done');
+  }
+}
+
+function syncAttendanceUI() {
+  const att = STATE.attendance;
+  const dot = document.getElementById('att-dot');
+  const statusText = document.getElementById('att-status-text');
+  const btnIn = document.getElementById('btn-checkin');
+  const btnLunch = document.getElementById('btn-lunch');
+  const btnOut = document.getElementById('btn-checkout');
+  const lunchTxt = document.getElementById('lunch-btn-txt');
+  const avatarStatusDot = document.getElementById('avatar-status-dot');
+  const sidebarStatusText = document.getElementById('sidebar-status-text');
+
+  document.getElementById('att-checkin-val').textContent = fmt(att.checkInTime);
+  document.getElementById('att-lunch-start-val').textContent = fmt(att.lunchStartTime);
+  document.getElementById('att-lunch-end-val').textContent = fmt(att.lunchEndTime);
+  document.getElementById('att-checkout-val').textContent = fmt(att.checkOutTime);
+
+  updateMilestonesUI();
+
+  dot.className = 'radar-ping-dot';
+  if (att.status === 'in') {
+    dot.classList.add('active');
+    statusText.textContent = 'Active In Studio — Working';
+    btnIn.disabled = true;
+    btnLunch.disabled = false;
+    btnOut.disabled = false;
+    lunchTxt.textContent = 'Take Lunch Break';
+
+    document.getElementById('dash-status').textContent = 'In Studio';
+    const b = document.getElementById('dash-status-badge');
+    b.textContent = 'Present';
+    b.className = 'stat-badge green';
+    document.getElementById('dash-status-sub').textContent = `Checked in at ${fmt(att.checkInTime)}`;
+
+    if (avatarStatusDot) avatarStatusDot.style.background = 'var(--emerald-400)';
+    if (sidebarStatusText) sidebarStatusText.textContent = 'In Studio';
+  } else if (att.status === 'lunch') {
+    dot.classList.add('lunch');
+    statusText.textContent = 'On Lunch Break';
+    btnIn.disabled = true;
+    btnLunch.disabled = false;
+    btnOut.disabled = true;
+    lunchTxt.textContent = 'Resume Work';
+
+    document.getElementById('dash-status').textContent = 'Lunch Break';
+    const b = document.getElementById('dash-status-badge');
+    b.textContent = 'Break';
+    b.className = 'stat-badge orange';
+    document.getElementById('dash-status-sub').textContent = 'Break in progress';
+
+    if (avatarStatusDot) avatarStatusDot.style.background = 'var(--amber-400)';
+    if (sidebarStatusText) sidebarStatusText.textContent = 'Lunch';
+  } else if (att.status === 'done') {
+    dot.classList.add('out');
+    statusText.textContent = 'Checked Out for Today';
+    btnIn.disabled = true;
+    btnLunch.disabled = true;
+    btnOut.disabled = true;
+
+    document.getElementById('dash-status').textContent = 'Checked Out';
+    const b = document.getElementById('dash-status-badge');
+    b.textContent = 'Done';
+    b.className = 'stat-badge purple';
+    document.getElementById('dash-status-sub').textContent = `Out at ${fmt(att.checkOutTime)}`;
+
+    if (avatarStatusDot) avatarStatusDot.style.background = 'var(--violet-400)';
+    if (sidebarStatusText) sidebarStatusText.textContent = 'Shift Done';
+
+    showAttendanceSummary();
+  } else {
+    statusText.textContent = 'Not Checked In';
+    btnIn.disabled = false;
+    btnLunch.disabled = true;
+    btnOut.disabled = true;
+
+    document.getElementById('dash-status').textContent = 'Not Checked In';
+    const b = document.getElementById('dash-status-badge');
+    b.textContent = 'Absent';
+    b.className = 'stat-badge';
+    document.getElementById('dash-status-sub').textContent = 'Click to Punch In for today';
+
+    if (avatarStatusDot) avatarStatusDot.style.background = '#64748b';
+    if (sidebarStatusText) sidebarStatusText.textContent = 'Offline';
+  }
+}
+
+function updateHoursRing(totalMs) {
+  const targetMs = 8 * 3600 * 1000;
+  const pct = Math.min(100, Math.round((totalMs / targetMs) * 100));
+  const ring = document.getElementById('hours-ring-fill');
+  if (ring) {
+    ring.setAttribute('stroke-dasharray', `${pct}, 100`);
+  }
+  const ringTxt = document.getElementById('ring-center-txt');
+  if (ringTxt) ringTxt.textContent = `${pct}%`;
+}
+
+function startAttElapsed() {
+  clearInterval(STATE.attendance.elapsedInterval);
+  STATE.attendance.elapsedInterval = setInterval(() => {
+    if (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch') {
+      const now = Date.now();
+      let total = now - STATE.attendance.checkInTime;
+      if (STATE.attendance.lunchStartTime && STATE.attendance.lunchEndTime) {
+        total -= (STATE.attendance.lunchEndTime - STATE.attendance.lunchStartTime);
+      } else if (STATE.attendance.lunchStartTime) {
+        total -= (now - STATE.attendance.lunchStartTime);
+      }
+      if (total < 0) total = 0;
+      const elText = fmtHHMMSS(total);
+      const el1 = document.getElementById('att-elapsed');
+      if (el1) el1.textContent = elText;
+      const el2 = document.getElementById('dash-workhrs');
+      if (el2) el2.textContent = fmtDuration(total);
+
+      updateHoursRing(total);
+    }
+  }, 1000);
+}
+
+// ========================
+// CHECK-IN SELFIE & CAMERA VERIFICATION ENGINE (COMPRESSED + 7-DAY RETENTION)
+// ========================
+function compressImage(fileOrDataUrl, maxWidth = 640, quality = 0.65) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxWidth) {
+        if (width > height) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxWidth) / height);
+          height = maxWidth;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      // Clean compressed JPEG (average 25-45 KB)
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve(dataUrl);
+    };
+    img.onerror = reject;
+
+    if (typeof fileOrDataUrl === 'string') {
+      img.src = fileOrDataUrl;
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => { img.src = e.target.result; };
+      reader.onerror = reject;
+      reader.readAsDataURL(fileOrDataUrl);
+    }
+  });
+}
+
+let _selfieCameraStream = null;
+let _pendingSelfieDataUrl = null;
+
+function openCheckInPhotoModal() {
+  if (STATE.attendance && STATE.attendance.status === 'in') {
+    toast('⚠️ You are already Checked In for today!', 'info');
+    return;
+  }
+  if (STATE.attendance && STATE.attendance.status === 'done') {
+    toast('⚠️ You have already concluded your shift for today!', 'info');
+    return;
+  }
+
+  _pendingSelfieDataUrl = null;
+  resetSelfieCapture();
+  openModal('checkin-photo-modal');
+  startCameraSelfie();
+}
+
+function cancelCheckInPhoto() {
+  stopCameraStream();
+  closeModal('checkin-photo-modal');
+}
+
+function resetSelfieCapture() {
+  stopCameraStream();
+  _pendingSelfieDataUrl = null;
+  const prevBox = document.getElementById('selfie-preview-box');
+  const streamBox = document.getElementById('camera-stream-box');
+  const phBox = document.getElementById('selfie-placeholder-box');
+  const confirmBtn = document.getElementById('btn-confirm-checkin-photo');
+  const fileInput = document.getElementById('selfie-file-input');
+
+  if (prevBox) prevBox.style.display = 'none';
+  if (streamBox) streamBox.style.display = 'none';
+  if (phBox) phBox.style.display = 'block';
+  if (confirmBtn) confirmBtn.disabled = true;
+  if (fileInput) fileInput.value = '';
+}
+
+async function startCameraSelfie() {
+  resetSelfieCapture();
+  const streamBox = document.getElementById('camera-stream-box');
+  const phBox = document.getElementById('selfie-placeholder-box');
+  const video = document.getElementById('selfie-video');
+
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('📷 Camera not supported on this device. Please upload a picture.', 'error');
+      triggerSelfieFileUpload();
+      return;
+    }
+
+    _selfieCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+
+    if (video) {
+      video.srcObject = _selfieCameraStream;
+      await video.play();
+    }
+    if (phBox) phBox.style.display = 'none';
+    if (streamBox) streamBox.style.display = 'block';
+  } catch (err) {
+    console.warn('Camera access denied or unavailable:', err);
+    toast('📷 Camera access denied or unavailable. Please upload a picture instead.', 'info');
+    stopCameraStream();
+    triggerSelfieFileUpload();
+  }
+}
+
+function stopCameraStream() {
+  if (_selfieCameraStream) {
+    _selfieCameraStream.getTracks().forEach(t => t.stop());
+    _selfieCameraStream = null;
+  }
+  const video = document.getElementById('selfie-video');
+  if (video) video.srcObject = null;
+  const streamBox = document.getElementById('camera-stream-box');
+  if (streamBox) streamBox.style.display = 'none';
+}
+
+async function snapCameraPhoto() {
+  const video = document.getElementById('selfie-video');
+  if (!video || !video.videoWidth) {
+    toast('⚠️ Camera stream not ready yet. Please wait a second.', 'error');
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const rawData = canvas.toDataURL('image/jpeg', 0.9);
+
+  try {
+    const compressed = await compressImage(rawData, 640, 0.65);
+    _pendingSelfieDataUrl = compressed;
+    stopCameraStream();
+    displaySelfiePreview(compressed);
+  } catch (err) {
+    console.error('Photo compression error:', err);
+    toast('Error processing photo', 'error');
+  }
+}
+
+function triggerSelfieFileUpload() {
+  stopCameraStream();
+  const fileInput = document.getElementById('selfie-file-input');
+  if (fileInput) fileInput.click();
+}
+
+async function handleSelfieFileInput(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  try {
+    toast('⚡ Compressing image for Supabase storage...', 'info');
+    const compressed = await compressImage(file, 640, 0.65);
+    _pendingSelfieDataUrl = compressed;
+    displaySelfiePreview(compressed);
+  } catch (err) {
+    console.error('File compression error:', err);
+    toast('❌ Error compressing photo. Try another image.', 'error');
+  }
+}
+
+function displaySelfiePreview(dataUrl) {
+  const phBox = document.getElementById('selfie-placeholder-box');
+  const streamBox = document.getElementById('camera-stream-box');
+  const prevBox = document.getElementById('selfie-preview-box');
+  const prevImg = document.getElementById('selfie-preview-img');
+  const sizePill = document.getElementById('selfie-size-pill');
+  const confirmBtn = document.getElementById('btn-confirm-checkin-photo');
+
+  if (phBox) phBox.style.display = 'none';
+  if (streamBox) streamBox.style.display = 'none';
+  if (prevImg) prevImg.src = dataUrl;
+  if (prevBox) prevBox.style.display = 'block';
+
+  const kb = Math.round((dataUrl.length * 0.75) / 1024);
+  if (sizePill) sizePill.textContent = `(~${kb} KB)`;
+  if (confirmBtn) confirmBtn.disabled = false;
+  toast('✅ Photo verified & ready for Check In!', 'success');
+}
+
+function confirmCheckInWithPhoto() {
+  if (!_pendingSelfieDataUrl) {
+    toast('⚠️ Please take a selfie or upload a photo to verify your check-in!', 'error');
+    return;
+  }
+  const photo = _pendingSelfieDataUrl;
+  cancelCheckInPhoto();
+  doCheckIn(photo);
+}
+
+function doCheckIn(photoUrl) {
+  const now = Date.now();
+  STATE.attendance.status = 'in';
+  STATE.attendance.checkInTime = now;
+  STATE.attendance.lunchStartTime = null;
+  STATE.attendance.lunchEndTime = null;
+  STATE.attendance.checkOutTime = null;
+  STATE.attendance.photoUrl = photoUrl || null;
+
+  const todayDateStr = fmtDate(now);
+  const existingLog = (STATE.attendance.log || []).find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
+  if (existingLog) {
+    existingLog.checkIn = now;
+    existingLog.status = 'in';
+    if (photoUrl) existingLog.photoUrl = photoUrl;
+  } else {
+    if (!STATE.attendance.log) STATE.attendance.log = [];
+    STATE.attendance.log.unshift({
+      id: 'att-' + uid(),
+      employeeId: STATE.employee.id,
+      employeeName: STATE.employee.name,
+      date: todayDateStr,
+      checkIn: now,
+      status: 'in',
+      photoUrl: photoUrl || null,
+      effectiveHours: '0h 0m'
+    });
+  }
+
+  syncAttendanceUI();
+  startAttElapsed();
+  addActivity(`Checked In with verified photo at ${fmt(now)}`, 'green');
+  triggerConfetti();
+  toast('📸 Check-In Verified with Photo! Have a powerhouse session.', 'success');
+  save();
+
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.logAttendance({
+      date: todayDateStr,
+      checkIn: now,
+      status: 'in',
+      photoUrl: photoUrl || null
+    });
+  }
+}
+
+function doLunch() {
+  const now = new Date();
+  const nowMs = now.getTime();
+  if (STATE.attendance.status === 'in') {
+    STATE.attendance.status = 'lunch';
+    STATE.attendance.lunchStartTime = nowMs;
+    addActivity(`Started lunch break at ${fmt(nowMs)}`, 'orange');
+    toast('Lunch break logged. Relax and recharge!', 'info');
+    syncAttendanceUI();
+    save();
+  } else if (STATE.attendance.status === 'lunch') {
+    // If lunch is ended at or after 3:00 PM (15:00), employee must provide justification
+    if (now.getHours() >= 15) {
+      openLateLunchModal();
+      return;
+    }
+    finishLunch(nowMs, null);
+  }
+}
+
+function doCheckOut() {
+  if (!confirm('Are you ready to Punch Out and conclude today’s session?')) return;
+  const now = Date.now();
+  STATE.attendance.status = 'done';
+  STATE.attendance.checkOutTime = now;
+  clearInterval(STATE.attendance.elapsedInterval);
+
+  let totalMs = now - STATE.attendance.checkInTime;
+  let lunchMs = 0;
+  if (STATE.attendance.lunchStartTime) {
+    const lend = STATE.attendance.lunchEndTime || now;
+    lunchMs = lend - STATE.attendance.lunchStartTime;
+    totalMs -= lunchMs;
+  }
+  if (totalMs < 0) totalMs = 0;
+
+  STATE.attendance.log.unshift({
+    date: fmtDate(now),
+    checkIn: fmt(STATE.attendance.checkInTime),
+    lunch: lunchMs > 0 ? `${Math.round(lunchMs / 60000)}m` : 'None',
+    lateLunchReason: STATE.attendance.lateLunchReason || null,
+    checkOut: fmt(now),
+    workHrs: fmtDuration(totalMs),
+    status: 'Completed',
+  });
+
+  syncAttendanceUI();
+  renderAttLog();
+  updateHoursRing(totalMs);
+  triggerConfetti();
+  addActivity(`Checked Out at ${fmt(now)} — Completed ${fmtDuration(totalMs)}`, 'purple');
+  toast(`Checked Out! Outstanding work: ${fmtDuration(totalMs)} total.`, 'success');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.logAttendance({
+      date: fmtDate(now),
+      checkIn: STATE.attendance.checkInTime,
+      checkOut: now,
+      effectiveHours: fmtDuration(totalMs),
+      lateLunchReason: STATE.attendance.lateLunchReason,
+      status: 'done'
+    });
+  }
+}
+
+function showAttendanceSummary() {
+  const sumEl = document.getElementById('att-summary');
+  if (!sumEl) return;
+  sumEl.style.display = 'flex';
+
+  const inTime = STATE.attendance.checkInTime;
+  const outTime = STATE.attendance.checkOutTime || Date.now();
+  let total = outTime - inTime;
+  let lunch = 0;
+  if (STATE.attendance.lunchStartTime) {
+    const lend = STATE.attendance.lunchEndTime || outTime;
+    lunch = lend - STATE.attendance.lunchStartTime;
+    total -= lunch;
+  }
+  document.getElementById('att-total-work').textContent = fmtDuration(total);
+  document.getElementById('att-lunch-dur').textContent = `${Math.round(lunch / 60000)}m`;
+}
+
+function renderAttLog() {
+  const tbody = document.getElementById('att-log-body');
+  if (!tbody) return;
+  if (!STATE.attendance.log || STATE.attendance.log.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-td">No attendance records logged yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = STATE.attendance.log.map(r => `
+    <tr>
+      <td><strong>${r.date}</strong></td>
+      <td>${r.checkIn}</td>
+      <td>
+        ${r.lunch}
+        ${r.lateLunchReason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${r.lateLunchReason}">⚠️ Post-3PM: ${r.lateLunchReason}</div>` : ''}
+      </td>
+      <td>${r.checkOut}</td>
+      <td><span class="stat-badge purple">${r.workHrs}</span></td>
+      <td><span class="stat-badge green">● ${r.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+function clearAttLog() {
+  if (!confirm('Clear all attendance logs?')) return;
+  STATE.attendance.log = [];
+  renderAttLog();
+  toast('Attendance history cleared', 'info');
+  save();
+}
+
+// ========================
+// PROJECTS & ROLE DELEGATION
+// ========================
+function renderProjectAssignOptions(existingAssigned = []) {
+  const container = document.getElementById('assign-options');
+  if (!container) return;
+
+  const isMgr = isManagerRole();
+
+  if (isMgr) {
+    const teamMembers = (STATE.team || []).filter(t => t.name !== STATE.employee.name);
+    const options = [
+      { label: `👑 ${STATE.employee.name} (You)`, value: STATE.employee.name },
+      ...teamMembers.map(t => ({
+        label: `👤 ${t.name} (${t.role || 'Staff'})`,
+        value: t.name
+      })),
+      { label: '🎬 Video Editor', value: 'Video Editor' },
+      { label: '📱 Social Media Management', value: 'Social Media Management' },
+      { label: '🎨 Graphic Designer', value: 'Graphic Design' },
+      { label: '✍️ Content Creator', value: 'Content Creator / Writer' },
+      { label: '💰 Paid Ads Specialist', value: 'Paid Ads Specialist' },
+      { label: '🔍 SEO Specialist', value: 'SEO Specialist' },
+      { label: '💻 Web Developer', value: 'Web Developer' },
+    ];
+
+    container.innerHTML = `
+      <div style="width:100%;margin-bottom:8px">
+        <span class="assign-manager-badge">👑 Manager Delegation Privileges Active</span>
+      </div>
+      ${options.map(opt => {
+        const isChecked = existingAssigned.length
+          ? existingAssigned.includes(opt.value)
+          : (opt.value === STATE.employee.name);
+        return `
+          <label class="assign-chip ${isChecked ? 'selected' : ''}">
+            <input type="checkbox" value="${opt.value}" ${isChecked ? 'checked' : ''} />
+            ${opt.label}
+          </label>
+        `;
+      }).join('')}
+    `;
+
+    container.querySelectorAll('.assign-chip').forEach(chip => {
+      chip.addEventListener('click', function (e) {
+        if (e.target.tagName !== 'INPUT') {
+          const cb = this.querySelector('input');
+          cb.checked = !cb.checked;
+        }
+        const cb = this.querySelector('input');
+        this.classList.toggle('selected', cb.checked);
+      });
+    });
+  } else {
+    container.innerHTML = `
+      <div class="assign-restricted-box">
+        <span class="assign-self-pill">👤 Assigned to: ${STATE.employee.name} (${STATE.employee.role})</span>
+        <p class="assign-restricted-hint" style="margin-top:6px">
+          ✅ <strong>Self-Task:</strong> Added directly to your active deliverables board so you can start tracking time immediately.
+        </p>
+      </div>
+    `;
+  }
+}
+
+function openProjectModal(id) {
+  if (!id && !isManagerRole()) {
+    toast('⚠️ Access Restricted: Only the Agency Owner (Amaan Khan) or Social Media Manager has rights to create and assign deliverables.', 'error');
+    return;
+  }
+
+  STATE.editingProjectId = id || null;
+  const title = document.getElementById('proj-modal-title');
+  if (title) title.textContent = id ? 'Edit Deliverable' : 'Create New Deliverable';
+
+  if (id) {
+    const p = STATE.projects.find(x => x.id === id);
+    if (p) {
+      document.getElementById('proj-name').value = p.name || '';
+      document.getElementById('proj-client').value = p.client || '';
+      document.getElementById('proj-priority').value = p.priority || 'Medium';
+      document.getElementById('proj-service').value = p.service || 'Video Editing';
+      document.getElementById('proj-deadline').value = p.deadline || '';
+      document.getElementById('proj-desc').value = p.desc || '';
+      renderProjectAssignOptions(p.assigned || []);
+    }
+  } else {
+    document.getElementById('proj-name').value = '';
+    document.getElementById('proj-client').value = '';
+    document.getElementById('proj-priority').value = 'Medium';
+    document.getElementById('proj-service').value = isManagerRole()
+      ? 'Social Media Management'
+      : (STATE.employee.role || 'Video Editing');
+    document.getElementById('proj-deadline').value = '';
+    document.getElementById('proj-desc').value = '';
+    renderProjectAssignOptions([STATE.employee.name]);
+  }
+  openModal('project-modal');
+}
+
+function saveProject() {
+  if (!STATE.editingProjectId && !isManagerRole()) {
+    toast('⚠️ Permission Denied: Only Social Media Manager or Agency Owner can create deliverables.', 'error');
+    return;
+  }
+
+  const name = document.getElementById('proj-name').value.trim();
+  if (!name) { toast('Project name is required', 'error'); return; }
+
+  let assigned = [];
+  if (isManagerRole()) {
+    const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
+    assigned = Array.from(checks).map(c => c.value);
+    if (!assigned.length) assigned = [STATE.employee.name];
+  } else {
+    assigned = [STATE.employee.name];
+  }
+
+  const project = {
+    id: STATE.editingProjectId || uid(),
+    name,
+    client: document.getElementById('proj-client').value.trim() || 'Internal Agency',
+    priority: document.getElementById('proj-priority').value,
+    service: document.getElementById('proj-service').value,
+    deadline: document.getElementById('proj-deadline').value,
+    desc: document.getElementById('proj-desc').value.trim(),
+    assigned,
+    status: 'Assigned',
+    progress: 15,
+    totalTimeSpent: 0,
+    sessions: [],
+    createdAt: Date.now(),
+  };
+
+  if (STATE.editingProjectId) {
+    const idx = STATE.projects.findIndex(x => x.id === STATE.editingProjectId);
+    if (idx !== -1) {
+      project.status = STATE.projects[idx].status;
+      project.progress = STATE.projects[idx].progress || 50;
+      project.createdAt = STATE.projects[idx].createdAt;
+      project.totalTimeSpent = STATE.projects[idx].totalTimeSpent || 0;
+      project.sessions = STATE.projects[idx].sessions || [];
+      STATE.projects[idx] = project;
+    }
+    toast('Deliverable updated!', 'success');
+  } else {
+    STATE.projects.unshift(project);
+    addActivity(`Project created: ${name}`, 'blue');
+    triggerConfetti();
+    toast('Deliverable added to workspace!', 'success');
+  }
+
+  updateDashCounts();
+  renderProjects();
+  populateTimerSelect();
+  closeModal('project-modal');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(project);
+  }
+}
+
+let _activeFilter = 'all';
+function filterProjects(filter, el) {
+  _activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderProjects();
+}
+
+function renderProjects() {
+  const grid = document.getElementById('projects-grid');
+  if (!grid) return;
+
+  const search = (document.getElementById('proj-search')?.value || '').toLowerCase();
+
+  let list = STATE.projects;
+  if (_activeFilter === 'my') {
+    const empDomains = Array.isArray(STATE.employee.domains) && STATE.employee.domains.length > 0
+      ? STATE.employee.domains
+      : [STATE.employee.role].filter(Boolean);
+
+    list = list.filter(p => {
+      const assigned = p.assigned || [];
+      const isAssignedByName = assigned.includes(STATE.employee.name);
+      const isAssignedByRole = assigned.includes(STATE.employee.role) || empDomains.some(d => assigned.includes(d));
+      const isMatchingService = p.service === STATE.employee.role || empDomains.includes(p.service);
+      return isAssignedByName || isAssignedByRole || isMatchingService;
+    });
+  } else if (_activeFilter !== 'all') {
+    list = list.filter(p => {
+      const s = p.status || '';
+      if (_activeFilter === 'In Progress') return s === 'In Progress';
+      if (_activeFilter === 'Completed') return s === 'Completed';
+      if (_activeFilter === 'Review') return s === 'Review' || s === 'In Review';
+      if (_activeFilter === 'Cancelled') return s === 'Cancelled';
+      return true;
+    });
+  }
+
+  if (search) {
+    list = list.filter(p =>
+      p.name.toLowerCase().includes(search) ||
+      (p.client || '').toLowerCase().includes(search) ||
+      (p.service || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div class="projects-empty">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      <p>No deliverables match your search. Create one to get started!</p>
+    </div>`;
+    return;
+  }
+
+  const deadlineWarning = (dl) => {
+    if (!dl) return '<span class="proj-deadline">📅 Ongoing</span>';
+    const d = new Date(dl);
+    const diff = d - Date.now();
+    const near = diff < 3 * 24 * 3600000 && diff > 0;
+    return `<span class="proj-deadline ${near ? 'near' : ''}">📅 ${dl}</span>`;
+  };
+
+  const statusClass = (s) => s ? s.replace(/\s+/g, '-') : 'Assigned';
+
+  grid.className = 'projects-list-wrap';
+  grid.innerHTML = list.map(p => {
+    const isActive = STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === p.id;
+    const liveElapsed = isActive ? (Date.now() - STATE.activeProjectTimer.startTime) : 0;
+    const timeDisplay = isActive ? fmtHHMMSS(liveElapsed) : (p.totalTimeSpent ? fmtDuration(p.totalTimeSpent) : '0h 0m');
+
+    return `
+      <div class="proj-list-row ${p.priority} ${isActive ? 'is-active' : ''}" onclick="openProjectDetail('${p.id}')" title="Click to open deliverable details and logs">
+        <div class="proj-row-left">
+          <span class="proj-priority-dot ${p.priority}" title="${p.priority} Priority"></span>
+          <div class="proj-row-title-box">
+            <span class="proj-row-name">${p.name}</span>
+            <span class="proj-row-client">🏢 ${p.client || 'Client'}</span>
+          </div>
+        </div>
+
+        <div class="proj-row-center">
+          <span class="stat-badge cyan" style="font-size:11.5px">🔧 ${p.service}</span>
+          <div class="proj-row-assigned">
+            ${(p.assigned || []).map(a => `<span class="proj-assign-pill">👤 ${a}</span>`).join('')}
+          </div>
+        </div>
+
+        <div class="proj-row-right">
+          ${deadlineWarning(p.deadline)}
+          <span class="proj-status-pill ${statusClass(p.status)}">${p.status || 'Assigned'}</span>
+
+          <div class="proj-timer-compact" onclick="event.stopPropagation()">
+            <span class="proj-timer-time" id="proj-clock-${p.id}">${timeDisplay}</span>
+            ${!isActive ? `
+              <button class="btn-timer-icon start" onclick="startProjectWork('${p.id}')" title="Start Timer">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <span>Start</span>
+              </button>
+            ` : `
+              <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop Timer">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                <span>Stop</span>
+              </button>
+            `}
+          </div>
+
+          <span class="proj-row-chevron" title="Click to open deliverable details">›</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openProjectDetail(id) {
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+  STATE.viewingProjectId = id;
+
+  document.getElementById('proj-detail-title').textContent = p.name;
+  document.getElementById('proj-status-change').value = p.status || 'Assigned';
+
+  const isActive = STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === id;
+  const liveElapsed = isActive ? (Date.now() - STATE.activeProjectTimer.startTime) : 0;
+  const timeDisplay = isActive ? fmtHHMMSS(liveElapsed) : (p.totalTimeSpent ? fmtDuration(p.totalTimeSpent) : '0h 0m');
+
+  const sessionsHtml = (p.sessions && p.sessions.length) ? `
+    <div class="proj-session-history">
+      <div class="proj-session-title">⏱ Work Sessions Log (${p.sessions.length})</div>
+      <div class="session-chips-wrap">
+        ${p.sessions.map(s => `
+          <div class="session-chip">
+            <strong>${s.date}</strong>: ${s.start} - ${s.end} (${s.durationStr})
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : `
+    <div class="proj-session-history">
+      <div class="proj-session-title">⏱ Work Sessions Log</div>
+      <div style="font-size:12px;color:var(--text-muted)">No recorded work sessions yet. Click "Start Work" to track billable time.</div>
+    </div>
+  `;
+
+  document.getElementById('proj-detail-body').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span class="detail-label">Client Account</span>
+        <span class="detail-val">${p.client || '—'}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Service Domain</span>
+        <span class="detail-val">${p.service}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Priority Level</span>
+        <span class="detail-val proj-priority-badge ${p.priority}">● ${p.priority}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Target Deadline</span>
+        <span class="detail-val">${p.deadline || 'Flexible'}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Assigned Specialists</span>
+        <span class="detail-val">${(p.assigned || ['Me']).join(', ')}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Total Time Tracked</span>
+        <span class="detail-val" style="color:#34d399;font-weight:700" id="modal-proj-clock">${timeDisplay}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Date Created</span>
+        <span class="detail-val">${fmtDate(p.createdAt)}</span>
+      </div>
+      ${p.desc ? `<div class="detail-desc">${p.desc}</div>` : ''}
+    </div>
+    ${sessionsHtml}
+  `;
+
+  const btnWrap = document.getElementById('proj-detail-timer-btn-wrap');
+  if (btnWrap) {
+    if (!isActive) {
+      btnWrap.innerHTML = `
+        <button class="proj-timer-btn btn-green" onclick="startProjectWork('${p.id}');openProjectDetail('${p.id}')">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          <span>Start Work</span>
+        </button>
+      `;
+    } else {
+      btnWrap.innerHTML = `
+        <button class="proj-timer-btn btn-red" onclick="stopProjectWork('${p.id}');openProjectDetail('${p.id}')">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
+          <span>Stop Work</span>
+        </button>
+      `;
+    }
+  }
+
+  openModal('proj-detail-modal');
+}
+
+function changeProjectStatus() {
+  const id = STATE.viewingProjectId;
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+  const newStatus = document.getElementById('proj-status-change').value;
+  p.status = newStatus;
+  renderProjects();
+  if (newStatus === 'Completed') triggerConfetti();
+  addActivity(`Project "${p.name}" → ${newStatus}`, 'purple');
+  toast(`Status updated: ${newStatus}`, 'success');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(p);
+  }
+}
+
+function deleteProject() {
+  const id = STATE.viewingProjectId;
+  if (!id) return;
+  if (!confirm('Are you sure you want to delete this deliverable?')) return;
+  if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === id) {
+    stopProjectWork(id, true);
+  }
+  STATE.projects = STATE.projects.filter(x => x.id !== id);
+  renderProjects();
+  updateDashCounts();
+  closeModal('proj-detail-modal');
+  toast('Deliverable deleted', 'info');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.deleteProject(id);
+  }
+}
+
+function clearAllProjects() {
+  if (!confirm('Are you sure you want to remove all deliverables from your workspace?')) return;
+  if (STATE.activeProjectTimer) {
+    stopProjectWork(STATE.activeProjectTimer.projectId, true);
+  }
+  STATE.projects = [];
+  updateDashCounts();
+  renderProjects();
+  save();
+  toast('All deliverables cleared!', 'info');
+}
+
+function populateTimerSelect() {}
+
+// ========================
+// INLINE PROJECT WORK TIMER (GREEN START / RED STOP)
+// ========================
+let _projectTimerInterval = null;
+
+function startProjectWork(id) {
+  if (STATE.attendance.status !== 'in') {
+    toast('⚠️ Please Punch Check-In in Attendance before starting work', 'error');
+    return;
+  }
+
+  const proj = STATE.projects.find(p => p.id === id);
+  if (!proj) return;
+
+  // If another project is running, stop it and log its time first
+  if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId !== id) {
+    stopProjectWork(STATE.activeProjectTimer.projectId, true);
+  }
+
+  STATE.activeProjectTimer = {
+    projectId: id,
+    startTime: Date.now(),
+  };
+
+  if (proj.status === 'Assigned') {
+    proj.status = 'In Progress';
+  }
+
+  updateProjectTimerTicker();
+  renderProjects();
+  syncActiveTaskTopbar();
+  updateAdminKpis();
+  renderAdminProjectsTime();
+  renderAdminEmployees();
+  addActivity(`Started work on: "${proj.name}"`, 'green');
+  toast(`▶ Work session active on: ${proj.name}`, 'success');
+  save();
+}
+
+function stopProjectWork(id, isSwitching = false) {
+  if (!STATE.activeProjectTimer || STATE.activeProjectTimer.projectId !== id) return;
+
+  const duration = Math.max(0, Date.now() - STATE.activeProjectTimer.startTime);
+  const proj = STATE.projects.find(p => p.id === id);
+
+  if (proj) {
+    proj.totalTimeSpent = (proj.totalTimeSpent || 0) + duration;
+    if (!proj.sessions) proj.sessions = [];
+    const session = {
+      id: uid(),
+      projectId: proj.id,
+      projectName: proj.name,
+      date: fmtDate(Date.now()),
+      start: fmt(STATE.activeProjectTimer.startTime),
+      end: fmt(Date.now()),
+      durationMs: duration,
+      durationStr: fmtDuration(duration),
+      user: STATE.employee.name,
+    };
+    proj.sessions.unshift(session);
+    STATE.timeLogs.unshift(session);
+
+    if (!isSwitching) {
+      toast(`⏹ Session logged: ${fmtDuration(duration)} on "${proj.name}"`, 'info');
+      addActivity(`Logged ${fmtDuration(duration)} on "${proj.name}"`, 'purple');
+    }
+  }
+
+  clearInterval(_projectTimerInterval);
+  _projectTimerInterval = null;
+  STATE.activeProjectTimer = null;
+
+  renderProjects();
+  syncActiveTaskTopbar();
+  updateAdminKpis();
+  renderAdminProjectsTime();
+  renderAdminEmployees();
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
+  }
+  save();
+  if (typeof SupabaseData !== 'undefined' && proj) {
+    SupabaseData.upsertProject(proj);
+  }
+}
+
+function stopActiveProjectWork() {
+  if (STATE.activeProjectTimer) {
+    stopProjectWork(STATE.activeProjectTimer.projectId);
+  }
+}
+
+function syncActiveTaskTopbar() {
+  const bar = document.getElementById('topbar-active-task');
+  const nameEl = document.getElementById('topbar-active-task-name');
+  const timeEl = document.getElementById('topbar-active-task-timer');
+  if (!bar) return;
+
+  if (STATE.activeProjectTimer) {
+    const proj = STATE.projects.find(p => p.id === STATE.activeProjectTimer.projectId);
+    bar.style.display = 'flex';
+    if (nameEl) nameEl.textContent = proj ? proj.name : 'Active Deliverable';
+    const elapsed = Date.now() - STATE.activeProjectTimer.startTime;
+    if (timeEl) timeEl.textContent = fmtHHMMSS(elapsed);
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function updateProjectTimerTicker() {
+  clearInterval(_projectTimerInterval);
+  if (!STATE.activeProjectTimer) return;
+
+  _projectTimerInterval = setInterval(() => {
+    if (!STATE.activeProjectTimer) {
+      clearInterval(_projectTimerInterval);
+      return;
+    }
+    const elapsed = Date.now() - STATE.activeProjectTimer.startTime;
+    const digits = fmtHHMMSS(elapsed);
+
+    // Update card timer clock if element exists
+    const cardClock = document.getElementById(`proj-clock-${STATE.activeProjectTimer.projectId}`);
+    if (cardClock) cardClock.textContent = digits;
+
+    // Update topbar timer clock
+    const topClock = document.getElementById('topbar-active-task-timer');
+    if (topClock) topClock.textContent = digits;
+
+    // Update modal timer clock if open
+    const modalClock = document.getElementById('modal-proj-clock');
+    if (modalClock) modalClock.textContent = digits;
+
+    // Update admin timesheet clock if visible
+    const adminClock = document.getElementById(`admin-timesheet-clock-${STATE.activeProjectTimer.projectId}`);
+    if (adminClock) adminClock.textContent = digits;
+  }, 1000);
+}
+
+// ========================
+// SOCIAL MEDIA CALENDARS SYSTEM
+// ========================
+let _selectedCalendarFile = null;
+let _calActiveFilter = 'all';
+
+function formatMonthLabel(val) {
+  if (!val) return 'Ongoing';
+  if (val.includes('-')) {
+    const parts = val.split('-');
+    const y = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
+    const date = new Date(y, m - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  return val;
+}
+
+function openCalendarUploadModal() {
+  document.getElementById('cal-client-input').value = '';
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  document.getElementById('cal-month-input').value = ym;
+  document.getElementById('cal-title-input').value = '';
+  document.getElementById('cal-notes-input').value = '';
+
+  _selectedCalendarFile = null;
+  const dropText = document.getElementById('cal-dropzone-text');
+  const dropPill = document.getElementById('cal-dropzone-pill');
+  if (dropText) dropText.style.display = 'flex';
+  if (dropPill) {
+    dropPill.style.display = 'none';
+    dropPill.textContent = '';
+  }
+  const fileInput = document.getElementById('cal-pdf-file');
+  if (fileInput) fileInput.value = '';
+
+  openModal('calendar-upload-modal');
+}
+
+function handleCalendarFileSelect(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    toast('Please select a valid PDF file (.pdf)', 'error');
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    _selectedCalendarFile = {
+      name: file.name,
+      sizeStr: Math.round(file.size / 1024) + ' KB',
+      dataUrl: e.target.result,
+    };
+    const dropText = document.getElementById('cal-dropzone-text');
+    const dropPill = document.getElementById('cal-dropzone-pill');
+    if (dropText) dropText.style.display = 'none';
+    if (dropPill) {
+      dropPill.style.display = 'inline-block';
+      dropPill.textContent = `✓ Selected: ${file.name} (${_selectedCalendarFile.sizeStr})`;
+    }
+    toast(`Loaded PDF: ${file.name}`, 'info');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveCalendarUpload() {
+  const client = (document.getElementById('cal-client-input')?.value || '').trim();
+  const monthVal = (document.getElementById('cal-month-input')?.value || '').trim();
+  const title = (document.getElementById('cal-title-input')?.value || '').trim();
+  const notes = (document.getElementById('cal-notes-input')?.value || '').trim();
+
+  if (!client) {
+    toast('Client name is required', 'error');
+    return;
+  }
+  if (!monthVal) {
+    toast('Please select month and year', 'error');
+    return;
+  }
+  if (!title) {
+    toast('Calendar title is required', 'error');
+    return;
+  }
+
+  let fileName = 'Agency CRM.pdf';
+  let fileUrl = 'Agency CRM.pdf';
+  let fileSize = '62 KB';
+
+  if (_selectedCalendarFile) {
+    fileName = _selectedCalendarFile.name;
+    fileUrl = _selectedCalendarFile.dataUrl;
+    fileSize = _selectedCalendarFile.sizeStr;
+  }
+
+  const newCal = {
+    id: uid(),
+    client,
+    month: monthVal,
+    monthLabel: formatMonthLabel(monthVal),
+    title,
+    notes,
+    fileName,
+    fileUrl,
+    fileSize,
+    uploadedBy: STATE.employee.name,
+    uploadedAt: Date.now(),
+  };
+
+  if (!Array.isArray(STATE.calendars)) STATE.calendars = [];
+  STATE.calendars.unshift(newCal);
+
+  updateCalendarCounts();
+  renderCalendars();
+  closeModal('calendar-upload-modal');
+  triggerConfetti();
+  addActivity(`Uploaded social media calendar for ${client} (${newCal.monthLabel})`, 'blue');
+  toast(`Social media calendar for ${client} added!`, 'success');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertCalendar(newCal);
+  }
+}
+
+function deleteCalendar(id) {
+  const cal = (STATE.calendars || []).find(c => c.id === id);
+  if (!cal) return;
+  if (!confirm(`Are you sure you want to remove the calendar "${cal.title}" for ${cal.client}?`)) return;
+
+  STATE.calendars = STATE.calendars.filter(c => c.id !== id);
+  updateCalendarCounts();
+  renderCalendars();
+  addActivity(`Removed calendar: ${cal.title}`, 'orange');
+  toast('Calendar PDF removed', 'info');
+  save();
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.deleteCalendar(id);
+  }
+}
+
+function viewCalendarPDF(id) {
+  const cal = (STATE.calendars || []).find(c => c.id === id);
+  if (!cal) return;
+
+  const modalTitle = document.getElementById('pdf-viewer-title');
+  if (modalTitle) modalTitle.textContent = `${cal.client} — ${cal.title} (${cal.monthLabel})`;
+
+  const frame = document.getElementById('pdf-viewer-frame');
+  const extLink = document.getElementById('pdf-viewer-external-link');
+
+  if (frame) frame.src = cal.fileUrl;
+  if (extLink) extLink.href = cal.fileUrl;
+
+  openModal('pdf-viewer-modal');
+}
+
+function filterCalendars(filter, el) {
+  _calActiveFilter = filter;
+  document.querySelectorAll('#cal-filter-chips .filter-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderCalendars();
+}
+
+function updateCalendarCounts() {
+  const count = (STATE.calendars || []).length;
+  const badge = document.getElementById('nav-cal-badge');
+  if (badge) badge.textContent = count;
+}
+
+function renderCalendars() {
+  const grid = document.getElementById('calendars-grid');
+  if (!grid) return;
+
+  const search = (document.getElementById('cal-search')?.value || '').toLowerCase();
+  let list = STATE.calendars || [];
+
+  const now = new Date();
+  const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  if (_calActiveFilter === 'current') {
+    list = list.filter(c => c.month === currentYM || (c.monthLabel && c.monthLabel.toLowerCase().includes('october 2026')));
+  }
+
+  if (search) {
+    list = list.filter(c =>
+      (c.client || '').toLowerCase().includes(search) ||
+      (c.title || '').toLowerCase().includes(search) ||
+      (c.monthLabel || '').toLowerCase().includes(search) ||
+      (c.fileName || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="projects-empty" style="grid-column: 1 / -1; padding: 50px 20px;">
+        <svg viewBox="0 0 24 24" style="width:48px;height:48px;margin:0 auto 12px;opacity:0.35;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg>
+        <h4 style="color:#fff;margin-bottom:6px;font-size:16px;">No Social Media Calendars Found</h4>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:18px;">Upload monthly client content calendar PDFs to keep the entire agency aligned.</p>
+        <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()" style="display:inline-flex;margin:0 auto;">
+          <span>+ Upload First Client Calendar</span>
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = list.map(c => `
+    <div class="cal-card">
+      <div>
+        <div class="cal-card-top">
+          <span class="cal-client-badge">🏢 ${c.client}</span>
+          <span class="cal-month-tag">🗓️ ${c.monthLabel || c.month}</span>
+        </div>
+
+        <div class="cal-card-body">
+          <div class="cal-pdf-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
+            <span>PDF</span>
+          </div>
+          <div class="cal-info">
+            <h4 class="cal-title">${c.title}</h4>
+            <div class="cal-filename" title="${c.fileName}">${c.fileName}</div>
+            <div class="cal-meta-row">
+              <span>📦 ${c.fileSize || 'PDF'}</span>
+              <span>•</span>
+              <span>👤 ${c.uploadedBy || 'Team'}</span>
+              <span>•</span>
+              <span>🕒 ${fmtDate(c.uploadedAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${c.notes ? `<div class="cal-notes">📝 ${c.notes}</div>` : ''}
+      </div>
+
+      <div class="cal-card-footer">
+        <div class="cal-actions">
+          <button class="btn-cal-action view" onclick="viewCalendarPDF('${c.id}')" title="Preview PDF Calendar">
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            <span>View PDF</span>
+          </button>
+          <a class="btn-cal-action download" href="${c.fileUrl}" download="${c.fileName}" title="Download PDF">
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span>Download</span>
+          </a>
+        </div>
+        <button class="btn-cal-action delete" onclick="deleteCalendar('${c.id}')" title="Remove Calendar">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========================
+// AGENCY ADMIN COMMAND CENTER
+// ========================
+
+function renderAdminPanel() {
+  updateAdminKpis();
+  renderAdminClients();
+  renderAdminEmployees();
+  renderAdminProjectsTime();
+  syncClientsDatalist();
+}
+
+function updateAdminKpis() {
+  // 1. Client count
+  const clientsCount = (STATE.clients || []).length;
+  const kpiClients = document.getElementById('admin-kpi-clients');
+  if (kpiClients) kpiClients.textContent = clientsCount;
+
+  const tabClientCount = document.getElementById('admin-tab-client-count');
+  if (tabClientCount) tabClientCount.textContent = clientsCount;
+
+  // 2. Team roster & active checked-in count
+  const teamList = STATE.team || [];
+  const kpiTeam = document.getElementById('admin-kpi-team');
+  if (kpiTeam) kpiTeam.textContent = teamList.length;
+
+  const tabEmpCount = document.getElementById('admin-tab-emp-count');
+  if (tabEmpCount) tabEmpCount.textContent = teamList.length;
+
+  let activeCount = 0;
+  teamList.forEach(m => {
+    if (m.id === STATE.employee.id || m.isCurrent) {
+      if (STATE.attendance.status === 'in') activeCount++;
+    } else {
+      if (m.id !== 'EMP-004' && m.id !== 'EMP-006') activeCount++;
+    }
+  });
+  const kpiTeamActive = document.getElementById('admin-kpi-team-active');
+  if (kpiTeamActive) kpiTeamActive.textContent = `${activeCount} in studio`;
+
+  // 3. Content Calendars
+  const calCount = (STATE.calendars || []).length;
+  const kpiCals = document.getElementById('admin-kpi-cals');
+  if (kpiCals) kpiCals.textContent = calCount;
+
+  // 4. Active deliverables
+  const activeProjects = (STATE.projects || []).filter(p => p.status !== 'Completed' && p.status !== 'Cancelled').length;
+  const kpiProjects = document.getElementById('admin-kpi-projects');
+  if (kpiProjects) kpiProjects.textContent = activeProjects;
+
+  const tabProjCount = document.getElementById('admin-tab-proj-count');
+  if (tabProjCount) tabProjCount.textContent = (STATE.projects || []).length;
+}
+
+function switchAdminTab(tabName, el) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const panes = {
+    clients: document.getElementById('admin-pane-clients'),
+    employees: document.getElementById('admin-pane-employees'),
+    timesheets: document.getElementById('admin-pane-timesheets'),
+  };
+
+  Object.keys(panes).forEach(k => {
+    if (panes[k]) panes[k].style.display = (k === tabName) ? 'block' : 'none';
+  });
+
+  if (tabName === 'clients') renderAdminClients();
+  if (tabName === 'employees') renderAdminEmployees();
+  if (tabName === 'timesheets') renderAdminProjectsTime();
+}
+
+function syncClientsDatalist() {
+  const dl = document.getElementById('clients-datalist');
+  if (!dl) return;
+
+  const clientNames = new Set();
+  (STATE.clients || []).forEach(c => c.name && clientNames.add(c.name.trim()));
+  (STATE.projects || []).forEach(p => p.client && clientNames.add(p.client.trim()));
+  (STATE.calendars || []).forEach(cal => cal.client && clientNames.add(cal.client.trim()));
+
+  dl.innerHTML = Array.from(clientNames).map(name => `<option value="${name}">`).join('');
+}
+
+function renderAdminClients() {
+  const tbody = document.getElementById('admin-clients-tbody');
+  if (!tbody) return;
+
+  const search = (document.getElementById('admin-client-search')?.value || '').toLowerCase();
+  let list = STATE.clients || [];
+
+  if (search) {
+    list = list.filter(c =>
+      (c.name || '').toLowerCase().includes(search) ||
+      (c.industry || '').toLowerCase().includes(search) ||
+      (c.lead || '').toLowerCase().includes(search) ||
+      (c.status || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+          <div style="font-size:32px;margin-bottom:8px">🏢</div>
+          <strong style="color:#fff;display:block;margin-bottom:6px">No Clients Found</strong>
+          <p style="font-size:12.5px;margin-bottom:14px">No client account matches your search criteria.</p>
+          <button class="btn-primary btn-small" onclick="openAddClientModal()">+ Add Client Account</button>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = list.map(c => {
+    const clientProjects = (STATE.projects || []).filter(p => (p.client || '').toLowerCase() === (c.name || '').toLowerCase());
+    const clientCals = (STATE.calendars || []).filter(cal => (cal.client || '').toLowerCase() === (c.name || '').toLowerCase());
+    const statusBadgeClass = c.status === 'Active' ? 'green' : (c.status === 'On Hold' ? 'orange' : 'purple');
+
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--violet-400)">
+              ${c.name ? c.name.charAt(0).toUpperCase() : 'C'}
+            </div>
+            <div>
+              <strong style="color:#fff;font-size:14px;display:block">${c.name}</strong>
+              <span style="color:var(--text-muted);font-size:11.5px">${c.lead ? 'Lead: ' + c.lead : 'Client Account'}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#cbd5e1">
+            <span>🏷️</span> ${c.industry || 'General Digital'}
+          </span>
+        </td>
+        <td>
+          <span class="stat-badge cyan" style="font-size:11.5px;padding:3px 9px;">
+            📁 ${clientProjects.length} ${clientProjects.length === 1 ? 'Project' : 'Projects'}
+          </span>
+        </td>
+        <td>
+          <span class="stat-badge purple" style="font-size:11.5px;padding:3px 9px;">
+            🗓️ ${clientCals.length} ${clientCals.length === 1 ? 'Calendar' : 'Calendars'}
+          </span>
+        </td>
+        <td>
+          <span class="stat-badge ${statusBadgeClass}" style="font-size:11.5px;padding:3px 9px;">
+            ${c.status || 'Active'}
+          </span>
+        </td>
+        <td style="text-align:right">
+          <button class="btn-icon danger" onclick="deleteClient('${c.id}')" title="Delete Client Account" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--rose-400);width:32px;height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openAddClientModal() {
+  document.getElementById('new-client-name').value = '';
+  document.getElementById('new-client-industry').value = '';
+  document.getElementById('new-client-status').value = 'Active';
+  document.getElementById('new-client-lead').value = STATE.employee.name ? `${STATE.employee.name} (${STATE.employee.role})` : '';
+  document.getElementById('new-client-notes').value = '';
+  openModal('client-add-modal');
+}
+
+function saveNewClient() {
+  const name = (document.getElementById('new-client-name')?.value || '').trim();
+  if (!name) {
+    toast('⚠️ Please enter a client or brand name', 'error');
+    return;
+  }
+
+  const exists = (STATE.clients || []).some(c => c.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    toast('⚠️ A client with this name already exists in the directory', 'error');
+    return;
+  }
+
+  const industry = (document.getElementById('new-client-industry')?.value || '').trim() || 'Digital Marketing & Media';
+  const status = document.getElementById('new-client-status')?.value || 'Active';
+  const lead = (document.getElementById('new-client-lead')?.value || '').trim() || 'Amaan Khan (Owner)';
+  const notes = (document.getElementById('new-client-notes')?.value || '').trim();
+
+  const newClient = {
+    id: 'c-' + uid(),
+    name,
+    industry,
+    status,
+    lead,
+    notes,
+    createdAt: Date.now(),
+  };
+
+  if (!STATE.clients) STATE.clients = [];
+  STATE.clients.unshift(newClient);
+
+  save();
+  closeModal('client-add-modal');
+  renderAdminPanel();
+  addActivity(`Admin added new client: "${name}"`, 'purple');
+  toast(`Client "${name}" added to Admin Directory! 🎉`, 'success');
+}
+
+function deleteClient(id) {
+  const client = (STATE.clients || []).find(c => c.id === id);
+  if (!client) return;
+
+  if (!confirm(`Are you sure you want to remove client "${client.name}" from the admin directory?`)) {
+    return;
+  }
+
+  STATE.clients = STATE.clients.filter(c => c.id !== id);
+  save();
+  renderAdminPanel();
+  addActivity(`Admin removed client: "${client.name}"`, 'orange');
+  toast(`Client "${client.name}" removed`, 'info');
+}
+
+function renderAdminEmployees() {
+  const grid = document.getElementById('admin-roster-grid');
+  if (!grid) return;
+
+  const search = (document.getElementById('admin-emp-search')?.value || '').toLowerCase();
+  
+  // Only display HIRED STAFF in roster (Founder Amaan Khan is Executive Owner)
+  let list = (STATE.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
+
+  if (search) {
+    list = list.filter(m =>
+      (m.name || '').toLowerCase().includes(search) ||
+      (m.role || '').toLowerCase().includes(search) ||
+      (m.id || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="projects-empty" style="grid-column: 1 / -1; padding: 45px 20px; text-align: center;">
+        <div style="font-size:38px;margin-bottom:10px">👥</div>
+        <h4 style="color:#fff;margin-bottom:6px;font-size:16px">${search ? 'No Staff Matches Found' : 'No Staff Members Added Yet'}</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:16px;max-width:440px;margin-left:auto;margin-right:auto">
+          ${search ? 'No hired staff member matched your search query.' : 'Amaan Khan is the Agency Owner. Recruited employees (video editors, designers, thumbnail artists) will appear here.'}
+        </p>
+        <button class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Team Member</button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = list.map(m => {
+    const isCurrent = (m.id === STATE.employee.id || m.isCurrent);
+    const roleObj = DOMAIN_ROLES.find(r => r.label === m.role) || { icon: '💼' };
+    const initials = computeInitials(m.name);
+
+    let statusDotColor = 'var(--emerald-400)';
+    let statusLabel = 'In Studio';
+
+    if (isCurrent) {
+      if (STATE.attendance.status === 'in') {
+        statusDotColor = 'var(--emerald-400)';
+        statusLabel = 'In Studio';
+      } else if (STATE.attendance.status === 'lunch') {
+        statusDotColor = 'var(--amber-400)';
+        statusLabel = 'Lunch Break';
+      } else if (STATE.attendance.status === 'done') {
+        statusDotColor = 'var(--violet-400)';
+        statusLabel = 'Shift Done';
+      } else {
+        statusDotColor = 'var(--slate-500)';
+        statusLabel = 'Offline';
+      }
+    } else {
+      if (m.id === 'EMP-004') {
+        statusDotColor = 'var(--amber-400)';
+        statusLabel = 'Lunch Break';
+      } else if (m.id === 'EMP-006') {
+        statusDotColor = 'var(--slate-500)';
+        statusLabel = 'Offline';
+      } else {
+        statusDotColor = 'var(--emerald-400)';
+        statusLabel = 'In Studio';
+      }
+    }
+
+    let activeTaskHtml = '';
+    if (isCurrent && STATE.activeProjectTimer) {
+      const activeProj = (STATE.projects || []).find(p => p.id === STATE.activeProjectTimer.projectId);
+      const pName = activeProj ? activeProj.name : 'Active Deliverable';
+      activeTaskHtml = `
+        <div class="admin-emp-active-task running">
+          <span class="timer-pulse-circle"></span>
+          <span>Live: <strong>${pName}</strong></span>
+        </div>
+      `;
+    } else if (isCurrent) {
+      const assignedProj = (STATE.projects || []).find(p => (p.assignedTo || '').includes(m.name) && p.status !== 'Completed');
+      if (assignedProj) {
+        activeTaskHtml = `
+          <div class="admin-emp-active-task">
+            <span>🎯 Assigned: <strong>${assignedProj.name}</strong></span>
+          </div>
+        `;
+      } else {
+        activeTaskHtml = `
+          <div class="admin-emp-active-task">
+            <span>✨ Available for new deliverables</span>
+          </div>
+        `;
+      }
+    } else {
+      const assignedProj = (STATE.projects || []).find(p => (p.assignedTo || '').includes(m.name) || (p.serviceDomain === m.role));
+      if (assignedProj) {
+        activeTaskHtml = `
+          <div class="admin-emp-active-task">
+            <span>🎯 Assigned: <strong>${assignedProj.name}</strong></span>
+          </div>
+        `;
+      } else {
+        activeTaskHtml = `
+          <div class="admin-emp-active-task">
+            <span>✨ Active in studio</span>
+          </div>
+        `;
+      }
+    }
+
+    let hoursStr = '0h 0m';
+    if (isCurrent) {
+      if (STATE.attendance.checkInTime) {
+        const elapsed = (STATE.attendance.status === 'done' && STATE.attendance.checkOutTime)
+          ? (STATE.attendance.checkOutTime - STATE.attendance.checkInTime)
+          : (Date.now() - STATE.attendance.checkInTime);
+        hoursStr = fmtDuration(elapsed);
+      }
+    } else {
+      hoursStr = m.isFounder ? '7h 15m' : (m.id === 'EMP-006' ? '0h 0m' : '5h 40m');
+    }
+
+    const empDomains = Array.isArray(m.domains) && m.domains.length > 0
+      ? m.domains
+      : (m.role ? String(m.role).split(',').map(s => s.trim()) : ['Video Editor']);
+    const domainBadges = empDomains.map(d => `<span class="domain-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:#c4b5fd;border-radius:12px;font-size:11px;font-weight:600;margin:2px 3px 2px 0">${d}</span>`).join('');
+
+    return `
+      <div class="proj-list-row clickable-row" onclick="typeof openAdminEmpDetail === 'function' ? openAdminEmpDetail('${m.id}') : null" title="Click to view specialist details">
+        <div class="proj-row-left">
+          <div style="position:relative;width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.2));border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff">
+            ${initials}
+            <span style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:${statusDotColor};border:2px solid #0f172a"></span>
+          </div>
+          <div class="proj-row-title-box">
+            <span class="proj-row-name">${m.name} ${m.isFounder ? '👑 Founder' : (isCurrent ? '✨ You' : '')}</span>
+            <span class="proj-row-client">${m.id} • ${m.shift || '10:00 AM – 07:00 PM'}</span>
+          </div>
+        </div>
+
+        <div class="proj-row-center">
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${domainBadges}
+          </div>
+        </div>
+
+        <div class="proj-row-right">
+          <span class="stat-badge green" style="font-size:11px;padding:2px 8px">● ${statusLabel}</span>
+          <span style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono)">${hoursStr}</span>
+          ${m.isFounder ? '' : `
+            <button class="btn-icon danger" onclick="event.stopPropagation(); deleteEmployee('${m.id}')" title="Remove Member" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--rose-400);width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          `}
+          <span class="proj-row-chevron" title="Click to view">›</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddEmployeeModal() {
+  document.getElementById('new-emp-name').value = '';
+  const hired = (STATE.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
+  const nextNum = hired.length + 1;
+  const formattedNum = nextNum < 10 ? `00${nextNum}` : (nextNum < 100 ? `0${nextNum}` : nextNum);
+  document.getElementById('new-emp-id').value = `EMP-${formattedNum}`;
+  document.getElementById('new-emp-role').value = 'Video Editor';
+  document.getElementById('new-emp-shift').value = '10:00 AM – 07:00 PM';
+  const passInput = document.getElementById('new-emp-pass');
+  if (passInput) passInput.value = '123';
+  openModal('employee-add-modal');
+}
+
+function saveNewEmployee() {
+  const name = (document.getElementById('new-emp-name')?.value || '').trim();
+  const id = (document.getElementById('new-emp-id')?.value || '').trim();
+  const role = document.getElementById('new-emp-role')?.value || 'Video Editor';
+  const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:00 AM – 07:00 PM';
+  const password = (document.getElementById('new-emp-pass')?.value || '').trim() || '123';
+
+  if (!name) {
+    toast('⚠️ Please enter team member full name', 'error');
+    return;
+  }
+  if (!id) {
+    toast('⚠️ Please enter an employee ID', 'error');
+    return;
+  }
+
+  if ((STATE.team || []).some(m => m.id.toLowerCase() === id.toLowerCase())) {
+    toast(`⚠️ Employee ID "${id}" is already assigned to a team member`, 'error');
+    return;
+  }
+
+  const newEmp = {
+    id,
+    name,
+    role,
+    shift,
+    password,
+    addedAt: Date.now(),
+  };
+
+  if (!STATE.team) STATE.team = [];
+  STATE.team.push(newEmp);
+
+  save();
+  closeModal('employee-add-modal');
+  renderAdminPanel();
+  addActivity(`Admin added team member: ${name} (${role}) with password`, 'purple');
+  toast(`Team member ${name} (${id}) added to Roster! 🎉`, 'success');
+}
+
+function deleteEmployee(id) {
+  if (id === 'EMP-000') {
+    toast('❌ Cannot remove Agency Founder Amaan Khan', 'error');
+    return;
+  }
+
+  const emp = (STATE.team || []).find(m => m.id === id);
+  if (!emp) return;
+
+  if (!confirm(`Are you sure you want to remove ${emp.name} (${emp.id} - ${emp.role}) from the team roster?`)) {
+    return;
+  }
+
+  STATE.team = STATE.team.filter(m => m.id !== id);
+  save();
+  renderAdminPanel();
+  addActivity(`Admin removed team member: ${emp.name}`, 'orange');
+  toast(`Team member ${emp.name} removed from roster`, 'info');
+}
+
+function renderAdminProjectsTime() {
+  const tbody = document.getElementById('admin-timesheets-tbody');
+  if (!tbody) return;
+
+  const search = (document.getElementById('admin-timesheet-search')?.value || '').toLowerCase();
+  let list = STATE.projects || [];
+
+  if (search) {
+    list = list.filter(p =>
+      (p.name || '').toLowerCase().includes(search) ||
+      (p.client || '').toLowerCase().includes(search) ||
+      (p.serviceDomain || '').toLowerCase().includes(search) ||
+      (p.status || '').toLowerCase().includes(search) ||
+      (p.assignedTo || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+          <div style="font-size:32px;margin-bottom:8px">⏱️</div>
+          <strong style="color:#fff;display:block;margin-bottom:6px">No Deliverables or Timesheets Found</strong>
+          <p style="font-size:12.5px;margin-bottom:14px">Projects created with start/stop timers will show their accumulated tracked hours here.</p>
+          <button class="btn-primary btn-small" onclick="openNewProjectModal()">+ Create Deliverable</button>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = list.map(p => {
+    const isLive = STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === p.id;
+    let liveElapsed = 0;
+    if (isLive) {
+      liveElapsed = Math.max(0, Date.now() - STATE.activeProjectTimer.startTime);
+    }
+    const totalMs = (p.totalTimeSpent || 0) + liveElapsed;
+    const sessionCount = p.sessions ? p.sessions.length : 0;
+
+    let liveStateBadge = '';
+    if (isLive) {
+      liveStateBadge = `
+        <span class="timer-live-badge">
+          <span class="timer-pulse-circle"></span> RUNNING NOW
+        </span>
+        <span id="admin-timesheet-clock-${p.id}" class="timesheet-clock" style="font-family:var(--font-mono);font-size:11.5px;color:#34d399;font-weight:700;margin-left:6px">
+          ${fmtHHMMSS(liveElapsed)}
+        </span>
+      `;
+    } else if (p.status === 'Completed') {
+      liveStateBadge = `<span class="stat-badge green" style="font-size:11px;padding:3px 8px">✅ Completed</span>`;
+    } else {
+      liveStateBadge = `<span class="stat-badge purple" style="font-size:11px;padding:3px 8px">⏸️ Standby</span>`;
+    }
+
+    return `
+      <tr>
+        <td>
+          <strong style="color:#fff;font-size:13.5px;display:block">${p.name}</strong>
+          <span style="font-size:11px;color:var(--text-muted)">Assigned to: ${p.assignedTo || 'Unassigned'}</span>
+        </td>
+        <td>
+          <span class="stat-badge cyan" style="font-size:11.5px;padding:3px 8px">🏢 ${p.client || 'Internal'}</span>
+        </td>
+        <td>
+          <span style="font-size:12px;color:#cbd5e1">🎨 ${p.serviceDomain || 'Video Editing'}</span>
+        </td>
+        <td>
+          <span class="stat-badge ${p.status === 'Completed' ? 'green' : (p.status === 'In Progress' ? 'cyan' : 'orange')}" style="font-size:11px;padding:3px 8px">
+            ${p.status}
+          </span>
+        </td>
+        <td>
+          <strong style="color:var(--emerald-400);font-size:13.5px;font-family:var(--font-mono)">${fmtDuration(totalMs)}</strong>
+        </td>
+        <td>
+          <span style="font-size:12px;color:var(--text-muted)">${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'}</span>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center">
+            ${liveStateBadge}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ========================
+// AMBIENT FOCUS AUDIO STUDIO (10 PROCEDURAL SOUNDSCAPES)
+// ========================
+let _audioMasterGain = null;
+let _activeSoundNodes = [];
+let _activeSoundIntervals = [];
+let _currentSoundId = 'rain';
+
+const FOCUS_SOUND_NAMES = {
+  rain: '🌧️ Gentle Studio Rain',
+  waves: '🌊 Deep Ocean Surf',
+  cafe: '☕ Cozy Creative Cafe',
+  alpha: '🧠 Alpha Waves (10Hz)',
+  theta: '🧘 Theta Meditation (6Hz)',
+  forest: '🌲 Forest Breeze & Pines',
+  space: '🌌 Deep Space Drone',
+  fire: '🔥 Fireplace Crackle',
+  white: '💨 Studio White Noise',
+  lofi: '🪟 Lo-Fi Vinyl Night Rain'
+};
+
+function initAudioContext() {
+  if (!_audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    _audioCtx = new AudioContextClass();
+    _audioMasterGain = _audioCtx.createGain();
+    _audioMasterGain.gain.setValueAtTime(0.75, _audioCtx.currentTime);
+    _audioMasterGain.connect(_audioCtx.destination);
+  }
+  if (_audioCtx.state === 'suspended') {
+    _audioCtx.resume();
+  }
+}
+
+function stopCurrentSound() {
+  _activeSoundIntervals.forEach(id => clearInterval(id));
+  _activeSoundIntervals = [];
+
+  _activeSoundNodes.forEach(node => {
+    try {
+      if (node.stop) node.stop();
+      if (node.disconnect) node.disconnect();
+    } catch (e) {}
+  });
+  _activeSoundNodes = [];
+}
+
+function getNoiseBuffer(ctx, seconds, type) {
+  const length = ctx.sampleRate * seconds;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  if (type === 'pink') {
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.045;
+      b6 = white * 0.115926;
+    }
+  } else if (type === 'brown') {
+    let lastOut = 0.0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      data[i] = (lastOut + (0.02 * white)) / 1.02;
+      lastOut = data[i];
+      data[i] *= 0.35;
+    }
+  } else {
+    // white
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.035;
+    }
+  }
+  return buffer;
+}
+
+function startSoundEngine(type) {
+  stopCurrentSound();
+  initAudioContext();
+  const ctx = _audioCtx;
+  const now = ctx.currentTime;
+
+  const soundGain = ctx.createGain();
+  soundGain.gain.setValueAtTime(0.001, now);
+  soundGain.gain.exponentialRampToValueAtTime(1.0, now + 0.3);
+  soundGain.connect(_audioMasterGain);
+  _activeSoundNodes.push(soundGain);
+
+  if (type === 'rain') {
+    // 1. 🌧️ Gentle Studio Rain
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(850, now);
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.setValueAtTime(0.2, now);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(160, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    noise.connect(filter);
+    filter.connect(soundGain);
+
+    lfo.start(now);
+    noise.start(now);
+    _activeSoundNodes.push(noise, filter, lfo, lfoGain);
+
+  } else if (type === 'waves') {
+    // 2. 🌊 Deep Ocean Surf
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 4, 'brown');
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(320, now);
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.setValueAtTime(0.125, now);
+    const lfoFilterGain = ctx.createGain();
+    lfoFilterGain.gain.setValueAtTime(260, now);
+    lfo.connect(lfoFilterGain);
+    lfoFilterGain.connect(filter.frequency);
+
+    const waveGain = ctx.createGain();
+    waveGain.gain.setValueAtTime(0.7, now);
+    const lfoVolGain = ctx.createGain();
+    lfoVolGain.gain.setValueAtTime(0.3, now);
+    lfo.connect(lfoVolGain);
+    lfoVolGain.connect(waveGain.gain);
+
+    noise.connect(filter);
+    filter.connect(waveGain);
+    waveGain.connect(soundGain);
+
+    lfo.start(now);
+    noise.start(now);
+    _activeSoundNodes.push(noise, filter, waveGain, lfo, lfoFilterGain, lfoVolGain);
+
+  } else if (type === 'cafe') {
+    // 3. ☕ Cozy Creative Cafe
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
+    noise.loop = true;
+
+    const band1 = ctx.createBiquadFilter();
+    band1.type = 'bandpass';
+    band1.frequency.setValueAtTime(450, now);
+    band1.Q.setValueAtTime(1.5, now);
+
+    const roomHum = ctx.createOscillator();
+    roomHum.type = 'sine';
+    roomHum.frequency.setValueAtTime(60, now);
+    const roomHumGain = ctx.createGain();
+    roomHumGain.gain.setValueAtTime(0.04, now);
+    roomHum.connect(roomHumGain);
+    roomHumGain.connect(soundGain);
+    roomHum.start(now);
+
+    noise.connect(band1);
+    band1.connect(soundGain);
+    noise.start(now);
+    _activeSoundNodes.push(noise, band1, roomHum, roomHumGain);
+
+    const chimeTimer = setInterval(() => {
+      if (!STATE.audioPlaying) return;
+      try {
+        const chime = ctx.createOscillator();
+        chime.type = 'sine';
+        chime.frequency.setValueAtTime(2100 + Math.random() * 400, ctx.currentTime);
+        const chimeGain = ctx.createGain();
+        chimeGain.gain.setValueAtTime(0.012, ctx.currentTime);
+        chimeGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+        chime.connect(chimeGain);
+        chimeGain.connect(soundGain);
+        chime.start();
+        chime.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+    }, 4500);
+    _activeSoundIntervals.push(chimeTimer);
+
+  } else if (type === 'alpha') {
+    // 4. 🧠 Alpha Waves (10 Hz Binaural Beats - 200Hz L / 210Hz R)
+    const oscL = ctx.createOscillator();
+    oscL.type = 'sine';
+    oscL.frequency.setValueAtTime(200, now);
+
+    const oscR = ctx.createOscillator();
+    oscR.type = 'sine';
+    oscR.frequency.setValueAtTime(210, now);
+
+    const merger = ctx.createChannelMerger(2);
+    oscL.connect(merger, 0, 0);
+    oscR.connect(merger, 0, 1);
+
+    const binauralGain = ctx.createGain();
+    binauralGain.gain.setValueAtTime(0.18, now);
+    merger.connect(binauralGain);
+    binauralGain.connect(soundGain);
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 2, 'pink');
+    noise.loop = true;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(400, now);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.15, now);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(soundGain);
+
+    oscL.start(now);
+    oscR.start(now);
+    noise.start(now);
+    _activeSoundNodes.push(oscL, oscR, merger, binauralGain, noise, noiseFilter, noiseGain);
+
+  } else if (type === 'theta') {
+    // 5. 🧘 Theta Meditation (6 Hz Binaural - 150Hz L / 156Hz R)
+    const oscL = ctx.createOscillator();
+    oscL.type = 'sine';
+    oscL.frequency.setValueAtTime(150, now);
+
+    const oscR = ctx.createOscillator();
+    oscR.type = 'sine';
+    oscR.frequency.setValueAtTime(156, now);
+
+    const merger = ctx.createChannelMerger(2);
+    oscL.connect(merger, 0, 0);
+    oscR.connect(merger, 0, 1);
+
+    const thetaGain = ctx.createGain();
+    thetaGain.gain.setValueAtTime(0.2, now);
+    merger.connect(thetaGain);
+    thetaGain.connect(soundGain);
+
+    const drone = ctx.createOscillator();
+    drone.type = 'triangle';
+    drone.frequency.setValueAtTime(75, now);
+    const droneGain = ctx.createGain();
+    droneGain.gain.setValueAtTime(0.08, now);
+    drone.connect(droneGain);
+    droneGain.connect(soundGain);
+
+    oscL.start(now);
+    oscR.start(now);
+    drone.start(now);
+    _activeSoundNodes.push(oscL, oscR, merger, thetaGain, drone, droneGain);
+
+  } else if (type === 'forest') {
+    // 6. 🌲 Forest Breeze & Pines
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(650, now);
+    filter.Q.setValueAtTime(2.2, now);
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.setValueAtTime(0.18, now);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(320, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    noise.connect(filter);
+    filter.connect(soundGain);
+
+    lfo.start(now);
+    noise.start(now);
+    _activeSoundNodes.push(noise, filter, lfo, lfoGain);
+
+    const birdTimer = setInterval(() => {
+      if (!STATE.audioPlaying) return;
+      try {
+        const bird = ctx.createOscillator();
+        bird.type = 'sine';
+        bird.frequency.setValueAtTime(2800, ctx.currentTime);
+        bird.frequency.exponentialRampToValueAtTime(3300, ctx.currentTime + 0.12);
+        const bGain = ctx.createGain();
+        bGain.gain.setValueAtTime(0.015, ctx.currentTime);
+        bGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+        bird.connect(bGain);
+        bGain.connect(soundGain);
+        bird.start();
+        bird.stop(ctx.currentTime + 0.2);
+      } catch (e) {}
+    }, 6000);
+    _activeSoundIntervals.push(birdTimer);
+
+  } else if (type === 'space') {
+    // 7. 🌌 Deep Space Drone
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(55, now);
+    const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(55.35, now);
+    const o3 = ctx.createOscillator(); o3.type = 'sine'; o3.frequency.setValueAtTime(110, now);
+    const o4 = ctx.createOscillator(); o4.type = 'sine'; o4.frequency.setValueAtTime(164.8, now);
+
+    const spaceFilter = ctx.createBiquadFilter();
+    spaceFilter.type = 'lowpass';
+    spaceFilter.frequency.setValueAtTime(350, now);
+    spaceFilter.Q.setValueAtTime(3.5, now);
+
+    const spaceLfo = ctx.createOscillator();
+    spaceLfo.frequency.setValueAtTime(0.06, now);
+    const spaceLfoGain = ctx.createGain();
+    spaceLfoGain.gain.setValueAtTime(160, now);
+    spaceLfo.connect(spaceLfoGain);
+    spaceLfoGain.connect(spaceFilter.frequency);
+
+    const synthGain = ctx.createGain();
+    synthGain.gain.setValueAtTime(0.12, now);
+
+    o1.connect(spaceFilter);
+    o2.connect(spaceFilter);
+    o3.connect(spaceFilter);
+    o4.connect(spaceFilter);
+    spaceFilter.connect(synthGain);
+    synthGain.connect(soundGain);
+
+    o1.start(now); o2.start(now); o3.start(now); o4.start(now); spaceLfo.start(now);
+    _activeSoundNodes.push(o1, o2, o3, o4, spaceFilter, spaceLfo, spaceLfoGain, synthGain);
+
+  } else if (type === 'fire') {
+    // 8. 🔥 Fireplace Crackle
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 2, 'brown');
+    noise.loop = true;
+
+    const rumble = ctx.createBiquadFilter();
+    rumble.type = 'lowpass';
+    rumble.frequency.setValueAtTime(180, now);
+
+    noise.connect(rumble);
+    rumble.connect(soundGain);
+    noise.start(now);
+    _activeSoundNodes.push(noise, rumble);
+
+    const fireCrackleTimer = setInterval(() => {
+      if (!STATE.audioPlaying) return;
+      try {
+        const popCount = 1 + Math.floor(Math.random() * 3);
+        for (let p = 0; p < popCount; p++) {
+          const delay = Math.random() * 0.15;
+          const pop = ctx.createBufferSource();
+          const pBuffer = ctx.createBuffer(1, 300, ctx.sampleRate);
+          const pData = pBuffer.getChannelData(0);
+          for (let i = 0; i < 300; i++) pData[i] = (Math.random() * 2 - 1) * Math.exp(-i / 40);
+          pop.buffer = pBuffer;
+
+          const pFilter = ctx.createBiquadFilter();
+          pFilter.type = 'highpass';
+          pFilter.frequency.setValueAtTime(1200 + Math.random() * 2500, ctx.currentTime + delay);
+
+          const pGain = ctx.createGain();
+          pGain.gain.setValueAtTime(0.04 + Math.random() * 0.04, ctx.currentTime + delay);
+
+          pop.connect(pFilter);
+          pFilter.connect(pGain);
+          pGain.connect(soundGain);
+          pop.start(ctx.currentTime + delay);
+        }
+      } catch (e) {}
+    }, 380);
+    _activeSoundIntervals.push(fireCrackleTimer);
+
+  } else if (type === 'white') {
+    // 9. 💨 Studio White Noise
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, 2, 'white');
+    noise.loop = true;
+
+    const smoothFilter = ctx.createBiquadFilter();
+    smoothFilter.type = 'lowpass';
+    smoothFilter.frequency.setValueAtTime(4200, now);
+
+    const wGain = ctx.createGain();
+    wGain.gain.setValueAtTime(0.7, now);
+
+    noise.connect(smoothFilter);
+    smoothFilter.connect(wGain);
+    wGain.connect(soundGain);
+    noise.start(now);
+    _activeSoundNodes.push(noise, smoothFilter, wGain);
+
+  } else if (type === 'lofi') {
+    // 10. 🪟 Lo-Fi Vinyl Night Rain
+    const rain = ctx.createBufferSource();
+    rain.buffer = getNoiseBuffer(ctx, 2, 'pink');
+    rain.loop = true;
+    const rainFilter = ctx.createBiquadFilter();
+    rainFilter.type = 'lowpass';
+    rainFilter.frequency.setValueAtTime(620, now);
+
+    const vinylNoise = ctx.createBufferSource();
+    vinylNoise.buffer = getNoiseBuffer(ctx, 1, 'white');
+    vinylNoise.loop = true;
+    const vinylFilter = ctx.createBiquadFilter();
+    vinylFilter.type = 'highpass';
+    vinylFilter.frequency.setValueAtTime(2500, now);
+    const vinylGain = ctx.createGain();
+    vinylGain.gain.setValueAtTime(0.06, now);
+
+    const hum = ctx.createOscillator();
+    hum.type = 'sine';
+    hum.frequency.setValueAtTime(50, now);
+    const humGain = ctx.createGain();
+    humGain.gain.setValueAtTime(0.025, now);
+
+    rain.connect(rainFilter);
+    rainFilter.connect(soundGain);
+
+    vinylNoise.connect(vinylFilter);
+    vinylFilter.connect(vinylGain);
+    vinylGain.connect(soundGain);
+
+    hum.connect(humGain);
+    humGain.connect(soundGain);
+
+    rain.start(now);
+    vinylNoise.start(now);
+    hum.start(now);
+    _activeSoundNodes.push(rain, rainFilter, vinylNoise, vinylFilter, vinylGain, hum, humGain);
+  }
+}
+
+function toggleAmbientAudio() {
+  const btn = document.getElementById('ambient-audio-btn');
+  const txt = document.getElementById('audio-btn-txt');
+  const capsule = document.getElementById('focus-audio-capsule');
+  const select = document.getElementById('focus-sound-select');
+
+  if (!STATE.audioPlaying) {
+    try {
+      const selected = select ? select.value : (_currentSoundId || 'rain');
+      _currentSoundId = selected;
+      startSoundEngine(_currentSoundId);
+      STATE.audioPlaying = true;
+      if (btn) btn.classList.add('active');
+      if (capsule) capsule.classList.add('active');
+      if (txt) txt.textContent = 'Playing 🎧';
+      toast(`Playing ${FOCUS_SOUND_NAMES[_currentSoundId] || 'Focus Sound'}`, 'info');
+    } catch (e) {
+      console.warn('Audio start error:', e);
+      toast('Could not start audio context in this browser', 'error');
+    }
+  } else {
+    stopCurrentSound();
+    if (_audioCtx) {
+      try { _audioCtx.close(); } catch (e) {}
+      _audioCtx = null;
+    }
+    STATE.audioPlaying = false;
+    if (btn) btn.classList.remove('active');
+    if (capsule) capsule.classList.remove('active');
+    if (txt) txt.textContent = 'Focus Audio';
+    toast('Focus Sound paused', 'info');
+  }
+}
+
+function changeFocusSound(newSoundId) {
+  _currentSoundId = newSoundId;
+  const btn = document.getElementById('ambient-audio-btn');
+  const txt = document.getElementById('audio-btn-txt');
+  const capsule = document.getElementById('focus-audio-capsule');
+
+  if (STATE.audioPlaying) {
+    try {
+      startSoundEngine(_currentSoundId);
+      toast(`Switched to ${FOCUS_SOUND_NAMES[_currentSoundId]}`, 'info');
+    } catch (e) {
+      console.warn('Sound switch error:', e);
+    }
+  } else {
+    // Auto-start playing selected sound
+    try {
+      startSoundEngine(_currentSoundId);
+      STATE.audioPlaying = true;
+      if (btn) btn.classList.add('active');
+      if (capsule) capsule.classList.add('active');
+      if (txt) txt.textContent = 'Playing 🎧';
+      toast(`Started ${FOCUS_SOUND_NAMES[_currentSoundId]}`, 'info');
+    } catch (e) {
+      console.warn('Sound auto-start error:', e);
+    }
+  }
+}
+
+// ========================
+// CELEBRATION CONFETTI ENGINE
+// ========================
+function triggerConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  const colors = ['#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#fb7185', '#ffffff'];
+
+  for (let i = 0; i < 90; i++) {
+    particles.push({
+      x: canvas.width / 2 + (Math.random() * 200 - 100),
+      y: canvas.height / 3 + (Math.random() * 100 - 50),
+      vx: (Math.random() - 0.5) * 16,
+      vy: (Math.random() - 0.7) * 16,
+      size: Math.random() * 7 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1,
+      rotation: Math.random() * 360,
+      vRot: (Math.random() - 0.5) * 10,
+    });
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.35; // gravity
+      p.alpha -= 0.015;
+      p.rotation += p.vRot;
+
+      if (p.alpha > 0) {
+        active = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    });
+
+    if (active) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+// ========================
+// DASHBOARD STATS & ACTIVITY
+// ========================
+function updateDashCounts() {
+  const active = STATE.projects.filter(p => p.status !== 'Completed' && p.status !== 'Cancelled').length;
+  const countEl = document.getElementById('dash-proj-count');
+  if (countEl) countEl.textContent = active;
+
+  const navBadge = document.getElementById('nav-proj-badge');
+  if (navBadge) navBadge.textContent = active;
+}
+
+function renderActivity() {
+  const tl = document.getElementById('activity-timeline');
+  if (!tl) return;
+  if (!STATE.activityLog || STATE.activityLog.length === 0) {
+    tl.innerHTML = `<div class="timeline-empty">
+      <svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+      <p>No activity recorded yet. Check in or add a project!</p>
+    </div>`;
+    return;
+  }
+  tl.innerHTML = STATE.activityLog.slice(0, 8).map(a => `
+    <div class="timeline-item">
+      <div class="timeline-dot ${a.color || 'purple'}"></div>
+      <div class="timeline-body">
+        <strong>${a.text}</strong>
+        <span>${fmtDate(a.time)} · ${fmt(a.time)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========================
+// MODAL CONTROLS
+// ========================
+function openModal(id) {
+  const m = document.getElementById(id);
+  if (m) {
+    m.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (m) {
+    m.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function closeModalOutside(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+
+// ========================
+// INITIALIZATION
+// ========================
+function init() {
+  load();
+  syncProfileUI();
+  syncAttendanceUI();
+  renderAttLog();
+  renderProjects();
+  renderCalendars();
+  updateDashCounts();
+  updateCalendarCounts();
+  renderActivity();
+  renderAdminClients();
+  renderAdminEmployees();
+  renderAdminProjectsTime();
+  syncClientsDatalist();
+  updateAdminKpis();
+
+  if (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch') {
+    startAttElapsed();
+  }
+
+  // Restore active project timer ticker if one was saved as active
+  if (STATE.activeProjectTimer) {
+    updateProjectTimerTicker();
+    syncActiveTaskTopbar();
+  }
+
+  checkEmployeeLogin();
+  rotateQuote(false);
+
+  console.log('%c DIGITAL AMNIK OS v2.5 ', 'background:#7c3aed;color:#fff;padding:6px 14px;border-radius:4px;font-weight:900;letter-spacing:1px');
+  console.log('Digital Amnik Agency Operating System Ready');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  init();
+}
