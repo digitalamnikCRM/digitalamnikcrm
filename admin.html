@@ -726,20 +726,16 @@
       <p class="auth-sub">Authentication required. Enter the executive security master key to access client accounts,
         team roster, and agency timesheets.</p>
 
-      <form onsubmit="handleAdminLogin(event)">
+      <form onsubmit="event.preventDefault(); handleAdminLogin(event); return false;">
         <div class="auth-input-group">
           <label class="auth-label">Executive Master Passcode</label>
           <div class="auth-input-wrap" style="position:relative;display:flex;align-items:center">
-            <input type="password" class="auth-input" id="admin-pass-input" placeholder="Enter Master Key (e.g. amnik2026)"
-              autocomplete="current-password" autofocus style="padding-right:40px" />
+            <input type="password" class="auth-input" id="admin-pass-input" placeholder="Enter Executive Master Key"
+              autocomplete="current-password" autofocus style="padding-right:44px" />
             <button type="button" onclick="toggleAdminPassVisibility()" title="Show/Hide Key"
-              style="position:absolute;right:10px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:15px;padding:4px">
+              style="position:absolute;right:10px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:4px">
               👁️
             </button>
-          </div>
-          <div style="margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;justify-content:space-between">
-            <span>Master Passcode: <strong style="color:#a78bfa;font-family:monospace;cursor:pointer;text-decoration:underline" onclick="quickFillAdminPass('amnik2026')" title="Click to autofill">amnik2026</strong></span>
-            <span style="font-size:11px;color:#38bdf8;cursor:pointer" onclick="quickFillAdminPass('amnik2026')">Auto-fill ⚡</span>
           </div>
         </div>
 
@@ -1746,7 +1742,10 @@
     function showAuthGate() {
       const gate = document.getElementById('admin-auth-gate');
       const app = document.getElementById('admin-console-app');
-      if (gate) gate.classList.remove('hidden');
+      if (gate) {
+        gate.classList.remove('hidden');
+        gate.style.display = 'flex';
+      }
       if (app) app.style.display = 'none';
       const passInput = document.getElementById('admin-pass-input');
       if (passInput) {
@@ -1758,11 +1757,19 @@
     function revealAdminConsole() {
       const gate = document.getElementById('admin-auth-gate');
       const app = document.getElementById('admin-console-app');
-      if (gate) gate.classList.add('hidden');
-      if (app) app.style.display = 'block';
+      if (gate) {
+        gate.classList.add('hidden');
+        gate.style.display = 'none';
+      }
+      if (app) {
+        app.style.display = 'block';
+      }
 
       initAdminData();
-      startAdminLiveTicker();
+    }
+
+    function startAdminLiveTicker() {
+      // Safeguard stub: timer interval is initialized inside initAdminData()
     }
 
     function toast(msg, type = 'info') {
@@ -2665,17 +2672,6 @@
         return m.role.split(',').map(s => s.trim()).filter(Boolean);
       }
       return ['Specialist'];
-    }
-
-    let _currentRosterAttFilter = 'all';
-
-    function setRosterAttFilter(filter, btn) {
-      _currentRosterAttFilter = filter;
-      if (btn) {
-        document.querySelectorAll('#admin-roster-att-filters .att-pill').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-      }
-      renderAdminEmployees();
     }
 
     function renderAdminEmployees() {
