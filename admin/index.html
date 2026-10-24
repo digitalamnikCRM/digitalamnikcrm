@@ -979,7 +979,10 @@
           <h4>Hired Agency Staff &amp; Specialists</h4>
           <p>Recruited team members for video editing, thumbnail design, and campaign execution</p>
         </div>
-        <button class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Team Member</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg,#06b6d4,#7c3aed)">+ Create Deliverable</button>
+          <button type="button" class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Team Member</button>
+        </div>
       </div>
 
       <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -2018,6 +2021,11 @@
           .limit(150);
 
         if (!attErr && Array.isArray(attData)) {
+          attData.forEach(row => {
+            if (!row.photo_url && row.late_lunch_reason && row.late_lunch_reason.startsWith('photo:')) {
+              row.photo_url = row.late_lunch_reason.slice(6);
+            }
+          });
           window._adminAttLogs = attData;
         }
 
@@ -2045,20 +2053,17 @@
           .limit(150);
 
         if (!error && Array.isArray(data)) {
+          data.forEach(row => {
+            if (!row.photo_url && row.late_lunch_reason && row.late_lunch_reason.startsWith('photo:')) {
+              row.photo_url = row.late_lunch_reason.slice(6);
+            }
+          });
           window._adminAttLogs = data;
           updateAdminKpis();
           renderAdminEmployees();
           renderAdminAttendanceTable();
           renderLiveWorkAndCompletions();
         }
-
-        // Maintenance: wipe photos older than 7 days
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        await window.sbClient
-          .from('attendance_logs')
-          .update({ photo_url: null })
-          .lt('created_at', sevenDaysAgo)
-          .not('photo_url', 'is', null);
       } catch (err) {
         console.warn('Attendance logs fetch warning:', err);
       }
@@ -2242,13 +2247,95 @@
     // ====================================================================
     // 📸 TODAY'S ATTENDANCE STATION (PRESENT VS ABSENT BREAKDOWN)
     // ====================================================================
+    function getMemberTodayAttendance(m, state, attLogs) {
+      if (!m) return null;
+      const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normEmpName = (m.name || '').toLowerCase().trim();
+      const todayDateStr = fmtDate(Date.now());
+
+      // 1. Check in window._adminAttLogs (cloud logs)
+      let found = (attLogs || []).find(a => {
+        const aId = (a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const aName = (a.employee_name || a.employeeName || '').toLowerCase().trim();
+        const idMatch = aId && normEmpId && aId === normEmpId;
+        const nameMatch = aName && normEmpName && aName === normEmpName;
+        if (!idMatch && !nameMatch) return false;
+
+        const dateMatch = a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr;
+        const recentCheckIn = a.check_in && (Math.abs(Date.now() - Number(a.check_in)) < 24 * 3600 * 1000);
+        return dateMatch || recentCheckIn;
+      });
+
+      if (found) {
+        let photo = found.photo_url || found.photoUrl || null;
+        if (!photo && found.late_lunch_reason && String(found.late_lunch_reason).startsWith('photo:')) {
+          photo = String(found.late_lunch_reason).slice(6);
+        }
+        return {
+          status: found.status || 'in',
+          check_in: found.check_in || found.checkIn,
+          check_out: found.check_out || found.checkOut,
+          lunch_start: found.lunch_start || found.lunchStartTime,
+          lunch_end: found.lunch_end || found.lunchEndTime,
+          photo_url: photo,
+          effective_hours: found.effective_hours || found.effectiveHours || found.workHrs || 'In Progress',
+          date: found.date
+        };
+      }
+
+      // 2. Check in state.attendance.log (locally stored log array)
+      if (Array.isArray(state?.attendance?.log)) {
+        const localLog = state.attendance.log.find(l => {
+          const lId = (l.employee_id || l.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const lName = (l.employee_name || l.employeeName || '').toLowerCase().trim();
+          const idMatch = lId && normEmpId && lId === normEmpId;
+          const nameMatch = lName && normEmpName && lName === normEmpName;
+          if (!idMatch && !nameMatch) return false;
+          const dateMatch = l.date === todayDateStr || (l.checkIn && Math.abs(Date.now() - Number(l.checkIn)) < 24 * 3600 * 1000);
+          return dateMatch;
+        });
+
+        if (localLog) {
+          return {
+            status: localLog.status || 'in',
+            check_in: localLog.checkIn || localLog.check_in,
+            check_out: localLog.checkOut || localLog.check_out,
+            lunch_start: localLog.lunchStartTime || localLog.lunch_start,
+            lunch_end: localLog.lunchEndTime || localLog.lunch_end,
+            photo_url: localLog.photoUrl || localLog.photo_url,
+            effective_hours: localLog.effectiveHours || localLog.workHrs || 'In Progress',
+            date: localLog.date
+          };
+        }
+      }
+
+      // 3. Check active state.attendance
+      if (state?.attendance && state.attendance.checkInTime) {
+        const curId = (state.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const curName = (state.employee?.name || '').toLowerCase().trim();
+        if (curId === normEmpId || curName === normEmpName || m.isCurrent) {
+          return {
+            status: state.attendance.status,
+            check_in: state.attendance.checkInTime,
+            check_out: state.attendance.checkOutTime,
+            lunch_start: state.attendance.lunchStartTime,
+            lunch_end: state.attendance.lunchEndTime,
+            photo_url: state.attendance.photoUrl,
+            effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime),
+            date: todayDateStr
+          };
+        }
+      }
+
+      return null;
+    }
+
     function renderAdminAttendanceTable() {
       const tbody = document.getElementById('admin-attendance-tbody');
       if (!tbody) return;
 
       const state = getCRMState();
       const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
-      const todayDateStr = fmtDate(Date.now());
       const attLogs = window._adminAttLogs || [];
 
       // Calculate counts for pills
@@ -2258,22 +2345,9 @@
 
       const annotatedStaff = staff.map(m => {
         const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const todayAtt = attLogs.find(a =>
-          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
-           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
-          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
-        ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? {
-          status: state.attendance.status,
-          check_in: state.attendance.checkInTime,
-          check_out: state.attendance.checkOutTime,
-          lunch_start: state.attendance.lunchStartTime,
-          lunch_end: state.attendance.lunchEndTime,
-          photo_url: state.attendance.photoUrl,
-          effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime)
-        } : null);
-
-        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done'));
-        const isLunch = todayAtt && todayAtt.status === 'lunch';
+        const todayAtt = getMemberTodayAttendance(m, state, attLogs);
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
+        const isLunch = !!(todayAtt && todayAtt.status === 'lunch');
 
         if (isPresent) {
           presentCount++;
@@ -2411,14 +2485,8 @@
       let inStudioCount = 0;
 
       staffList.forEach(m => {
-        const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const todayAtt = attLogs.find(a =>
-          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
-           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
-          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
-        ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? state.attendance : null);
-
-        if (todayAtt && (todayAtt.check_in || todayAtt.checkInTime || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done')) {
+        const todayAtt = getMemberTodayAttendance(m, state, attLogs);
+        if (todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done' || todayAtt.status === 'Completed')) {
           presentCount++;
           if (todayAtt.status === 'in') inStudioCount++;
         } else {
@@ -2692,22 +2760,9 @@
 
       const annotatedStaff = staff.map(m => {
         const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const todayAtt = attLogs.find(a =>
-          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
-           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
-          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
-        ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? {
-          status: state.attendance.status,
-          check_in: state.attendance.checkInTime,
-          check_out: state.attendance.checkOutTime,
-          lunch_start: state.attendance.lunchStartTime,
-          lunch_end: state.attendance.lunchEndTime,
-          photo_url: state.attendance.photoUrl,
-          effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime)
-        } : null);
-
-        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done'));
-        const isLunch = todayAtt && todayAtt.status === 'lunch';
+        const todayAtt = getMemberTodayAttendance(m, state, attLogs);
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
+        const isLunch = !!(todayAtt && todayAtt.status === 'lunch');
 
         if (isPresent) {
           presentCount++;
@@ -3045,7 +3100,12 @@
       </div>
 
       <div>
-        <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px">Current Deliverables Assigned</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0">Current Deliverables Assigned</label>
+          <button type="button" class="btn-primary btn-small" onclick="closeModal('admin-emp-detail-modal'); openAdminProjectModal('${m.name.replace(/'/g, "\\'")}')" style="font-size:11px;padding:3px 10px">
+            + Assign Deliverable to ${m.name}
+          </button>
+        </div>
         ${assignedProjects.length === 0 ? `
           <div style="padding:12px;text-align:center;color:#94a3b8;font-size:12.5px;background:rgba(255,255,255,0.02);border-radius:8px">
             No active deliverables currently assigned to ${m.name}.
@@ -3287,7 +3347,7 @@
       }).join('');
     }
 
-    function openAdminProjectModal() {
+    function openAdminProjectModal(preSelectedEmp) {
       const state = getCRMState();
       document.getElementById('admin-proj-name').value = '';
 
@@ -3303,17 +3363,36 @@
       // Assign specialists pills
       const assignWrap = document.getElementById('admin-proj-assign-wrap');
       const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
-      if (staff.length === 0) {
-        assignWrap.innerHTML = `<span class="domain-pill active" data-name="Amaan Khan">👑 Amaan Khan (Owner)</span>`;
-      } else {
-        assignWrap.innerHTML = `
-        <span class="domain-pill" data-name="Amaan Khan" onclick="toggleDomainPill(this)">👑 Amaan Khan (Owner)</span>
-        ${staff.map(m => {
-          const doms = getEmpDomains(m);
-          return `<span class="domain-pill" data-name="${m.name}" onclick="toggleDomainPill(this)">👤 ${m.name} (${doms[0] || m.role})</span>`;
-        }).join('')}
+      
+      const isOwnerActive = preSelectedEmp === 'Amaan Khan' || (!preSelectedEmp && staff.length === 0);
+
+      const specialistPills = staff.map(m => {
+        const doms = getEmpDomains(m);
+        const isSelected = preSelectedEmp && (preSelectedEmp === m.name || preSelectedEmp === m.id);
+        return `<span class="domain-pill ${isSelected ? 'active' : ''}" data-name="${m.name}" onclick="toggleDomainPill(this)">👤 ${m.name} (${m.id} • ${doms[0] || m.role})</span>`;
+      });
+
+      const domainPills = [
+        '<span class="domain-pill" data-name="Video Editor" onclick="toggleDomainPill(this)">🎬 Video Editor</span>',
+        '<span class="domain-pill" data-name="Social Media Management" onclick="toggleDomainPill(this)">📱 Social Media Management</span>',
+        '<span class="domain-pill" data-name="Graphic Design" onclick="toggleDomainPill(this)">🎨 Graphic Design</span>',
+        '<span class="domain-pill" data-name="Paid Ads Specialist" onclick="toggleDomainPill(this)">💰 Paid Ads Specialist</span>',
+        '<span class="domain-pill" data-name="SEO Specialist" onclick="toggleDomainPill(this)">🔍 SEO Specialist</span>',
+        '<span class="domain-pill" data-name="Content Creator / Writer" onclick="toggleDomainPill(this)">✍️ Content Creator</span>',
+        '<span class="domain-pill" data-name="Web Developer" onclick="toggleDomainPill(this)">💻 Web Developer</span>',
+      ];
+
+      assignWrap.innerHTML = `
+        <div style="width:100%;font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Assign to Specialist(s):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <span class="domain-pill ${isOwnerActive ? 'active' : ''}" data-name="Amaan Khan" onclick="toggleDomainPill(this)">👑 Amaan Khan (Owner)</span>
+          ${specialistPills.join('')}
+        </div>
+        <div style="width:100%;font-size:11px;font-weight:700;color:#38bdf8;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Or Assign to Entire Domain Discipline(s):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${domainPills.join('')}
+        </div>
       `;
-      }
 
       document.getElementById('admin-proj-priority').value = 'Medium';
       document.getElementById('admin-proj-service').value = 'Video Editing';

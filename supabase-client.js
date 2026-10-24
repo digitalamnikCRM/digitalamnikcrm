@@ -258,23 +258,29 @@ const SupabaseData = {
         .limit(150);
 
       if (!attErr && Array.isArray(attData)) {
-        window._adminAttLogs = attData;
-        if (!st.attendance) st.attendance = { status: 'out' };
-        st.attendance.log = attData.map(a => ({
-          id: a.id,
-          employeeId: a.employee_id,
-          employeeName: a.employee_name,
-          date: a.date,
-          checkIn: a.check_in,
-          lunchStart: a.lunch_start,
-          lunchEnd: a.lunch_end,
-          checkOut: a.check_out,
-          effectiveHours: a.effective_hours,
-          lateLunchReason: a.late_lunch_reason,
-          status: a.status,
-          photoUrl: a.photo_url || null,
-          createdAt: a.created_at,
+        window._adminAttLogs = attData.map(a => ({
+          ...a,
+          photo_url: a.photo_url || (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:') ? a.late_lunch_reason.slice(6) : null)
         }));
+        if (!st.attendance) st.attendance = { status: 'out' };
+        st.attendance.log = attData.map(a => {
+          const photo = a.photo_url || (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:') ? a.late_lunch_reason.slice(6) : null);
+          return {
+            id: a.id,
+            employeeId: a.employee_id,
+            employeeName: a.employee_name,
+            date: a.date,
+            checkIn: a.check_in,
+            lunchStart: a.lunch_start,
+            lunchEnd: a.lunch_end,
+            checkOut: a.check_out,
+            effectiveHours: a.effective_hours,
+            lateLunchReason: (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:')) ? null : a.late_lunch_reason,
+            status: a.status,
+            photoUrl: photo,
+            createdAt: a.created_at,
+          };
+        });
       }
 
       // Background Maintenance: Auto-purge check-in photos older than 7 days
@@ -435,26 +441,32 @@ const SupabaseData = {
       const rawDate = String(entry.date || '').trim();
       const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9]/g, '_');
       const deterministicId = entry.id || `att_${rawEmpId.replace(/[^a-z0-9]/g, '')}_${sanitizedDate}`;
+      const photo = entry.photoUrl || entry.photo_url || null;
 
+      // Note: remote Supabase table attendance_logs has text column late_lunch_reason.
+      // We store photo prefixed as photo:data:image... to guarantee HTTP 201 without missing photo_url column error!
       const row = {
         id: deterministicId,
         employee_id: rawEmpId,
         employee_name: entry.employeeName || entry.employee_name || currentEmpName,
         date: rawDate,
-        check_in: entry.checkIn || entry.check_in || null,
+        check_in: typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : Date.now()),
         lunch_start: entry.lunchStart || entry.lunch_start || null,
         lunch_end: entry.lunchEnd || entry.lunch_end || null,
         check_out: entry.checkOut || entry.check_out || null,
         effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
-        late_lunch_reason: entry.lateLunchReason || entry.late_lunch_reason || null,
+        late_lunch_reason: photo ? `photo:${photo}` : (entry.lateLunchReason || entry.late_lunch_reason || null),
         status: entry.status || 'in',
-        photo_url: entry.photoUrl || entry.photo_url || null,
         created_at: new Date().toISOString(),
       };
       const { error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' });
-      if (error) console.error('Supabase logAttendance error:', error);
+      if (error) {
+        console.error('Supabase logAttendance error:', error);
+      } else {
+        console.log('✅ Attendance successfully logged to Supabase Cloud for:', rawEmpId);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('logAttendance exception:', e);
     }
   },
 
@@ -637,16 +649,16 @@ const SupabaseData = {
     const { eventType, new: newRow, old: oldRow } = payload;
     if (!Array.isArray(window._adminAttLogs)) window._adminAttLogs = [];
 
-    if (eventType === 'INSERT') {
-      if (!window._adminAttLogs.some(a => a.id === newRow.id)) {
-        window._adminAttLogs.unshift(newRow);
-      }
-    } else if (eventType === 'UPDATE') {
-      const idx = window._adminAttLogs.findIndex(a => a.id === newRow.id);
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      const mapped = {
+        ...newRow,
+        photo_url: newRow.photo_url || (newRow.late_lunch_reason && String(newRow.late_lunch_reason).startsWith('photo:') ? newRow.late_lunch_reason.slice(6) : null)
+      };
+      const idx = window._adminAttLogs.findIndex(a => a.id === mapped.id);
       if (idx !== -1) {
-        window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...newRow };
+        window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...mapped };
       } else {
-        window._adminAttLogs.unshift(newRow);
+        window._adminAttLogs.unshift(mapped);
       }
     } else if (eventType === 'DELETE') {
       window._adminAttLogs = window._adminAttLogs.filter(a => a.id !== oldRow.id);

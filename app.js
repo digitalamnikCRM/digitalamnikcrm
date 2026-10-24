@@ -245,10 +245,9 @@ function load() {
     }
 
     if (Array.isArray(data.projects)) {
-      // Filter out any leftover sample/mock projects from previous versions
+      // Filter out only legacy sample mock IDs
       STATE.projects = data.projects.filter(p =>
-        p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3' &&
-        !/techvibe|luxe|reel|product launch|growth campaign|testimonial/i.test((p.name || '') + ' ' + (p.client || ''))
+        p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3'
       );
     } else {
       STATE.projects = [];
@@ -386,14 +385,10 @@ function syncProfileUI() {
     }
   }
 
-  // Toggle '+ New Deliverable' button based strictly on Owner / Social Media Manager rights
+  // Ensure '+ New Deliverable' button is visible to all specialists
   const newDelivBtn = document.querySelector('#section-projects .section-header .btn-primary');
   if (newDelivBtn) {
-    if (isManagerRole()) {
-      newDelivBtn.style.display = 'inline-flex';
-    } else {
-      newDelivBtn.style.display = 'none';
-    }
+    newDelivBtn.style.display = 'inline-flex';
   }
 
   // Role notice in Projects section
@@ -416,14 +411,8 @@ function renderRoleNotice() {
   const noticeText = document.getElementById('role-notice-text');
   if (!noticeEl || !noticeText) return;
 
-  const isMgr = isManagerRole();
-  if (isMgr) {
-    noticeEl.className = 'role-notice manager';
-    noticeText.innerHTML = `<strong>👑 Manager / Owner Access Active (${STATE.employee.name}):</strong> You have full delegation rights. You can create new deliverables and assign tasks across agency specialists.`;
-  } else {
-    noticeEl.className = 'role-notice';
-    noticeText.innerHTML = `<strong>Domain: ${STATE.employee.role}</strong> — Only the <strong>Social Media Manager</strong> or <strong>Agency Owner (Amaan Khan)</strong> has rights to create and assign deliverables. You can track time, log sessions and update statuses on your assigned deliverables.`;
-  }
+  noticeEl.className = 'role-notice manager';
+  noticeText.innerHTML = `<strong>⚡ Creative Operations (${STATE.employee.name} • ${STATE.employee.role || 'Specialist'}):</strong> Full workspace privileges active. You can create new deliverables, track billable hours, and assign tasks to any agency specialist or domain.`;
 }
 
 // ========================
@@ -1177,19 +1166,25 @@ function doCheckIn(photoUrl) {
   STATE.attendance.photoUrl = photoUrl || null;
 
   const todayDateStr = fmtDate(now);
+  if (!STATE.attendance.log) STATE.attendance.log = [];
   const existingLog = (STATE.attendance.log || []).find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
   if (existingLog) {
     existingLog.checkIn = now;
     existingLog.status = 'in';
+    existingLog.lunch = existingLog.lunch || 'None';
+    existingLog.checkOut = existingLog.checkOut || '--:--';
+    existingLog.workHrs = existingLog.workHrs || 'Working live';
     if (photoUrl) existingLog.photoUrl = photoUrl;
   } else {
-    if (!STATE.attendance.log) STATE.attendance.log = [];
     STATE.attendance.log.unshift({
       id: 'att-' + uid(),
       employeeId: STATE.employee.id,
       employeeName: STATE.employee.name,
       date: todayDateStr,
       checkIn: now,
+      lunch: 'None',
+      checkOut: '--:--',
+      workHrs: 'Working live',
       status: 'in',
       photoUrl: photoUrl || null,
       effectiveHours: '0h 0m'
@@ -1303,19 +1298,33 @@ function renderAttLog() {
     tbody.innerHTML = '<tr><td colspan="6" class="empty-td">No attendance records logged yet</td></tr>';
     return;
   }
-  tbody.innerHTML = STATE.attendance.log.map(r => `
-    <tr>
-      <td><strong>${r.date}</strong></td>
-      <td>${r.checkIn}</td>
-      <td>
-        ${r.lunch}
-        ${r.lateLunchReason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${r.lateLunchReason}">⚠️ Post-3PM: ${r.lateLunchReason}</div>` : ''}
-      </td>
-      <td>${r.checkOut}</td>
-      <td><span class="stat-badge purple">${r.workHrs}</span></td>
-      <td><span class="stat-badge green">● ${r.status}</span></td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = STATE.attendance.log.map(r => {
+    const checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
+    const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
+    const lunchStr = r.lunch && r.lunch !== 'undefined' ? r.lunch : (r.lunchStartTime ? (typeof r.lunchStartTime === 'number' ? fmt(r.lunchStartTime) : r.lunchStartTime) : 'None');
+    const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
+    const statusLabel = r.status === 'in' ? '● Present' : (r.status === 'lunch' ? '● Lunch' : (r.status === 'done' || r.status === 'Completed' ? '● Shift Done' : '● ' + (r.status || 'Active')));
+    const statusClass = (r.status === 'in' || r.status === 'Completed' || r.status === 'done') ? 'green' : (r.status === 'lunch' ? 'orange' : 'purple');
+
+    return `
+      <tr>
+        <td><strong>${r.date || fmtDate(Date.now())}</strong></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <strong>${checkInStr}</strong>
+            ${r.photoUrl ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
+          </div>
+        </td>
+        <td>
+          ${lunchStr}
+          ${r.lateLunchReason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${r.lateLunchReason}">⚠️ Post-3PM: ${r.lateLunchReason}</div>` : ''}
+        </td>
+        <td>${checkOutStr}</td>
+        <td><span class="stat-badge purple">${workHrsStr}</span></td>
+        <td><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function clearAttLog() {
@@ -1333,32 +1342,42 @@ function renderProjectAssignOptions(existingAssigned = []) {
   const container = document.getElementById('assign-options');
   if (!container) return;
 
-  const isMgr = isManagerRole();
-
-  if (isMgr) {
-    const teamMembers = (STATE.team || []).filter(t => t.name !== STATE.employee.name);
-    const options = [
-      { label: `👑 ${STATE.employee.name} (You)`, value: STATE.employee.name },
-      ...teamMembers.map(t => ({
-        label: `👤 ${t.name} (${t.role || 'Staff'})`,
+  const staff = (STATE.team || []);
+  const options = [
+    // 1. Current user
+    { label: `👑 ${STATE.employee.name} (You • ${STATE.employee.id})`, value: STATE.employee.name },
+    // 2. All other team members
+    ...staff.filter(t => t.name !== STATE.employee.name).map(t => {
+      const roleText = t.role || (Array.isArray(t.domains) ? t.domains.join(', ') : 'Staff Specialist');
+      return {
+        label: `👤 ${t.name} (${t.id} • ${roleText})`,
         value: t.name
-      })),
-      { label: '🎬 Video Editor', value: 'Video Editor' },
-      { label: '📱 Social Media Management', value: 'Social Media Management' },
-      { label: '🎨 Graphic Designer', value: 'Graphic Design' },
-      { label: '✍️ Content Creator', value: 'Content Creator / Writer' },
-      { label: '💰 Paid Ads Specialist', value: 'Paid Ads Specialist' },
-      { label: '🔍 SEO Specialist', value: 'SEO Specialist' },
-      { label: '💻 Web Developer', value: 'Web Developer' },
-    ];
+      };
+    }),
+    // 3. Domain Roles
+    { label: '🎬 Video Editor', value: 'Video Editor' },
+    { label: '📱 Social Media Management', value: 'Social Media Management' },
+    { label: '🎨 Graphic Designer', value: 'Graphic Design' },
+    { label: '✍️ Content Creator', value: 'Content Creator / Writer' },
+    { label: '💰 Paid Ads Specialist', value: 'Paid Ads Specialist' },
+    { label: '🔍 SEO Specialist', value: 'SEO Specialist' },
+    { label: '💻 Web Developer', value: 'Web Developer' },
+  ];
 
-    container.innerHTML = `
-      <div style="width:100%;margin-bottom:8px">
-        <span class="assign-manager-badge">👑 Manager Delegation Privileges Active</span>
+  container.innerHTML = `
+    <div style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <span class="assign-manager-badge" style="background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3)">
+        ⚡ Select Specialist(s) or Domain(s) to Assign
+      </span>
+      <div style="display:flex;gap:6px">
+        <button type="button" class="btn-small btn-secondary" onclick="assignSelectMyself()" style="font-size:10.5px;padding:2px 8px">Only Me</button>
+        <button type="button" class="btn-small btn-secondary" onclick="assignSelectAllSpecialists()" style="font-size:10.5px;padding:2px 8px">All Specialists</button>
       </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
       ${options.map(opt => {
         const isChecked = existingAssigned.length
-          ? existingAssigned.includes(opt.value)
+          ? (existingAssigned.includes(opt.value) || existingAssigned.some(a => opt.label.includes(a)))
           : (opt.value === STATE.employee.name);
         return `
           <label class="assign-chip ${isChecked ? 'selected' : ''}">
@@ -1367,36 +1386,43 @@ function renderProjectAssignOptions(existingAssigned = []) {
           </label>
         `;
       }).join('')}
-    `;
+    </div>
+  `;
 
-    container.querySelectorAll('.assign-chip').forEach(chip => {
-      chip.addEventListener('click', function (e) {
-        if (e.target.tagName !== 'INPUT') {
-          const cb = this.querySelector('input');
-          cb.checked = !cb.checked;
-        }
+  container.querySelectorAll('.assign-chip').forEach(chip => {
+    chip.addEventListener('click', function (e) {
+      if (e.target.tagName !== 'INPUT') {
         const cb = this.querySelector('input');
-        this.classList.toggle('selected', cb.checked);
-      });
+        cb.checked = !cb.checked;
+      }
+      const cb = this.querySelector('input');
+      this.classList.toggle('selected', cb.checked);
     });
-  } else {
-    container.innerHTML = `
-      <div class="assign-restricted-box">
-        <span class="assign-self-pill">👤 Assigned to: ${STATE.employee.name} (${STATE.employee.role})</span>
-        <p class="assign-restricted-hint" style="margin-top:6px">
-          ✅ <strong>Self-Task:</strong> Added directly to your active deliverables board so you can start tracking time immediately.
-        </p>
-      </div>
-    `;
-  }
+  });
+}
+
+function assignSelectMyself() {
+  const chips = document.querySelectorAll('#assign-options .assign-chip');
+  chips.forEach(chip => {
+    const cb = chip.querySelector('input');
+    const isMe = cb && cb.value === STATE.employee.name;
+    if (cb) cb.checked = isMe;
+    chip.classList.toggle('selected', isMe);
+  });
+}
+
+function assignSelectAllSpecialists() {
+  const chips = document.querySelectorAll('#assign-options .assign-chip');
+  const staffNames = (STATE.team || []).map(t => t.name);
+  chips.forEach(chip => {
+    const cb = chip.querySelector('input');
+    const isStaff = cb && (staffNames.includes(cb.value) || cb.value === STATE.employee.name);
+    if (cb && isStaff) cb.checked = true;
+    if (isStaff) chip.classList.add('selected');
+  });
 }
 
 function openProjectModal(id) {
-  if (!id && !isManagerRole()) {
-    toast('⚠️ Access Restricted: Only the Agency Owner (Amaan Khan) or Social Media Manager has rights to create and assign deliverables.', 'error');
-    return;
-  }
-
   STATE.editingProjectId = id || null;
   const title = document.getElementById('proj-modal-title');
   if (title) title.textContent = id ? 'Edit Deliverable' : 'Create New Deliverable';
@@ -1416,9 +1442,7 @@ function openProjectModal(id) {
     document.getElementById('proj-name').value = '';
     document.getElementById('proj-client').value = '';
     document.getElementById('proj-priority').value = 'Medium';
-    document.getElementById('proj-service').value = isManagerRole()
-      ? 'Social Media Management'
-      : (STATE.employee.role || 'Video Editing');
+    document.getElementById('proj-service').value = STATE.employee.role || 'Web Developer';
     document.getElementById('proj-deadline').value = '';
     document.getElementById('proj-desc').value = '';
     renderProjectAssignOptions([STATE.employee.name]);
@@ -1427,32 +1451,30 @@ function openProjectModal(id) {
 }
 
 function saveProject() {
-  if (!STATE.editingProjectId && !isManagerRole()) {
-    toast('⚠️ Permission Denied: Only Social Media Manager or Agency Owner can create deliverables.', 'error');
-    return;
-  }
-
   const name = document.getElementById('proj-name').value.trim();
   if (!name) { toast('Project name is required', 'error'); return; }
 
-  let assigned = [];
-  if (isManagerRole()) {
-    const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
-    assigned = Array.from(checks).map(c => c.value);
-    if (!assigned.length) assigned = [STATE.employee.name];
-  } else {
-    assigned = [STATE.employee.name];
-  }
+  const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
+  let assigned = Array.from(checks).map(c => c.value);
+  if (!assigned.length) assigned = [STATE.employee.name];
+
+  const client = document.getElementById('proj-client').value.trim() || 'Internal Agency';
+  const service = document.getElementById('proj-service').value;
+  const priority = document.getElementById('proj-priority').value;
+  const deadline = document.getElementById('proj-deadline').value;
+  const desc = document.getElementById('proj-desc').value.trim();
 
   const project = {
     id: STATE.editingProjectId || uid(),
     name,
-    client: document.getElementById('proj-client').value.trim() || 'Internal Agency',
-    priority: document.getElementById('proj-priority').value,
-    service: document.getElementById('proj-service').value,
-    deadline: document.getElementById('proj-deadline').value,
-    desc: document.getElementById('proj-desc').value.trim(),
+    client,
+    priority,
+    service,
+    serviceDomain: service,
+    deadline,
+    desc,
     assigned,
+    assignedTo: assigned.join(', '),
     status: 'Assigned',
     progress: 15,
     totalTimeSpent: 0,
@@ -1473,9 +1495,9 @@ function saveProject() {
     toast('Deliverable updated!', 'success');
   } else {
     STATE.projects.unshift(project);
-    addActivity(`Project created: ${name}`, 'blue');
+    addActivity(`Project created: ${name} (Assigned to ${assigned.join(', ')})`, 'blue');
     triggerConfetti();
-    toast('Deliverable added to workspace!', 'success');
+    toast(`Deliverable added & assigned to ${assigned.join(', ')}! 🚀`, 'success');
   }
 
   updateDashCounts();
@@ -1503,17 +1525,20 @@ function renderProjects() {
   const search = (document.getElementById('proj-search')?.value || '').toLowerCase();
 
   let list = STATE.projects;
-  if (_activeFilter === 'my') {
-    const empDomains = Array.isArray(STATE.employee.domains) && STATE.employee.domains.length > 0
-      ? STATE.employee.domains
-      : [STATE.employee.role].filter(Boolean);
+  const empDomains = Array.isArray(STATE.employee.domains) && STATE.employee.domains.length > 0
+    ? STATE.employee.domains
+    : [STATE.employee.role].filter(Boolean);
 
+  if (_activeFilter === 'my') {
     list = list.filter(p => {
+      if (STATE.employee.isFounder || STATE.employee.id === 'EMP-000') return true;
       const assigned = p.assigned || [];
-      const isAssignedByName = assigned.includes(STATE.employee.name);
+      const assignedTo = p.assignedTo || '';
+      const isAssignedByName = assigned.includes(STATE.employee.name) || assignedTo.includes(STATE.employee.name);
+      const isAssignedById = assigned.includes(STATE.employee.id) || assignedTo.includes(STATE.employee.id);
       const isAssignedByRole = assigned.includes(STATE.employee.role) || empDomains.some(d => assigned.includes(d));
       const isMatchingService = p.service === STATE.employee.role || empDomains.includes(p.service);
-      return isAssignedByName || isAssignedByRole || isMatchingService;
+      return isAssignedByName || isAssignedById || isAssignedByRole || isMatchingService;
     });
   } else if (_activeFilter !== 'all') {
     list = list.filter(p => {
@@ -1530,7 +1555,9 @@ function renderProjects() {
     list = list.filter(p =>
       p.name.toLowerCase().includes(search) ||
       (p.client || '').toLowerCase().includes(search) ||
-      (p.service || '').toLowerCase().includes(search)
+      (p.service || '').toLowerCase().includes(search) ||
+      (p.assignedTo || '').toLowerCase().includes(search) ||
+      (Array.isArray(p.assigned) && p.assigned.some(a => a.toLowerCase().includes(search)))
     );
   }
 
@@ -3276,12 +3303,27 @@ function triggerConfetti() {
 // DASHBOARD STATS & ACTIVITY
 // ========================
 function updateDashCounts() {
-  const active = STATE.projects.filter(p => p.status !== 'Completed' && p.status !== 'Cancelled').length;
+  const empDomains = Array.isArray(STATE.employee.domains) && STATE.employee.domains.length > 0
+    ? STATE.employee.domains
+    : [STATE.employee.role].filter(Boolean);
+
+  const myProjects = (STATE.projects || []).filter(p => {
+    if (p.status === 'Completed' || p.status === 'Cancelled') return false;
+    if (STATE.employee.isFounder || STATE.employee.id === 'EMP-000') return true;
+    const assigned = p.assigned || [];
+    const assignedTo = p.assignedTo || '';
+    const isAssignedByName = assigned.includes(STATE.employee.name) || assignedTo.includes(STATE.employee.name);
+    const isAssignedById = assigned.includes(STATE.employee.id) || assignedTo.includes(STATE.employee.id);
+    const isAssignedByRole = assigned.includes(STATE.employee.role) || empDomains.some(d => assigned.includes(d));
+    const isMatchingService = p.service === STATE.employee.role || empDomains.includes(p.service);
+    return isAssignedByName || isAssignedById || isAssignedByRole || isMatchingService;
+  });
+
   const countEl = document.getElementById('dash-proj-count');
-  if (countEl) countEl.textContent = active;
+  if (countEl) countEl.textContent = myProjects.length;
 
   const navBadge = document.getElementById('nav-proj-badge');
-  if (navBadge) navBadge.textContent = active;
+  if (navBadge) navBadge.textContent = myProjects.length;
 }
 
 function renderActivity() {
