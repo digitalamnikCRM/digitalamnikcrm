@@ -1025,7 +1025,7 @@
     <!-- TAB 3: PROJECT HOURS & TIMESHEETS -->
     <div class="admin-pane" id="admin-pane-timesheets">
 
-      <!-- 1. LIVE AGENCY PULSE: ABHI KON KIS PROJECT PR KAM KR RHA HAI -->
+      <!-- 1. LIVE AGENCY PULSE: REAL-TIME ACTIVE DELIVERABLE OPERATIONS -->
       <div class="live-pulse-section" style="margin-bottom:28px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <div style="display:flex;align-items:center;gap:10px">
@@ -1033,7 +1033,7 @@
               <span class="live-pulse-dot"></span>
             </span>
             <div>
-              <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station — Abhi Kon Kis Project Par Kaam Kar Raha Hai</h3>
+              <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station — Active Staff &amp; Real-Time Operations</h3>
               <span style="font-size:12.5px;color:#94a3b8">Real-time live specialist activity and running deliverable clocks across the agency</span>
             </div>
           </div>
@@ -1044,11 +1044,11 @@
         </div>
       </div>
 
-      <!-- 2. TODAY'S COMPLETED WORK: AAJ KYA KYA COMPLETE KIYA -->
+      <!-- 2. TODAY'S COMPLETED DELIVERABLES & SESSIONS -->
       <div class="today-completed-section" style="margin-bottom:28px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <div>
-            <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">✅ Aaj Kya Kya Complete Hua — Today's Concluded Deliverables &amp; Sessions</h3>
+            <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">✅ Concluded Deliverables &amp; Completed Work Sessions Today</h3>
             <span style="font-size:12.5px;color:#94a3b8">Completed agency deliverables &amp; work sessions finished today by staff</span>
           </div>
           <span class="stat-badge green" id="admin-today-completed-summary">0 Done Today</span>
@@ -1062,7 +1062,7 @@
       <div style="margin-bottom:28px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <div>
-            <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">📸 Aaj Kon Kon Present Hai &amp; Kon Absent (Daily Attendance Verification)</h3>
+            <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">📸 Staff Daily Attendance Verification (Present vs Absent Breakdown)</h3>
             <span style="font-size:12.5px;color:#94a3b8">Check-in photos and shift hours. Photo records auto-purged after 7 days to preserve storage.</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1660,7 +1660,7 @@
           revealAdminConsole();
         } else {
           passInput.classList.add('error');
-          toast('❌ Key galat hai! Use master key "amnik2026" ya "admin"', 'error');
+          toast('❌ Invalid master key. Access denied.', 'error');
           setTimeout(() => passInput.classList.remove('error'), 600);
         }
       } catch (err) {
