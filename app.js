@@ -800,8 +800,10 @@ document.addEventListener('mousemove', (e) => {
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   const mw = document.querySelector('.main-wrap');
-  if (window.innerWidth <= 860) {
-    sb.classList.toggle('open');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (window.innerWidth <= 992) {
+    const isOpen = sb.classList.toggle('open');
+    if (bd) bd.classList.toggle('active', isOpen);
   } else {
     sb.classList.toggle('collapsed');
     mw.classList.toggle('full');
@@ -809,6 +811,13 @@ function toggleSidebar() {
 }
 
 function showSection(name, el) {
+  if (window.innerWidth <= 992) {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebar-backdrop');
+    if (sb) sb.classList.remove('open');
+    if (bd) bd.classList.remove('active');
+  }
+
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 

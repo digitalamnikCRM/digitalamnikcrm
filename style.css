@@ -4667,13 +4667,493 @@
     margin-left: 2px;
   }
 
+  /* =========================================================
+   COMPREHENSIVE MOBILE RESPONSIVE ENGINE (EMPLOYEE & CORE CRM)
+   Zero Edge Cutting • Zero Box Clipping • Fluid Responsive Flow
+   ========================================================= */
+
+  /* Backdrop for off-canvas mobile drawer */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 5, 12, 0.78);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+  }
+
+  /* Universal touch scroll for wide tables */
+  .table-responsive-container,
+  .glass-table-wrap,
+  .table-container,
+  .history-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+  }
+
+  @media (max-width: 1024px) {
+    .content {
+      padding: 24px 20px 48px;
+    }
+    .hero-cockpit {
+      padding: 24px 28px;
+    }
+    .cockpit-visual {
+      display: none;
+    }
+    .cockpit-quote-free {
+      margin: 16px 0 0 0;
+      max-width: 100%;
+    }
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .quick-actions-bar {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+  }
+
+  @media (max-width: 992px) {
+    /* Off-canvas Navigation Drawer */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 285px;
+      max-width: 86vw;
+      height: 100vh;
+      z-index: 999;
+      transform: translateX(-100%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 10px 0 35px rgba(0, 0, 0, 0.7);
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .main-wrap {
+      margin-left: 0 !important;
+      width: 100% !important;
+      max-width: 100vw !important;
+      overflow-x: hidden;
+    }
+
+    .topbar {
+      padding: 0 16px;
+    }
+  }
+
   @media (max-width: 768px) {
-    .proj-list-row {
+    body {
+      overflow-x: hidden;
+    }
+
+    /* Topbar Header Wrap */
+    .topbar {
+      height: auto;
+      min-height: 60px;
+      padding: 10px 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .menu-btn {
+      margin-right: 8px;
+      width: 36px;
+      height: 36px;
+    }
+
+    .topbar-left {
+      flex: 1 1 auto;
+      min-width: 140px;
+    }
+
+    .page-title {
+      font-size: 16px;
+    }
+
+    .page-date {
+      font-size: 10px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .topbar-owner-showcase {
+      gap: 6px;
+    }
+
+    .owner-crest-medallion {
+      width: 32px;
+      height: 32px;
+    }
+
+    .owner-crown-gem {
+      font-size: 16px;
+    }
+
+    .owner-leader-name {
+      font-size: 14px;
+    }
+
+    .owner-prestige-subtitle {
+      display: none;
+    }
+
+    .focus-audio-capsule {
+      gap: 4px;
+    }
+
+    .ambient-audio-btn {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+
+    .ambient-audio-btn #audio-btn-txt {
+      display: none;
+    }
+
+    .focus-sound-select {
+      max-width: 110px;
+      font-size: 10.5px;
+      padding: 4px 18px 4px 6px;
+    }
+
+    .topbar-active-task {
+      font-size: 11px;
+      padding: 4px 8px;
+      max-width: 100%;
+    }
+
+    .live-clock-pill {
+      padding: 5px 8px;
+      gap: 5px;
+    }
+
+    .live-clock {
+      font-size: 11.5px;
+    }
+
+    .supabase-status-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+    }
+
+    .notif-btn {
+      width: 34px;
+      height: 34px;
+    }
+
+    /* Main Content Padding */
+    .content {
+      padding: 14px 12px 64px;
+      max-width: 100vw;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+
+    /* Hero Cockpit Section */
+    .hero-cockpit {
+      padding: 20px 16px;
+      margin-bottom: 20px;
+      border-radius: var(--radius-lg);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .cockpit-content {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .welcome-greet {
+      font-size: 20px;
+    }
+
+    .welcome-name {
+      font-size: 24px;
+      word-break: break-word;
+    }
+
+    .welcome-role-row {
+      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    .cockpit-shift-hud {
+      padding: 8px 12px;
+    }
+
+    .cockpit-quote-free {
+      margin: 8px 0 0 0;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .quote-free-content {
+      gap: 6px;
+    }
+
+    .quote-free-mark {
+      font-size: 24px;
+    }
+
+    .quote-free-text {
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+
+    .quote-free-meta {
+      padding-left: 14px;
+      margin-top: 6px;
+    }
+
+    .quote-free-author {
+      font-size: 11.5px;
+    }
+
+    /* Grids */
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      padding: 16px 14px;
+      border-radius: var(--radius-md);
+    }
+
+    .stat-val {
+      font-size: 22px;
+    }
+
+    .stat-label {
+      font-size: 11.5px;
+    }
+
+    .quick-actions-bar {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .qa-card {
+      padding: 12px 14px;
+    }
+
+    /* Section Header */
+    .section-header {
       flex-direction: column;
       align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
     }
-    .proj-row-left, .proj-row-center, .proj-row-right {
+
+    .section-header > div:last-child {
       width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .section-header h2 {
+      font-size: 20px;
+    }
+
+    /* Attendance Station */
+    .chronometer-hero {
+      padding: 20px 14px;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .chronometer-left,
+    .chronometer-center,
+    .chronometer-right {
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chrono-digits {
+      font-size: 30px;
+      letter-spacing: 1px;
+    }
+
+    .att-milestones-track {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .milestone-step {
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      gap: 8px;
+    }
+
+    .milestone-line {
+      display: none !important;
+    }
+
+    .att-action-buttons {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .att-action-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+    }
+
+    /* Table Wrapping & Touch Scrolling */
+    .shift-history-table,
+    .custom-table,
+    table {
+      width: 100%;
+      min-width: 620px;
+    }
+
+    /* Filter Bar & Search */
+    .filter-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .filter-chips,
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .filter-btn {
+      flex: 1 1 auto;
+      text-align: center;
+      padding: 6px 12px;
+      font-size: 11.5px;
+    }
+
+    .search-input-box {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+
+    /* Deliverable / Project List Rows */
+    .proj-list-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      padding: 14px 12px;
+    }
+
+    .proj-row-left {
+      min-width: 0 !important;
+      width: 100% !important;
+      gap: 10px;
+    }
+
+    .proj-row-center {
+      width: 100% !important;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .proj-row-right {
+      width: 100% !important;
+      display: flex;
       justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 10px;
+      margin-top: 2px;
+    }
+
+    .proj-timer-compact {
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    /* Calendars Grid */
+    .calendars-grid,
+    .calendar-cards-grid,
+    .projects-grid {
+      grid-template-columns: 1fr !important;
+      gap: 14px;
+    }
+
+    /* Modals & Dialogs */
+    .onboard-modal,
+    .modal-box,
+    .modal-content,
+    .att-modal-content {
+      width: calc(100vw - 24px) !important;
+      max-width: calc(100vw - 24px) !important;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 20px 16px !important;
+      margin: 12px auto;
+      border-radius: 14px;
+      box-sizing: border-box;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .att-milestones-track {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .chrono-digits {
+      font-size: 26px;
+    }
+
+    .welcome-name {
+      font-size: 22px;
+    }
+
+    .topbar-right {
+      gap: 6px;
+    }
+
+    .live-clock-pill svg,
+    .supabase-status-badge .sb-dot {
+      display: none;
     }
   }

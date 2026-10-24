@@ -698,6 +698,268 @@
       background: rgba(255, 255, 255, 0.05);
       border-color: rgba(124, 58, 237, 0.35);
     }
+
+    /* =========================================================
+       ADMIN COMMAND CONSOLE MOBILE RESPONSIVE ENGINE
+       Zero Clipping • Fluid Swipeable Layout • Touch Friendly
+       ========================================================= */
+
+    @media (max-width: 1024px) {
+      .admin-viewport {
+        padding: 20px 16px 80px;
+      }
+      .admin-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        overflow-x: hidden;
+      }
+
+      /* Auth Gate Card on Mobile */
+      .auth-gate-wrap {
+        padding: 14px;
+      }
+
+      .auth-card {
+        max-width: calc(100vw - 28px);
+        padding: 24px 18px;
+        border-radius: 16px;
+      }
+
+      .auth-title {
+        font-size: 19px;
+      }
+
+      .auth-sub {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .auth-footer-notes {
+        flex-direction: column;
+        gap: 6px;
+        text-align: center;
+      }
+
+      /* Admin Viewport & Topbar Nav */
+      .admin-viewport {
+        padding: 12px 10px 60px;
+        max-width: 100vw;
+        overflow-x: hidden;
+        box-sizing: border-box;
+      }
+
+      .admin-topbar-nav {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 14px 12px;
+        margin-bottom: 18px;
+        border-radius: 12px;
+      }
+
+      .admin-brand-left {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .admin-brand-left img {
+        max-height: 34px;
+      }
+
+      .admin-badge-owner {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+
+      .admin-topbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 6px;
+        justify-content: space-between;
+      }
+
+      .admin-topbar-actions > * {
+        flex: 1 1 auto;
+        justify-content: center;
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+
+      /* Section Header & Action Buttons */
+      .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        margin-bottom: 18px !important;
+      }
+
+      .section-header > div:first-child h2 {
+        font-size: 20px !important;
+        line-height: 1.3;
+      }
+
+      .section-header > div:last-child {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+      }
+
+      .section-header > div:last-child button {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 14px;
+      }
+
+      /* KPIs 2-Grid */
+      .admin-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .admin-kpi-card {
+        padding: 14px 12px;
+        border-radius: 10px;
+        gap: 10px;
+      }
+
+      .kpi-icon-box {
+        font-size: 20px;
+      }
+
+      .kpi-val {
+        font-size: 20px;
+      }
+
+      .kpi-label {
+        font-size: 11px;
+      }
+
+      /* Horizontal Scrollable Tabs */
+      .admin-nav-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px;
+        padding-bottom: 6px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        scrollbar-width: none;
+      }
+
+      .admin-nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .admin-tab-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+        font-size: 12px;
+        padding: 8px 12px;
+        border-radius: 8px;
+      }
+
+      /* Founder Card */
+      .admin-founder-card {
+        padding: 16px 14px;
+        border-radius: 12px;
+      }
+
+      .founder-card-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 12px;
+      }
+
+      .founder-name-row {
+        justify-content: center;
+      }
+
+      .founder-quick-actions {
+        justify-content: center;
+        width: 100%;
+      }
+
+      /* Attendance Filters & Tables */
+      .att-filter-pills {
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding: 4px;
+        scrollbar-width: none;
+      }
+
+      .att-pill {
+        flex-shrink: 0;
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 5px 10px;
+      }
+
+      .staff-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      /* Tables in Admin */
+      .glass-table-wrap {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 10px;
+        margin-bottom: 18px;
+      }
+
+      .glass-table-wrap table {
+        min-width: 680px;
+        width: 100%;
+      }
+
+      /* Live work & today completed */
+      .live-work-grid,
+      .today-completed-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      /* Modals */
+      .admin-modal-card,
+      .photo-modal-card {
+        max-width: calc(100vw - 20px) !important;
+        width: calc(100vw - 20px) !important;
+        max-height: 88vh;
+        overflow-y: auto;
+        padding: 18px 14px !important;
+        box-sizing: border-box;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .admin-kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .admin-topbar-actions > * {
+        font-size: 10px;
+        padding: 5px 8px;
+      }
+    }
   </style>
 </head>
 
