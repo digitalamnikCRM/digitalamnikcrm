@@ -2029,6 +2029,8 @@
           window._adminAttLogs = attData;
         }
 
+        await checkAdminAutoAbsentEvaluation();
+
         // Save & Render Everything
         saveCRMState(state);
         updateAdminKpis();
@@ -2040,6 +2042,42 @@
         loadAdminCalendars();
       } catch (err) {
         console.warn('loadAdminAll warning:', err);
+      }
+    }
+
+    async function checkAdminAutoAbsentEvaluation() {
+      if (new Date().getHours() < 19) return;
+      const state = getCRMState();
+      const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
+      const attLogs = window._adminAttLogs || [];
+      const todayDateStr = fmtDate(Date.now());
+
+      for (const m of staff) {
+        const att = getMemberTodayAttendance(m, state, attLogs);
+        if (att && att.status === 'absent' && att.isAutoAbsent) {
+          const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const alreadyInCloud = (attLogs || []).some(a => {
+            const aId = (a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            return (aId === normEmpId) && (a.date === todayDateStr);
+          });
+          if (!alreadyInCloud && window.sbClient) {
+            try {
+              const { data: newRec } = await window.sbClient.from('attendance_logs').insert([{
+                employee_id: m.id,
+                employee_name: m.name,
+                date: todayDateStr,
+                effective_hours: '0h 0m',
+                status: 'absent'
+              }]).select();
+              if (newRec && newRec[0]) {
+                if (!window._adminAttLogs) window._adminAttLogs = [];
+                window._adminAttLogs.unshift(newRec[0]);
+              }
+            } catch (e) {
+              console.warn('Auto-absent sync error:', e);
+            }
+          }
+        }
       }
     }
 
@@ -2327,6 +2365,16 @@
         }
       }
 
+      // 4. Auto-Absent Rule (Post 7:00 PM): If current time is 7:00 PM (19:00) or later and employee has neither check-in nor marked status, auto-mark Absent
+      if (new Date().getHours() >= 19) {
+        return {
+          status: 'absent',
+          effective_hours: '0h 0m',
+          isAutoAbsent: true,
+          date: todayDateStr
+        };
+      }
+
       return null;
     }
 
@@ -2410,6 +2458,8 @@
           liveStatusHtml = `<span style="color:#a78bfa;font-size:11.5px">🟣 Shift Concluded</span>`;
         } else if (isPresent) {
           liveStatusHtml = `<span style="color:#34d399;font-size:11.5px">🟢 In Studio (Standby)</span>`;
+        } else if (todayAtt && (todayAtt.status === 'absent' || todayAtt.isAutoAbsent)) {
+          liveStatusHtml = `<span style="color:#f87171;font-size:11.5px">🔴 Auto-Absent (Post 7:00 PM Deadline)</span>`;
         } else {
           liveStatusHtml = `<span style="color:#f87171;font-size:11.5px">🔴 Shift: ${m.shift || '10:00 AM – 07:00 PM'}</span>`;
         }

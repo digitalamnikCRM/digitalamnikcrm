@@ -411,8 +411,14 @@ function renderRoleNotice() {
   const noticeText = document.getElementById('role-notice-text');
   if (!noticeEl || !noticeText) return;
 
-  noticeEl.className = 'role-notice manager';
-  noticeText.innerHTML = `<strong>⚡ Creative Operations (${STATE.employee.name} • ${STATE.employee.role || 'Specialist'}):</strong> Full workspace privileges active. You can create new deliverables, track billable hours, and assign tasks to any agency specialist or domain.`;
+  const isMgr = isManagerRole();
+  if (isMgr) {
+    noticeEl.className = 'role-notice manager';
+    noticeText.innerHTML = `<strong>👑 Delegation Station Active (${STATE.employee.name}):</strong> As Social Media Manager / Agency Owner, you have full delegation rights to assign deliverables across all agency specialists and domain disciplines.`;
+  } else {
+    noticeEl.className = 'role-notice';
+    noticeText.innerHTML = `<strong>Domain: ${STATE.employee.role || 'Specialist'} (${STATE.employee.name}):</strong> You can create self-tasks for your own workflow, accept deliverables assigned to you by Social Media Manager / Owner, and track billable work hours.`;
+  }
 }
 
 // ========================
@@ -599,6 +605,10 @@ function openLateLunchModal() {
     textarea.value = '';
     textarea.classList.remove('error');
   }
+  const timeLabel = document.getElementById('late-lunch-time-label');
+  if (timeLabel) {
+    timeLabel.textContent = fmt(Date.now());
+  }
   openModal('late-lunch-modal');
 }
 
@@ -694,6 +704,10 @@ function updateClock() {
   if (hudFill) hudFill.style.width = `${pct}%`;
   const hudPct = document.getElementById('shift-hud-pct');
   if (hudPct) hudPct.textContent = `${pct}% of Day Window`;
+
+  if (h >= 19) {
+    evaluateAutoAbsent();
+  }
 }
 
 // ========================
@@ -908,20 +922,82 @@ function syncAttendanceUI() {
     if (sidebarStatusText) sidebarStatusText.textContent = 'Shift Done';
 
     showAttendanceSummary();
+  } else if (att.status === 'absent' || (att.status === 'out' && new Date().getHours() >= 19)) {
+    dot.className = 'radar-ping-dot out';
+    statusText.textContent = 'Shift Ended — Marked Absent (7:00 PM Deadline Passed)';
+    btnIn.disabled = true;
+    btnLunch.disabled = true;
+    btnOut.disabled = true;
+
+    document.getElementById('dash-status').textContent = 'Marked Absent';
+    const b = document.getElementById('dash-status-badge');
+    b.textContent = 'Absent';
+    b.className = 'stat-badge red';
+    b.style.background = 'rgba(239,68,68,0.2)';
+    b.style.color = '#fca5a5';
+    b.style.border = '1px solid rgba(239,68,68,0.4)';
+    document.getElementById('dash-status-sub').textContent = 'Did not punch check-in before 7:00 PM shift deadline';
+
+    if (avatarStatusDot) avatarStatusDot.style.background = '#f87171';
+    if (sidebarStatusText) sidebarStatusText.textContent = 'Absent';
   } else {
-    statusText.textContent = 'Not Checked In';
+    dot.className = 'radar-ping-dot';
+    statusText.textContent = 'Not Checked In Yet';
     btnIn.disabled = false;
     btnLunch.disabled = true;
     btnOut.disabled = true;
 
-    document.getElementById('dash-status').textContent = 'Not Checked In';
+    document.getElementById('dash-status').textContent = 'Pending Punch In';
     const b = document.getElementById('dash-status-badge');
-    b.textContent = 'Absent';
-    b.className = 'stat-badge';
-    document.getElementById('dash-status-sub').textContent = 'Click to Punch In for today';
+    b.textContent = 'Pending';
+    b.className = 'stat-badge orange';
+    document.getElementById('dash-status-sub').textContent = 'Shift active: Click to Punch In with photo';
 
     if (avatarStatusDot) avatarStatusDot.style.background = '#64748b';
     if (sidebarStatusText) sidebarStatusText.textContent = 'Offline';
+  }
+}
+
+function evaluateAutoAbsent() {
+  const now = new Date();
+  if (now.getHours() < 19) return;
+
+  const todayDateStr = fmtDate(Date.now());
+  const hasCheckedInToday = STATE.attendance.checkInTime && (fmtDate(STATE.attendance.checkInTime) === todayDateStr);
+  const hasLogToday = Array.isArray(STATE.attendance.log) && STATE.attendance.log.some(l => l.date === todayDateStr && (l.status === 'in' || l.status === 'lunch' || l.status === 'done' || l.status === 'Completed'));
+
+  if (!hasCheckedInToday && !hasLogToday) {
+    if (STATE.attendance.status === 'out' || !STATE.attendance.status || STATE.attendance.status === 'absent') {
+      STATE.attendance.status = 'absent';
+      if (!STATE.attendance.log) STATE.attendance.log = [];
+      const alreadyAbsentLogged = STATE.attendance.log.some(l => l.date === todayDateStr && (l.status === 'Absent' || l.status === 'absent'));
+      if (!alreadyAbsentLogged) {
+        STATE.attendance.log.unshift({
+          id: 'att-absent-' + uid(),
+          employeeId: STATE.employee.id,
+          employeeName: STATE.employee.name,
+          date: todayDateStr,
+          checkIn: '--:--',
+          lunch: 'None',
+          checkOut: '--:--',
+          workHrs: '0h 0m',
+          status: 'Absent',
+          effectiveHours: '0h 0m',
+          autoMarked: true,
+        });
+        save();
+        if (typeof SupabaseData !== 'undefined') {
+          SupabaseData.logAttendance({
+            date: todayDateStr,
+            checkIn: null,
+            checkOut: null,
+            effectiveHours: '0h 0m',
+            status: 'absent'
+          });
+        }
+        renderAttLog();
+      }
+    }
   }
 }
 
@@ -1342,6 +1418,31 @@ function renderProjectAssignOptions(existingAssigned = []) {
   const container = document.getElementById('assign-options');
   if (!container) return;
 
+  const isMgr = isManagerRole();
+
+  if (!isMgr) {
+    // Non-managers: Dedicated Self-Task assignment box
+    container.innerHTML = `
+      <div style="width:100%;padding:12px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+          👤
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px;color:#93c5fd;display:flex;align-items:center;gap:6px">
+            Self-Task: Assigned to You (${STATE.employee.name})
+            <span class="stat-badge blue" style="font-size:10px;padding:1px 6px">Personal Workflow</span>
+          </div>
+          <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">
+            You are creating this deliverable for your own task queue. Delegation to other specialists is reserved for Social Media Managers & Agency Owner.
+          </div>
+        </div>
+        <input type="checkbox" value="${STATE.employee.name}" checked style="display:none" />
+      </div>
+    `;
+    return;
+  }
+
+  // Manager or Agency Owner: Full delegation picker across all specialists & domain disciplines
   const staff = (STATE.team || []);
   const options = [
     // 1. Current user
@@ -1367,7 +1468,7 @@ function renderProjectAssignOptions(existingAssigned = []) {
   container.innerHTML = `
     <div style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
       <span class="assign-manager-badge" style="background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3)">
-        ⚡ Select Specialist(s) or Domain(s) to Assign
+        ⚡ Select Specialist(s) or Domain(s) to Assign (Manager Delegation)
       </span>
       <div style="display:flex;gap:6px">
         <button type="button" class="btn-small btn-secondary" onclick="assignSelectMyself()" style="font-size:10.5px;padding:2px 8px">Only Me</button>
@@ -1454,15 +1555,25 @@ function saveProject() {
   const name = document.getElementById('proj-name').value.trim();
   if (!name) { toast('Project name is required', 'error'); return; }
 
-  const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
-  let assigned = Array.from(checks).map(c => c.value);
-  if (!assigned.length) assigned = [STATE.employee.name];
+  const isMgr = isManagerRole();
+  let assigned;
+  if (isMgr) {
+    const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
+    assigned = Array.from(checks).map(c => c.value);
+    if (!assigned.length) assigned = [STATE.employee.name];
+  } else {
+    // Specialists create self-tasks strictly assigned to their personal queue
+    assigned = [STATE.employee.name];
+  }
 
   const client = document.getElementById('proj-client').value.trim() || 'Internal Agency';
   const service = document.getElementById('proj-service').value;
   const priority = document.getElementById('proj-priority').value;
   const deadline = document.getElementById('proj-deadline').value;
   const desc = document.getElementById('proj-desc').value.trim();
+
+  // If created as a self-task by specialist, status starts as 'In Progress' ready to execute; if delegated by manager, 'Assigned'
+  const initialStatus = isMgr ? 'Assigned' : 'In Progress';
 
   const project = {
     id: STATE.editingProjectId || uid(),
@@ -1475,7 +1586,7 @@ function saveProject() {
     desc,
     assigned,
     assignedTo: assigned.join(', '),
-    status: 'Assigned',
+    status: initialStatus,
     progress: 15,
     totalTimeSpent: 0,
     sessions: [],
@@ -1543,6 +1654,7 @@ function renderProjects() {
   } else if (_activeFilter !== 'all') {
     list = list.filter(p => {
       const s = p.status || '';
+      if (_activeFilter === 'Assigned') return s === 'Assigned';
       if (_activeFilter === 'In Progress') return s === 'In Progress';
       if (_activeFilter === 'Completed') return s === 'Completed';
       if (_activeFilter === 'Review') return s === 'Review' || s === 'In Review';
@@ -1606,12 +1718,18 @@ function renderProjects() {
           ${deadlineWarning(p.deadline)}
           <span class="proj-status-pill ${statusClass(p.status)}">${p.status || 'Assigned'}</span>
 
+          ${(p.status === 'Assigned') ? `
+            <button class="btn-small" onclick="acceptDeliverable('${p.id}', event)" style="font-size:11px;padding:4px 10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;box-shadow:0 0 10px rgba(16,185,129,0.35);cursor:pointer;white-space:nowrap" title="Accept deliverable and start working">
+              ✓ Accept
+            </button>
+          ` : ''}
+
           <div class="proj-timer-compact" onclick="event.stopPropagation()">
             <span class="proj-timer-time" id="proj-clock-${p.id}">${timeDisplay}</span>
             ${!isActive ? `
               <button class="btn-timer-icon start" onclick="startProjectWork('${p.id}')" title="Start Timer">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span>Start</span>
+                <span>${p.status === 'Assigned' ? 'Accept & Start' : 'Start'}</span>
               </button>
             ` : `
               <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop Timer">
@@ -1626,6 +1744,31 @@ function renderProjects() {
       </div>
     `;
   }).join('');
+}
+
+function acceptDeliverable(id, e) {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+  p.status = 'In Progress';
+  p.acceptedBy = STATE.employee.name;
+  p.acceptedAt = Date.now();
+  if (!p.assigned || !p.assigned.includes(STATE.employee.name)) {
+    if (!Array.isArray(p.assigned)) p.assigned = [];
+    p.assigned.push(STATE.employee.name);
+  }
+  p.assignedTo = p.assigned.join(', ');
+  toast(`✓ Deliverable "${p.name}" accepted! You can now start tracking work. 🚀`, 'success');
+  triggerConfetti();
+  addActivity(`Accepted deliverable: ${p.name}`, 'green');
+  save();
+  renderProjects();
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
+  }
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(p);
+  }
 }
 
 function openProjectDetail(id) {
@@ -1697,9 +1840,14 @@ function openProjectDetail(id) {
   if (btnWrap) {
     if (!isActive) {
       btnWrap.innerHTML = `
+        ${(p.status === 'Assigned') ? `
+          <button class="proj-timer-btn" onclick="acceptDeliverable('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981;color:#fff;box-shadow:0 0 12px rgba(16,185,129,0.35)">
+            <span>✓ Accept Deliverable</span>
+          </button>
+        ` : ''}
         <button class="proj-timer-btn btn-green" onclick="startProjectWork('${p.id}');openProjectDetail('${p.id}')">
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-          <span>Start Work</span>
+          <span>${p.status === 'Assigned' ? 'Accept & Start Work' : 'Start Work'}</span>
         </button>
       `;
     } else {
@@ -1798,6 +1946,13 @@ function startProjectWork(id) {
 
   if (proj.status === 'Assigned') {
     proj.status = 'In Progress';
+    proj.acceptedBy = STATE.employee.name;
+    proj.acceptedAt = now;
+    if (!proj.assigned || !proj.assigned.includes(STATE.employee.name)) {
+      if (!Array.isArray(proj.assigned)) proj.assigned = [];
+      proj.assigned.push(STATE.employee.name);
+    }
+    proj.assignedTo = proj.assigned.join(', ');
   }
 
   // Active work indicator in sessions array for real-time executive admin pulse
@@ -3375,6 +3530,7 @@ function closeModalOutside(e, id) {
 // ========================
 function init() {
   load();
+  evaluateAutoAbsent();
   syncProfileUI();
   syncAttendanceUI();
   renderAttLog();
