@@ -5033,12 +5033,149 @@
       font-size: 14px;
     }
 
-    /* Table Wrapping & Touch Scrolling */
+    /* =========================================================
+       NATIVE MOBILE CARD ARCHITECTURE FOR TABLES
+       Zero Horizontal Scrolling • Zero Cut Lines • Pure Fluid Cards
+       ========================================================= */
+    .table-container,
+    .history-table-wrap,
+    .glass-table-wrap {
+      overflow: visible !important;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin-bottom: 20px !important;
+    }
+
     .shift-history-table,
     .custom-table,
+    .data-table,
     table {
-      width: 100%;
-      min-width: 620px;
+      min-width: 0 !important;
+      width: 100% !important;
+      display: block !important;
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+
+    .shift-history-table thead,
+    .custom-table thead,
+    .data-table thead,
+    table thead {
+      display: none !important;
+    }
+
+    .shift-history-table tbody,
+    .custom-table tbody,
+    .data-table tbody,
+    table tbody {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      width: 100% !important;
+    }
+
+    .shift-history-table tbody tr,
+    .custom-table tbody tr,
+    .data-table tbody tr,
+    table tbody tr {
+      display: flex !important;
+      flex-direction: column !important;
+      background: linear-gradient(135deg, rgba(20, 16, 38, 0.92) 0%, rgba(12, 10, 24, 0.96) 100%) !important;
+      border: 1px solid rgba(139, 92, 246, 0.28) !important;
+      border-radius: 14px !important;
+      padding: 14px 16px !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+      width: 100% !important;
+      position: relative !important;
+      overflow: hidden !important;
+      gap: 6px !important;
+    }
+
+    .shift-history-table tbody tr::before,
+    .custom-table tbody tr::before,
+    .data-table tbody tr::before,
+    table tbody tr::before {
+      content: '' !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 4px !important;
+      background: linear-gradient(180deg, #8b5cf6, #06b6d4) !important;
+    }
+
+    .shift-history-table tbody td,
+    .custom-table tbody td,
+    .data-table tbody td,
+    table tbody td {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      flex-wrap: wrap !important;
+      padding: 7px 0 !important;
+      border: none !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      text-align: left !important;
+      font-size: 13px !important;
+    }
+
+    .shift-history-table tbody td::before,
+    .custom-table tbody td::before,
+    .data-table tbody td::before,
+    table tbody td::before {
+      content: attr(data-label) !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      color: #94a3b8 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.6px !important;
+      margin-right: 10px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .shift-history-table tbody td:first-child,
+    .custom-table tbody td:first-child,
+    .data-table tbody td:first-child,
+    table tbody td:first-child {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+      padding-bottom: 10px !important;
+      margin-bottom: 4px !important;
+      justify-content: flex-start !important;
+    }
+
+    .shift-history-table tbody td:first-child::before,
+    .custom-table tbody td:first-child::before,
+    .data-table tbody td:first-child::before,
+    table tbody td:first-child::before {
+      display: none !important;
+    }
+
+    .shift-history-table tbody td:last-child,
+    .custom-table tbody td:last-child,
+    .data-table tbody td:last-child,
+    table tbody td:last-child {
+      border-bottom: none !important;
+      padding-top: 8px !important;
+    }
+
+    .shift-history-table tbody td.empty-td,
+    .custom-table tbody td.empty-td,
+    .data-table tbody td.empty-td,
+    table tbody td.empty-td,
+    table tbody td[colspan] {
+      justify-content: center !important;
+      text-align: center !important;
+      border: none !important;
+      padding: 24px 14px !important;
+    }
+    table tbody td.empty-td::before,
+    table tbody td[colspan]::before {
+      display: none !important;
     }
 
     /* Filter Bar & Search */

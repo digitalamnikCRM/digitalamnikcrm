@@ -845,29 +845,26 @@
         font-size: 11px;
       }
 
-      /* Horizontal Scrollable Tabs */
+      /* Transform Navigation Tabs into a Clean 2x2 Segmented Grid */
       .admin-nav-tabs {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        gap: 6px;
-        padding-bottom: 6px;
-        margin-bottom: 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        scrollbar-width: none;
-      }
-
-      .admin-nav-tabs::-webkit-scrollbar {
-        display: none;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        overflow: visible !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 20px !important;
+        border-bottom: none !important;
       }
 
       .admin-tab-btn {
-        flex-shrink: 0;
-        white-space: nowrap;
-        font-size: 12px;
-        padding: 8px 12px;
-        border-radius: 8px;
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+        border-radius: 10px !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+        white-space: nowrap !important;
       }
 
       /* Founder Card */
@@ -892,21 +889,42 @@
         width: 100%;
       }
 
-      /* Attendance Filters & Tables */
+      /* Live Station Alignment on Mobile */
+      .live-pulse-section > div:first-child > div:first-child {
+        align-items: flex-start !important;
+        gap: 10px !important;
+        width: 100% !important;
+      }
+
+      .live-pulse-dot-ring {
+        flex-shrink: 0 !important;
+        margin-top: 4px !important;
+      }
+
+      .live-badge-count {
+        width: 100% !important;
+        justify-content: center !important;
+        margin-top: 6px !important;
+      }
+
+      /* Attendance Filters (Wrap into multi-column pills instead of clipping) */
       .att-filter-pills {
-        width: 100%;
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        padding: 4px;
-        scrollbar-width: none;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        overflow: visible !important;
+        padding: 4px !important;
+        box-sizing: border-box !important;
       }
 
       .att-pill {
-        flex-shrink: 0;
-        white-space: nowrap;
-        font-size: 11px;
-        padding: 5px 10px;
+        flex: 1 1 calc(50% - 6px) !important;
+        justify-content: center !important;
+        text-align: center !important;
+        padding: 8px 10px !important;
+        font-size: 11.5px !important;
+        box-sizing: border-box !important;
       }
 
       .staff-section-header {
@@ -915,19 +933,126 @@
         gap: 8px;
       }
 
-      /* Tables in Admin */
+      /* =========================================================
+         MOBILE CARD ARCHITECTURE FOR DATA TABLES
+         Transforms tables into elegant cards with zero edge clipping
+         ========================================================= */
       .glass-table-wrap {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border-radius: 10px;
-        margin-bottom: 18px;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin-bottom: 20px !important;
+        padding: 0 !important;
       }
 
-      .glass-table-wrap table {
-        min-width: 680px;
-        width: 100%;
+      .glass-table-wrap table,
+      .data-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+      }
+
+      .glass-table-wrap thead,
+      .data-table thead {
+        display: none !important;
+      }
+
+      .glass-table-wrap tbody,
+      .data-table tbody {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        width: 100% !important;
+      }
+
+      .glass-table-wrap tbody tr,
+      .data-table tbody tr {
+        display: flex !important;
+        flex-direction: column !important;
+        background: linear-gradient(135deg, rgba(20, 16, 38, 0.92) 0%, rgba(12, 10, 24, 0.96) 100%) !important;
+        border: 1px solid rgba(139, 92, 246, 0.28) !important;
+        border-radius: 14px !important;
+        padding: 14px 16px !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+        width: 100% !important;
+        position: relative !important;
+        overflow: hidden !important;
+        gap: 6px !important;
+      }
+
+      .glass-table-wrap tbody tr::before,
+      .data-table tbody tr::before {
+        content: '' !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        width: 4px !important;
+        background: linear-gradient(180deg, #8b5cf6, #06b6d4) !important;
+      }
+
+      .glass-table-wrap tbody td,
+      .data-table tbody td {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        padding: 7px 0 !important;
+        border: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        text-align: left !important;
+        font-size: 13px !important;
+      }
+
+      .glass-table-wrap tbody td::before,
+      .data-table tbody td::before {
+        content: attr(data-label) !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: #94a3b8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.6px !important;
+        margin-right: 10px !important;
+        flex-shrink: 0 !important;
+      }
+
+      .glass-table-wrap tbody td:first-child,
+      .data-table tbody td:first-child {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 4px !important;
+        justify-content: flex-start !important;
+      }
+
+      .glass-table-wrap tbody td:first-child::before,
+      .data-table tbody td:first-child::before {
+        display: none !important;
+      }
+
+      .glass-table-wrap tbody td:last-child,
+      .data-table tbody td:last-child {
+        border-bottom: none !important;
+        padding-top: 8px !important;
+      }
+
+      .glass-table-wrap tbody td.empty-td,
+      .glass-table-wrap tbody td[colspan] {
+        justify-content: center !important;
+        text-align: center !important;
+        border: none !important;
+        padding: 24px 14px !important;
+      }
+      .glass-table-wrap tbody td.empty-td::before,
+      .glass-table-wrap tbody td[colspan]::before {
+        display: none !important;
       }
 
       /* Live work & today completed */
@@ -2745,21 +2870,21 @@
 
         return `
         <tr>
-          <td>
+          <td data-label="Staff Specialist">
             <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:32px;height:32px;border-radius:6px;background:rgba(124,58,237,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#c4b5fd">
+              <div style="width:34px;height:34px;border-radius:8px;background:rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#c4b5fd;flex-shrink:0">
                 ${computeInitials(m.name)}
               </div>
               <div>
-                <strong style="color:#fff;font-size:13px;display:block">${m.name}</strong>
+                <strong style="color:#fff;font-size:13.5px;display:block">${m.name}</strong>
                 <span style="color:#94a3b8;font-size:11px">${m.role}</span>
               </div>
             </div>
           </td>
-          <td>
+          <td data-label="Employee ID">
             <span style="font-family:monospace;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.05);padding:3px 7px;border-radius:5px">${m.id}</span>
           </td>
-          <td>
+          <td data-label="Today's Presence">
             ${isLunch ? `
               <span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">🟡 On Lunch Break</span>
             ` : (isPresent ? `
@@ -2768,12 +2893,12 @@
               <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent</span>
             `)}
           </td>
-          <td>
+          <td data-label="Snapshot Selfie">
             ${photoUrl ? `
               <div style="display:inline-flex;align-items:center;gap:6px">
                 <img src="${photoUrl}" alt="Photo" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1.5px solid #10b981;cursor:pointer" onclick="openAdminPhotoPreview('${m.name}', '${photoUrl}', '${checkInStr}', '${m.role}')" />
                 <button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview('${m.name}', '${photoUrl}', '${checkInStr}', '${m.role}')" style="font-size:10.5px;padding:2px 8px">
-                  Inspect
+                  📷 Inspect
                 </button>
               </div>
             ` : (isPresent ? `
@@ -2782,10 +2907,10 @@
               <span style="font-size:11px;color:#64748b">—</span>
             `)}
           </td>
-          <td><strong>${checkInStr}</strong></td>
-          <td>${liveStatusHtml}</td>
-          <td>${checkOutStr}</td>
-          <td><span class="stat-badge purple">${hoursStr}</span></td>
+          <td data-label="Punch In"><strong>${checkInStr}</strong></td>
+          <td data-label="Current Status">${liveStatusHtml}</td>
+          <td data-label="Punch Out"><span>${checkOutStr}</span></td>
+          <td data-label="Effective Hours"><span class="stat-badge purple">${hoursStr}</span></td>
         </tr>
       `;
       }).join('');
@@ -2939,38 +3064,38 @@
 
         return `
         <tr class="clickable-row" onclick="openAdminClientDetail('${c.id}')" title="Click to open client details & deliverables">
-          <td>
+          <td data-label="Client Account">
             <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#c4b5fd">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#c4b5fd;flex-shrink:0">
                 ${c.name ? c.name.charAt(0).toUpperCase() : 'C'}
               </div>
               <div>
                 <strong style="color:#fff;font-size:14px;display:block">${c.name}</strong>
-                <span style="color:#94a3b8;font-size:11.5px">${c.lead ? 'Lead: ' + c.lead : 'Client Account'} • Click to view ›</span>
+                <span style="color:#94a3b8;font-size:11.5px">${c.lead ? 'Lead: ' + c.lead : 'Client Account'} • View ›</span>
               </div>
             </div>
           </td>
-          <td>
+          <td data-label="Industry">
             <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#cbd5e1">
               <span>🏷️</span> ${c.industry || 'Digital Marketing'}
             </span>
           </td>
-          <td>
+          <td data-label="Active Deliverables">
             <span class="stat-badge cyan" style="font-size:11.5px;padding:3px 9px;">
               📁 ${clientProjects.length} ${clientProjects.length === 1 ? 'Project' : 'Projects'}
             </span>
           </td>
-          <td>
+          <td data-label="Content Calendars">
             <span class="stat-badge purple" style="font-size:11.5px;padding:3px 9px;cursor:pointer" onclick="event.stopPropagation(); viewClientCalendars('${c.name}')" title="Click to view all ${c.name} PDF calendars">
               🗓️ ${clientCals.length} ${clientCals.length === 1 ? 'Calendar' : 'Calendars'}
             </span>
           </td>
-          <td>
+          <td data-label="Account Status">
             <span class="stat-badge ${statusBadgeClass}" style="font-size:11.5px;padding:3px 9px;">
               ${c.status || 'Active'}
             </span>
           </td>
-          <td style="text-align:right" onclick="event.stopPropagation()">
+          <td data-label="Actions" style="text-align:right" onclick="event.stopPropagation()">
             <div style="display:inline-flex;align-items:center;gap:6px">
               <button class="btn-small btn-secondary" onclick="openAdminClientDetail('${c.id}')" title="View Client Details">
                 <span>View</span>
@@ -3201,39 +3326,39 @@
 
         return `
         <tr class="clickable-row" onclick="openAdminEmpDetail('${m.id}')" title="Click to view specialist profile, assignments & timesheets">
-          <td>
+          <td data-label="Specialist">
             <div style="display:flex;align-items:center;gap:10px">
-              <div style="position:relative;width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.2));border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff">
+              <div style="position:relative;width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.2));border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">
                 ${initials}
                 <span style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:${statusDotColor};border:2px solid #0f172a"></span>
               </div>
               <div>
                 <strong style="color:#fff;font-size:13.5px;display:block">${m.name}</strong>
-                <span style="color:#94a3b8;font-size:11px">Click row to inspect profile ›</span>
+                <span style="color:#94a3b8;font-size:11px">Inspect Profile ›</span>
               </div>
             </div>
           </td>
-          <td>
+          <td data-label="Employee ID">
             <span style="font-family:monospace;font-size:12.5px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);padding:3px 8px;border-radius:6px">${m.id}</span>
           </td>
-          <td>
-            <div style="display:flex;flex-wrap:wrap;max-width:280px">
+          <td data-label="Domains">
+            <div style="display:flex;flex-wrap:wrap">
               ${domainBadgesHtml}
             </div>
           </td>
-          <td>
+          <td data-label="Shift Hours">
             <span style="font-size:12px;color:#cbd5e1">🕒 ${m.shift || '10:00 AM – 07:00 PM'}</span>
           </td>
-          <td>
+          <td data-label="Attendance">
             <div style="display:flex;align-items:center;gap:6px">
               ${attBadgeHtml}
               ${hasSelfie ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px" onclick="event.stopPropagation(); openAdminPhotoPreview('${m.name.replace(/'/g, "\\'")}', '${todayAtt.photo_url}', '${checkInTimeStr}', '${m.role}')">📸</span>` : ''}
             </div>
           </td>
-          <td>
+          <td data-label="Live Activity">
             ${currentTaskHtml}
           </td>
-          <td style="text-align:right" onclick="event.stopPropagation()">
+          <td data-label="Actions" style="text-align:right" onclick="event.stopPropagation()">
             <div style="display:inline-flex;align-items:center;gap:6px">
               <button class="btn-small btn-secondary" onclick="openAdminEmpDetail('${m.id}')" title="Inspect Staff Profile">
                 <span>View</span>
@@ -3648,28 +3773,30 @@
 
         return `
         <tr class="clickable-row" onclick="openAdminProjectDetail('${p.id}')" title="Click to view deliverable details, timers & session history">
-          <td>
-            <strong style="color:#fff;font-size:13.5px;display:block">${p.name}</strong>
-            <span style="font-size:11px;color:#94a3b8">Assigned to: ${p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Unassigned')} • Click to inspect ›</span>
+          <td data-label="Deliverable">
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <strong style="color:#fff;font-size:14px;line-height:1.3">${p.name}</strong>
+              <span style="font-size:11.5px;color:#94a3b8">👤 Assigned: ${p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Unassigned')}</span>
+            </div>
           </td>
-          <td>
+          <td data-label="Client Account">
             <span class="stat-badge cyan" style="font-size:11.5px;padding:3px 8px">🏢 ${p.client || 'Internal'}</span>
           </td>
-          <td>
+          <td data-label="Domain / Service">
             <span style="font-size:12px;color:#cbd5e1">🎨 ${p.serviceDomain || p.service || 'Video Editing'}</span>
           </td>
-          <td>
+          <td data-label="Status">
             <span class="stat-badge ${p.status === 'Completed' ? 'green' : (p.status === 'In Progress' ? 'cyan' : 'orange')}" style="font-size:11px;padding:3px 8px">
               ${p.status || 'Assigned'}
             </span>
           </td>
-          <td>
+          <td data-label="Billable Hours">
             <strong style="color:#34d399;font-size:13.5px;font-family:'JetBrains Mono'">${fmtDuration(totalMs)}</strong>
           </td>
-          <td>
+          <td data-label="Total Sessions">
             <span style="font-size:12px;color:#94a3b8">${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'}</span>
           </td>
-          <td>
+          <td data-label="Live State">
             <div style="display:flex;align-items:center;gap:8px">
               ${liveStateBadge}
               <span style="font-size:11px;color:#a78bfa;font-weight:600">Inspect ›</span>

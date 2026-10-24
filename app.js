@@ -1432,20 +1432,20 @@ function renderAttLog() {
 
     return `
       <tr>
-        <td><strong>${r.date || fmtDate(Date.now())}</strong></td>
-        <td>
+        <td data-label="Shift Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
+        <td data-label="Check In Time">
           <div style="display:flex;align-items:center;gap:6px">
             <strong>${checkInStr}</strong>
             ${r.photoUrl ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
           </div>
         </td>
-        <td>
+        <td data-label="Lunch Break">
           ${lunchStr}
           ${r.lateLunchReason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${r.lateLunchReason}">⚠️ Post-3PM: ${r.lateLunchReason}</div>` : ''}
         </td>
-        <td>${checkOutStr}</td>
-        <td><span class="stat-badge purple">${workHrsStr}</span></td>
-        <td><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
+        <td data-label="Check Out Time"><span>${checkOutStr}</span></td>
+        <td data-label="Effective Hours"><span class="stat-badge purple">${workHrsStr}</span></td>
+        <td data-label="Shift Status"><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
       </tr>
     `;
   }).join('');
