@@ -89,6 +89,14 @@ const SupabaseConfig = {
         }
       });
 
+      // Listen for attendance logs changes
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_logs' }, (payload) => {
+        console.log('⚡ Realtime Attendance Change:', payload);
+        if (typeof SupabaseData !== 'undefined') {
+          SupabaseData.syncAttendanceRealtime(payload);
+        }
+      });
+
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('⚡ Supabase Realtime Stream Connected!');
@@ -101,6 +109,50 @@ const SupabaseConfig = {
 };
 
 // ====================================================================
+// STATE BRIDGE & UI SYNC HELPERS (SHARED BETWEEN PORTAL & ADMIN)
+// ====================================================================
+function getActiveCRMState() {
+  if (typeof STATE !== 'undefined' && STATE && typeof STATE === 'object') {
+    return STATE;
+  }
+  if (typeof getCRMState === 'function') {
+    return getCRMState();
+  }
+  try {
+    const raw = localStorage.getItem('da_crm_state_v3') || localStorage.getItem('da_crm_state_v2');
+    return raw ? JSON.parse(raw) : { clients: [], team: [], projects: [], calendars: [], attendance: { status: 'out' } };
+  } catch (e) {
+    return { clients: [], team: [], projects: [], calendars: [], attendance: { status: 'out' } };
+  }
+}
+
+function persistActiveCRMState(st) {
+  if (typeof save === 'function') {
+    try { save(); } catch (e) {}
+  }
+  if (typeof saveCRMState === 'function') {
+    try { saveCRMState(st); } catch (e) {}
+  }
+  try {
+    localStorage.setItem('da_crm_state_v3', JSON.stringify(st));
+  } catch (e) {}
+}
+
+function triggerAllUIRenders() {
+  if (typeof renderProjects === 'function') renderProjects();
+  if (typeof renderCalendars === 'function') renderCalendars();
+  if (typeof updateDashCounts === 'function') updateDashCounts();
+  if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+  if (typeof renderAdminClients === 'function') renderAdminClients();
+  if (typeof renderAdminEmployees === 'function') renderAdminEmployees();
+  if (typeof renderAdminProjectsTime === 'function') renderAdminProjectsTime();
+  if (typeof renderAdminCalendars === 'function') renderAdminCalendars();
+  if (typeof renderAdminAttendanceTable === 'function') renderAdminAttendanceTable();
+  if (typeof updateAdminKpis === 'function') updateAdminKpis();
+  if (typeof renderLiveWorkAndCompletions === 'function') renderLiveWorkAndCompletions();
+}
+
+// ====================================================================
 // SUPABASE DATA OPERATIONS (CRUD)
 // ====================================================================
 const SupabaseData = {
@@ -109,6 +161,8 @@ const SupabaseData = {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return false;
 
     try {
+      const st = getActiveCRMState();
+
       // 1. Fetch Clients
       const { data: clientsData, error: clientErr } = await window.sbClient
         .from('clients')
@@ -116,7 +170,7 @@ const SupabaseData = {
         .order('created_at', { ascending: false });
 
       if (!clientErr && Array.isArray(clientsData)) {
-        STATE.clients = clientsData.map(c => ({
+        st.clients = clientsData.map(c => ({
           id: c.id,
           name: c.name,
           industry: c.industry,
@@ -134,17 +188,18 @@ const SupabaseData = {
         .order('created_at', { ascending: true });
 
       if (!teamErr && Array.isArray(teamData) && teamData.length > 0) {
-        STATE.team = teamData.map(m => ({
-          id: m.id,
+        st.team = teamData.map(m => ({
+          id: String(m.id || '').trim().toLowerCase(),
           name: m.name,
           role: m.role,
-          shift: m.shift,
+          shift: m.shift || '10:00 AM – 07:00 PM',
           password: m.password,
           isFounder: m.is_founder,
           email: m.email,
           phone: m.phone,
           lateLunchReason: m.late_lunch_reason,
           lateLunchTime: m.late_lunch_time,
+          domains: m.role ? String(m.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
           addedAt: new Date(m.created_at).getTime(),
         }));
       }
@@ -156,7 +211,7 @@ const SupabaseData = {
         .order('created_at', { ascending: false });
 
       if (!projErr && Array.isArray(projData)) {
-        STATE.projects = projData.map(p => ({
+        st.projects = projData.map(p => ({
           id: p.id,
           name: p.name,
           client: p.client,
@@ -180,7 +235,7 @@ const SupabaseData = {
         .order('created_at', { ascending: false });
 
       if (!calErr && Array.isArray(calData)) {
-        STATE.calendars = calData.map(c => ({
+        st.calendars = calData.map(c => ({
           id: c.id,
           client: c.client,
           month: c.month,
@@ -200,10 +255,12 @@ const SupabaseData = {
         .from('attendance_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(150);
 
       if (!attErr && Array.isArray(attData)) {
-        STATE.attendance.log = attData.map(a => ({
+        window._adminAttLogs = attData;
+        if (!st.attendance) st.attendance = { status: 'out' };
+        st.attendance.log = attData.map(a => ({
           id: a.id,
           employeeId: a.employee_id,
           employeeName: a.employee_name,
@@ -224,7 +281,8 @@ const SupabaseData = {
       this.purgeOldPhotos();
 
       console.log('📦 Data successfully hydrated from Supabase Cloud!');
-      save(); // update local fallback
+      persistActiveCRMState(st);
+      triggerAllUIRenders();
       return true;
     } catch (e) {
       console.warn('Error loading from Supabase:', e);
@@ -303,12 +361,12 @@ const SupabaseData = {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
       const row = {
-        id: m.id,
+        id: String(m.id || '').trim().toLowerCase(),
         name: m.name,
-        role: m.role,
+        role: m.role || 'Video Editor',
         shift: m.shift || '10:00 AM – 07:00 PM',
         password: m.password || '123',
-        is_founder: Boolean(m.isFounder),
+        is_founder: Boolean(m.isFounder || (m.id && m.id.toLowerCase().replace('-', '') === 'emp000')),
         email: m.email || '',
         phone: m.phone || '',
         late_lunch_reason: m.lateLunchReason || null,
@@ -325,7 +383,7 @@ const SupabaseData = {
   async deleteTeamMember(id) {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
-      const { error } = await window.sbClient.from('team_members').delete().eq('id', id);
+      const { error } = await window.sbClient.from('team_members').delete().eq('id', String(id || '').trim().toLowerCase());
       if (error) console.error('Supabase deleteTeamMember error:', error);
     } catch (e) {
       console.error(e);
@@ -336,6 +394,7 @@ const SupabaseData = {
   async upsertCalendar(cal) {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
+      const creatorName = (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.name) ? STATE.employee.name : 'Admin';
       const row = {
         id: cal.id,
         client: cal.client,
@@ -345,7 +404,7 @@ const SupabaseData = {
         file_name: cal.fileName,
         file_url: cal.fileUrl,
         file_size: cal.fileSize || '',
-        uploaded_by: cal.uploadedBy || (STATE.employee && STATE.employee.name) || 'Admin',
+        uploaded_by: cal.uploadedBy || creatorName,
         notes: cal.notes || '',
         created_at: new Date(cal.uploadedAt || Date.now()).toISOString(),
       };
@@ -366,22 +425,29 @@ const SupabaseData = {
     }
   },
 
-  // 6. ATTENDANCE LOG OPERATIONS
+  // 6. ATTENDANCE LOG OPERATIONS (DETERMINISTIC ID PER EMPLOYEE PER DAY)
   async logAttendance(entry) {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
+      const currentEmpId = (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.id) ? STATE.employee.id : 'emp001';
+      const currentEmpName = (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.name) ? STATE.employee.name : 'Specialist';
+      const rawEmpId = String(entry.employee_id || entry.employeeId || currentEmpId).trim().toLowerCase();
+      const rawDate = String(entry.date || '').trim();
+      const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9]/g, '_');
+      const deterministicId = entry.id || `att_${rawEmpId.replace(/[^a-z0-9]/g, '')}_${sanitizedDate}`;
+
       const row = {
-        id: entry.id || ('att-' + Date.now().toString(36)),
-        employee_id: entry.employeeId || (STATE.employee && STATE.employee.id),
-        employee_name: entry.employeeName || (STATE.employee && STATE.employee.name),
-        date: entry.date,
-        check_in: entry.checkIn || null,
-        lunch_start: entry.lunchStart || null,
-        lunch_end: entry.lunchEnd || null,
-        check_out: entry.checkOut || null,
-        effective_hours: entry.effectiveHours || '0h 0m',
-        late_lunch_reason: entry.lateLunchReason || null,
-        status: entry.status || 'done',
+        id: deterministicId,
+        employee_id: rawEmpId,
+        employee_name: entry.employeeName || entry.employee_name || currentEmpName,
+        date: rawDate,
+        check_in: entry.checkIn || entry.check_in || null,
+        lunch_start: entry.lunchStart || entry.lunch_start || null,
+        lunch_end: entry.lunchEnd || entry.lunch_end || null,
+        check_out: entry.checkOut || entry.check_out || null,
+        effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
+        late_lunch_reason: entry.lateLunchReason || entry.late_lunch_reason || null,
+        status: entry.status || 'in',
         photo_url: entry.photoUrl || entry.photo_url || null,
         created_at: new Date().toISOString(),
       };
@@ -393,7 +459,6 @@ const SupabaseData = {
   },
 
   // 7. 7-DAY PHOTO RETENTION AUTO-PURGE
-  // Automatically clears heavy photos older than 7 days, keeping the 'Present' attendance records permanent
   async purgeOldPhotos() {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
@@ -417,6 +482,9 @@ const SupabaseData = {
   // REALTIME SYNC HANDLERS
   syncProjectsRealtime(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
+    const st = getActiveCRMState();
+    if (!Array.isArray(st.projects)) st.projects = [];
+
     if (eventType === 'INSERT') {
       const mapped = {
         id: newRow.id,
@@ -433,14 +501,14 @@ const SupabaseData = {
         createdBy: newRow.created_by,
         createdAt: new Date(newRow.created_at).getTime(),
       };
-      if (!STATE.projects.some(p => p.id === mapped.id)) {
-        STATE.projects.unshift(mapped);
+      if (!st.projects.some(p => p.id === mapped.id)) {
+        st.projects.unshift(mapped);
       }
     } else if (eventType === 'UPDATE') {
-      const idx = STATE.projects.findIndex(p => p.id === newRow.id);
+      const idx = st.projects.findIndex(p => p.id === newRow.id);
       if (idx !== -1) {
-        STATE.projects[idx] = {
-          ...STATE.projects[idx],
+        st.projects[idx] = {
+          ...st.projects[idx],
           name: newRow.name,
           client: newRow.client,
           service: newRow.service,
@@ -454,18 +522,18 @@ const SupabaseData = {
         };
       }
     } else if (eventType === 'DELETE') {
-      STATE.projects = STATE.projects.filter(p => p.id !== oldRow.id);
+      st.projects = st.projects.filter(p => p.id !== oldRow.id);
     }
 
-    if (typeof renderProjects === 'function') renderProjects();
-    if (typeof updateDashCounts === 'function') updateDashCounts();
-    if (typeof updateAdminKpis === 'function') updateAdminKpis();
-    if (typeof renderAdminProjectsTime === 'function') renderAdminProjectsTime();
-    save();
+    persistActiveCRMState(st);
+    triggerAllUIRenders();
   },
 
   syncClientsRealtime(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
+    const st = getActiveCRMState();
+    if (!Array.isArray(st.clients)) st.clients = [];
+
     if (eventType === 'INSERT') {
       const mapped = {
         id: newRow.id,
@@ -476,65 +544,70 @@ const SupabaseData = {
         notes: newRow.notes,
         createdAt: new Date(newRow.created_at).getTime(),
       };
-      if (!STATE.clients.some(c => c.id === mapped.id)) {
-        STATE.clients.unshift(mapped);
+      if (!st.clients.some(c => c.id === mapped.id)) {
+        st.clients.unshift(mapped);
       }
     } else if (eventType === 'UPDATE') {
-      const idx = STATE.clients.findIndex(c => c.id === newRow.id);
+      const idx = st.clients.findIndex(c => c.id === newRow.id);
       if (idx !== -1) {
-        STATE.clients[idx] = { ...STATE.clients[idx], ...newRow };
+        st.clients[idx] = { ...st.clients[idx], ...newRow };
       }
     } else if (eventType === 'DELETE') {
-      STATE.clients = STATE.clients.filter(c => c.id !== oldRow.id);
+      st.clients = st.clients.filter(c => c.id !== oldRow.id);
     }
 
-    if (typeof renderClientsDatalist === 'function') renderClientsDatalist();
-    if (typeof renderAdminClients === 'function') renderAdminClients();
-    if (typeof updateAdminKpis === 'function') updateAdminKpis();
-    save();
+    persistActiveCRMState(st);
+    triggerAllUIRenders();
   },
 
   syncTeamRealtime(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
+    const st = getActiveCRMState();
+    if (!Array.isArray(st.team)) st.team = [];
+
     if (eventType === 'INSERT') {
       const mapped = {
-        id: newRow.id,
+        id: String(newRow.id || '').trim().toLowerCase(),
         name: newRow.name,
         role: newRow.role,
-        shift: newRow.shift,
+        shift: newRow.shift || '10:00 AM – 07:00 PM',
         password: newRow.password,
         isFounder: newRow.is_founder,
         email: newRow.email,
         phone: newRow.phone,
+        domains: newRow.role ? String(newRow.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
         addedAt: new Date(newRow.created_at).getTime(),
       };
-      if (!STATE.team.some(m => m.id === mapped.id)) {
-        STATE.team.push(mapped);
+      if (!st.team.some(m => m.id.toLowerCase() === mapped.id)) {
+        st.team.push(mapped);
       }
     } else if (eventType === 'UPDATE') {
-      const idx = STATE.team.findIndex(m => m.id === newRow.id);
+      const idx = st.team.findIndex(m => m.id.toLowerCase() === String(newRow.id || '').toLowerCase());
       if (idx !== -1) {
-        STATE.team[idx] = {
-          ...STATE.team[idx],
+        st.team[idx] = {
+          ...st.team[idx],
           name: newRow.name,
           role: newRow.role,
-          shift: newRow.shift,
+          shift: newRow.shift || '10:00 AM – 07:00 PM',
           password: newRow.password,
           lateLunchReason: newRow.late_lunch_reason,
           lateLunchTime: newRow.late_lunch_time,
+          domains: newRow.role ? String(newRow.role).split(',').map(s => s.trim()).filter(Boolean) : st.team[idx].domains,
         };
       }
     } else if (eventType === 'DELETE') {
-      STATE.team = STATE.team.filter(m => m.id !== oldRow.id);
+      st.team = st.team.filter(m => m.id.toLowerCase() !== String(oldRow.id || '').toLowerCase());
     }
 
-    if (typeof renderAdminEmployees === 'function') renderAdminEmployees();
-    if (typeof updateAdminKpis === 'function') updateAdminKpis();
-    save();
+    persistActiveCRMState(st);
+    triggerAllUIRenders();
   },
 
   syncCalendarsRealtime(payload) {
     const { eventType, new: newRow, old: oldRow } = payload;
+    const st = getActiveCRMState();
+    if (!Array.isArray(st.calendars)) st.calendars = [];
+
     if (eventType === 'INSERT') {
       const mapped = {
         id: newRow.id,
@@ -549,18 +622,37 @@ const SupabaseData = {
         notes: newRow.notes,
         uploadedAt: new Date(newRow.created_at).getTime(),
       };
-      if (!STATE.calendars.some(c => c.id === mapped.id)) {
-        STATE.calendars.unshift(mapped);
+      if (!st.calendars.some(c => c.id === mapped.id)) {
+        st.calendars.unshift(mapped);
       }
     } else if (eventType === 'DELETE') {
-      STATE.calendars = STATE.calendars.filter(c => c.id !== oldRow.id);
+      st.calendars = st.calendars.filter(c => c.id !== oldRow.id);
     }
 
-    if (typeof renderCalendars === 'function') renderCalendars();
-    if (typeof renderAdminCalendars === 'function') renderAdminCalendars();
-    if (typeof renderAdminClients === 'function') renderAdminClients();
-    if (typeof updateAdminKpis === 'function') updateAdminKpis();
-    if (typeof save === 'function') save();
+    persistActiveCRMState(st);
+    triggerAllUIRenders();
+  },
+
+  syncAttendanceRealtime(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+    if (!Array.isArray(window._adminAttLogs)) window._adminAttLogs = [];
+
+    if (eventType === 'INSERT') {
+      if (!window._adminAttLogs.some(a => a.id === newRow.id)) {
+        window._adminAttLogs.unshift(newRow);
+      }
+    } else if (eventType === 'UPDATE') {
+      const idx = window._adminAttLogs.findIndex(a => a.id === newRow.id);
+      if (idx !== -1) {
+        window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...newRow };
+      } else {
+        window._adminAttLogs.unshift(newRow);
+      }
+    } else if (eventType === 'DELETE') {
+      window._adminAttLogs = window._adminAttLogs.filter(a => a.id !== oldRow.id);
+    }
+
+    triggerAllUIRenders();
   }
 };
 

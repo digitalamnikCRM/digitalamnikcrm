@@ -567,6 +567,137 @@
       font-size: 12px;
       color: #94a3b8;
     }
+
+    /* Pulse Dot & Animation */
+    @keyframes pulse-ring-glow {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    }
+    .live-pulse-dot-ring {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse-ring-glow 1.8s infinite;
+    }
+    .live-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .live-badge-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    /* Live Project Work Grid */
+    .live-work-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .live-work-card {
+      background: linear-gradient(135deg, rgba(20, 16, 38, 0.7), rgba(12, 10, 24, 0.8));
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+      border-radius: 12px;
+      padding: 16px 18px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .live-work-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: linear-gradient(to bottom, #10b981, #06b6d4);
+    }
+    .live-work-card:hover {
+      border-color: rgba(52, 211, 153, 0.6);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+    }
+
+    /* Attendance Filter Pills */
+    .att-filter-pills {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .att-pill {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .att-pill:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .att-pill.active {
+      background: rgba(124, 58, 237, 0.25);
+      border: 1px solid rgba(124, 58, 237, 0.45);
+      color: #c4b5fd;
+    }
+    .att-pill.green.active {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #34d399;
+    }
+    .att-pill.red.active {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #f87171;
+    }
+    .att-pill.orange.active {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fbbf24;
+    }
+
+    /* Today's Completed Section */
+    .today-completed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 12px;
+    }
+    .today-completed-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 13px 15px;
+      transition: all 0.2s ease;
+    }
+    .today-completed-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(124, 58, 237, 0.35);
+    }
   </style>
 </head>
 
@@ -691,40 +822,57 @@
 
     <!-- Executive KPIs -->
     <div class="admin-kpi-grid">
-      <div class="admin-kpi-card purple">
+      <div class="admin-kpi-card cyan" onclick="switchAdminTab('employees')" style="cursor:pointer" title="View recruited staff specialists">
+        <div class="kpi-icon-box">👥</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Staff Specialists</span>
+          <strong class="kpi-val" id="admin-kpi-team">0</strong>
+          <span class="kpi-sub" id="admin-kpi-team-active">0 in studio • 1 Owner</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card emerald" onclick="switchAdminTab('timesheets'); setAttFilter('present')" style="cursor:pointer" title="Click to view employees present today">
+        <div class="kpi-icon-box">🟢</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Present Today</span>
+          <strong class="kpi-val" id="admin-kpi-present" style="color:#34d399">0</strong>
+          <span class="kpi-sub">Checked-in &amp; Active</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card rose" onclick="switchAdminTab('timesheets'); setAttFilter('absent')" style="cursor:pointer" title="Click to view employees absent today">
+        <div class="kpi-icon-box">🔴</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Absent Today</span>
+          <strong class="kpi-val" id="admin-kpi-absent" style="color:#f87171">0</strong>
+          <span class="kpi-sub">Not punched in yet</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card amber" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to see who is working live on projects">
+        <div class="kpi-icon-box">⚡</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Working Live Now</span>
+          <strong class="kpi-val" id="admin-kpi-live-work" style="color:#fbbf24">0</strong>
+          <span class="kpi-sub">Running project timers</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card purple" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to inspect completed tasks today">
+        <div class="kpi-icon-box">✅</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Completed Today</span>
+          <strong class="kpi-val" id="admin-kpi-completed-today" style="color:#c4b5fd">0</strong>
+          <span class="kpi-sub">Deliverables / Sessions done</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card purple" onclick="switchAdminTab('clients')" style="cursor:pointer" title="View managed client accounts">
         <div class="kpi-icon-box">🏢</div>
         <div class="kpi-info">
           <span class="kpi-label">Client Accounts</span>
           <strong class="kpi-val" id="admin-kpi-clients">0</strong>
           <span class="kpi-sub">Managed brand partners</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card cyan">
-        <div class="kpi-icon-box">👥</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Hired Staff</span>
-          <strong class="kpi-val" id="admin-kpi-team">0</strong>
-          <span class="kpi-sub" id="admin-kpi-team-active">0 in studio</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card emerald" onclick="switchAdminTab('calendars')" style="cursor:pointer"
-        title="Click to view Content Calendars & PDFs">
-        <div class="kpi-icon-box">🗓️</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Content Calendars</span>
-          <strong class="kpi-val" id="admin-kpi-cals">0</strong>
-          <span class="kpi-sub">Monthly client PDF strategies</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card amber">
-        <div class="kpi-icon-box">🚀</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Active Deliverables</span>
-          <strong class="kpi-val" id="admin-kpi-projects">0</strong>
-          <span class="kpi-sub">In flight / Assigned</span>
         </div>
       </div>
     </div>
@@ -831,14 +979,20 @@
         <button class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Team Member</button>
       </div>
 
-      <div class="filter-bar" style="margin-bottom:16px">
-        <div class="search-input-box" style="max-width:350px">
+      <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div class="search-input-box" style="max-width:350px;width:100%">
           <svg viewBox="0 0 24 24" width="16" height="16">
             <path
               d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
           </svg>
           <input type="text" class="search-input" id="admin-emp-search"
-            placeholder="Search hired staff by name, domain, ID..." oninput="renderAdminEmployees()" />
+            placeholder="Search hired staff by name, domain, ID (e.g. emp001)..." oninput="renderAdminEmployees()" />
+        </div>
+        <div class="att-filter-pills" id="admin-roster-att-filters">
+          <button type="button" class="att-pill active" onclick="setRosterAttFilter('all', this)">All Staff (<span id="roster-filter-all-cnt">0</span>)</button>
+          <button type="button" class="att-pill green" onclick="setRosterAttFilter('present', this)">🟢 Present Today (<span id="roster-filter-pres-cnt">0</span>)</button>
+          <button type="button" class="att-pill red" onclick="setRosterAttFilter('absent', this)">🔴 Absent (<span id="roster-filter-abs-cnt">0</span>)</button>
+          <button type="button" class="att-pill orange" onclick="setRosterAttFilter('lunch', this)">🟡 On Lunch (<span id="roster-filter-lunch-cnt">0</span>)</button>
         </div>
       </div>
 
@@ -850,7 +1004,8 @@
               <th>Employee ID</th>
               <th>Assigned Domains</th>
               <th>Shift Timing</th>
-              <th>Attendance Status</th>
+              <th>Today's Attendance</th>
+              <th>Current Live Task</th>
               <th style="text-align:right">Actions</th>
             </tr>
           </thead>
@@ -864,29 +1019,68 @@
     <!-- TAB 3: PROJECT HOURS & TIMESHEETS -->
     <div class="admin-pane" id="admin-pane-timesheets">
 
-      <!-- TODAY'S ATTENDANCE & CHECK-IN PHOTO VERIFICATION STATION -->
-      <div style="margin-bottom:28px">
-        <div
-          style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div>
-            <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">📸 Today's Staff
-              Attendance &amp; Check-in Verification</h3>
-            <span style="font-size:12.5px;color:#94a3b8">Presence snapshots captured during check-in. Auto-purged after
-              7 days to preserve Supabase storage.</span>
+      <!-- 1. LIVE AGENCY PULSE: ABHI KON KIS PROJECT PR KAM KR RHA HAI -->
+      <div class="live-pulse-section" style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="live-pulse-dot-ring">
+              <span class="live-pulse-dot"></span>
+            </span>
+            <div>
+              <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station — Abhi Kon Kis Project Par Kaam Kar Raha Hai</h3>
+              <span style="font-size:12.5px;color:#94a3b8">Real-time live specialist activity and running deliverable clocks across the agency</span>
+            </div>
           </div>
-          <button class="btn-small btn-secondary" onclick="loadAdminAttendanceLogs()" style="gap:6px">
-            <span>🔄 Refresh Attendance</span>
-          </button>
+          <span class="live-badge-count" id="admin-live-workers-count">0 Working Now</span>
+        </div>
+        <div id="admin-live-work-container">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- 2. TODAY'S COMPLETED WORK: AAJ KYA KYA COMPLETE KIYA -->
+      <div class="today-completed-section" style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">✅ Aaj Kya Kya Complete Hua — Today's Concluded Deliverables &amp; Sessions</h3>
+            <span style="font-size:12.5px;color:#94a3b8">Completed agency deliverables &amp; work sessions finished today by staff</span>
+          </div>
+          <span class="stat-badge green" id="admin-today-completed-summary">0 Done Today</span>
+        </div>
+        <div id="admin-today-completed-container">
+          <!-- Rendered dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- 3. TODAY'S ATTENDANCE: PRESENT VS ABSENT BREAKDOWN -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">📸 Aaj Kon Kon Present Hai &amp; Kon Absent (Daily Attendance Verification)</h3>
+            <span style="font-size:12.5px;color:#94a3b8">Check-in photos and shift hours. Photo records auto-purged after 7 days to preserve storage.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="att-filter-pills" id="admin-att-filters">
+              <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
+              <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">🟢 Present (<span id="att-filter-pres-cnt">0</span>)</button>
+              <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
+              <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
+            </div>
+            <button class="btn-small btn-secondary" onclick="loadAdminAll()" style="gap:6px">
+              <span>🔄 Refresh All</span>
+            </button>
+          </div>
         </div>
         <div class="glass-table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Staff Member</th>
-                <th>Presence</th>
-                <th>Check-in Snapshot</th>
-                <th>Punch In Time</th>
-                <th>Lunch Break</th>
+                <th>Staff Specialist</th>
+                <th>Employee ID</th>
+                <th>Today's Presence</th>
+                <th>Snapshot</th>
+                <th>Punch In</th>
+                <th>Current Status / Active Task</th>
                 <th>Punch Out</th>
                 <th>Effective Hours</th>
               </tr>
@@ -1044,8 +1238,8 @@
             <input type="text" class="form-input" id="new-emp-name" placeholder="e.g. Aryan Sharma" />
           </div>
           <div class="form-group">
-            <label class="form-label">Employee ID <span class="req">*</span></label>
-            <input type="text" class="form-input" id="new-emp-id" placeholder="e.g. EMP-007" />
+            <label class="form-label">Employee ID (e.g. emp001, emp101) <span class="req">*</span></label>
+            <input type="text" class="form-input" id="new-emp-id" placeholder="e.g. emp001" />
           </div>
         </div>
         <div class="form-group">
@@ -1607,6 +1801,29 @@
       localStorage.setItem('da_crm_state_v3', JSON.stringify(data));
     }
 
+    let _currentAttFilter = 'all';
+    let _currentRosterAttFilter = 'all';
+
+    function setAttFilter(filter, btn) {
+      _currentAttFilter = filter;
+      document.querySelectorAll('#admin-att-filters .att-pill').forEach(b => b.classList.remove('active'));
+      if (btn) {
+        btn.classList.add('active');
+      } else {
+        const found = document.querySelector(`#admin-att-filters .att-pill.${filter}`) ||
+                      document.querySelector(`#admin-att-filters .att-pill:first-child`);
+        if (found) found.classList.add('active');
+      }
+      renderAdminAttendanceTable();
+    }
+
+    function setRosterAttFilter(filter, btn) {
+      _currentRosterAttFilter = filter;
+      document.querySelectorAll('#admin-roster-att-filters .att-pill').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderAdminEmployees();
+    }
+
     function initAdminData() {
       const state = getCRMState();
 
@@ -1620,16 +1837,14 @@
         state.clients = [];
       }
 
-      // Clean out any legacy mock team members, keep real founder Amaan Khan
+      // Ensure real Founder Amaan Khan is always preserved
       if (Array.isArray(state.team)) {
         state.team = state.team.filter(m =>
-          m && m.id === 'EMP-000' ||
-          (!['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'].includes(m.id) &&
-            !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || ''))
+          m && (!/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || ''))
         );
-        if (!state.team.some(m => m.id === 'EMP-000')) {
+        if (!state.team.some(m => m.isFounder || (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000'))) {
           state.team.unshift({
-            id: 'EMP-000',
+            id: 'emp000',
             name: 'Amaan Khan',
             role: 'Admin',
             shift: '09:30 AM – 07:30 PM',
@@ -1640,7 +1855,7 @@
         }
       } else {
         state.team = [{
-          id: 'EMP-000',
+          id: 'emp000',
           name: 'Amaan Khan',
           role: 'Admin',
           shift: '09:30 AM – 07:30 PM',
@@ -1655,29 +1870,155 @@
       renderAdminClients();
       renderAdminEmployees();
       renderAdminProjectsTime();
-      loadAdminAttendanceLogs();
-      loadAdminCalendars();
+      renderAdminAttendanceTable();
+      renderLiveWorkAndCompletions();
+
+      // Instant cloud hydration from Supabase
+      loadAdminAll();
+
+      // Start 1-second live ticker for running project timers
+      if (!_liveTimerTicker) {
+        _liveTimerTicker = setInterval(() => {
+          renderLiveWorkAndCompletions();
+          document.querySelectorAll('.timesheet-clock[data-start-time]').forEach(el => {
+            const st = parseInt(el.getAttribute('data-start-time'), 10);
+            if (st > 0) {
+              el.textContent = fmtHHMMSS(Math.max(0, Date.now() - st));
+            }
+          });
+        }, 1000);
+      }
+    }
+
+    // Direct Supabase Cloud Hydration for Executive Admin
+    async function loadAdminAll() {
+      if (!window.sbClient) {
+        setTimeout(loadAdminAll, 500);
+        return;
+      }
+      try {
+        // 1. Load Team Members
+        const { data: teamData, error: teamErr } = await window.sbClient
+          .from('team_members')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        const state = getCRMState();
+
+        if (!teamErr && Array.isArray(teamData)) {
+          const founder = (state.team || []).find(m => m.isFounder || (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')) || {
+            id: 'emp000',
+            name: 'Amaan Khan',
+            role: 'Admin',
+            shift: '09:30 AM – 07:30 PM',
+            password: 'amnik2026',
+            isFounder: true,
+            addedAt: Date.now()
+          };
+
+          const recruited = teamData
+            .filter(m => !m.is_founder && String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000')
+            .map(m => ({
+              id: String(m.id || '').trim().toLowerCase(),
+              name: m.name,
+              role: m.role || 'Video Editor',
+              shift: m.shift || '10:00 AM – 07:00 PM',
+              password: m.password || '123',
+              isFounder: false,
+              email: m.email || '',
+              phone: m.phone || '',
+              domains: m.role ? String(m.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
+              addedAt: m.created_at ? new Date(m.created_at).getTime() : Date.now()
+            }));
+
+          state.team = [founder, ...recruited];
+        }
+
+        // 2. Load Deliverables / Projects
+        const { data: projData, error: projErr } = await window.sbClient
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!projErr && Array.isArray(projData)) {
+          state.projects = projData.map(p => ({
+            id: p.id,
+            name: p.name,
+            client: p.client || '',
+            service: p.service || 'Video Editor',
+            priority: p.priority || 'Medium',
+            status: p.status || 'Assigned',
+            deadline: p.deadline || '',
+            assigned: Array.isArray(p.assigned) ? p.assigned : [],
+            desc: p.description || '',
+            totalTimeSpent: Number(p.total_time_spent) || 0,
+            sessions: Array.isArray(p.sessions) ? p.sessions : [],
+            createdBy: p.created_by || 'Admin',
+            createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now()
+          }));
+        }
+
+        // 3. Load Clients
+        const { data: clientData, error: clientErr } = await window.sbClient
+          .from('clients')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!clientErr && Array.isArray(clientData)) {
+          state.clients = clientData.map(c => ({
+            id: c.id,
+            name: c.name,
+            industry: c.industry || 'Digital Marketing',
+            status: c.status || 'Active',
+            lead: c.lead || 'Amaan Khan (Owner)',
+            notes: c.notes || '',
+            createdAt: c.created_at ? new Date(c.created_at).getTime() : Date.now()
+          }));
+        }
+
+        // 4. Load Attendance Logs
+        const { data: attData, error: attErr } = await window.sbClient
+          .from('attendance_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(150);
+
+        if (!attErr && Array.isArray(attData)) {
+          window._adminAttLogs = attData;
+        }
+
+        // Save & Render Everything
+        saveCRMState(state);
+        updateAdminKpis();
+        renderAdminClients();
+        renderAdminEmployees();
+        renderAdminProjectsTime();
+        renderAdminAttendanceTable();
+        renderLiveWorkAndCompletions();
+        loadAdminCalendars();
+      } catch (err) {
+        console.warn('loadAdminAll warning:', err);
+      }
     }
 
     async function loadAdminAttendanceLogs() {
-      if (!window.sbClient) {
-        setTimeout(loadAdminAttendanceLogs, 500);
-        return;
-      }
+      if (!window.sbClient) return;
       try {
         const { data, error } = await window.sbClient
           .from('attendance_logs')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(100);
+          .limit(150);
 
         if (!error && Array.isArray(data)) {
           window._adminAttLogs = data;
+          updateAdminKpis();
           renderAdminEmployees();
           renderAdminAttendanceTable();
+          renderLiveWorkAndCompletions();
         }
 
-        // Background Maintenance: Wipe photos older than 7 days, maintaining permanent 'Present' text record
+        // Maintenance: wipe photos older than 7 days
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         await window.sbClient
           .from('attendance_logs')
@@ -1700,24 +2041,193 @@
       openModal('admin-photo-preview-modal');
     }
 
+    // ====================================================================
+    // ⚡ LIVE WORK STATION & TODAY'S COMPLETED WORK RENDERING
+    // ====================================================================
+    function renderLiveWorkAndCompletions() {
+      const liveWrap = document.getElementById('admin-live-work-container');
+      const liveCountBadge = document.getElementById('admin-live-workers-count');
+      const compWrap = document.getElementById('admin-today-completed-container');
+      const compBadge = document.getElementById('admin-today-completed-summary');
+
+      const state = getCRMState();
+      const todayDateStr = fmtDate(Date.now());
+      const now = Date.now();
+
+      // 1. Gather all active project timer sessions
+      const activeSessions = [];
+      (state.projects || []).forEach(p => {
+        (p.sessions || []).forEach(s => {
+          if (s && s.isActive && (now - (s.startTime || 0)) < 24 * 3600 * 1000) {
+            activeSessions.push({
+              session: s,
+              project: p,
+              elapsedMs: Math.max(0, now - (s.startTime || now)),
+            });
+          }
+        });
+        // Check local timer fallback
+        if (state.activeProjectTimer && state.activeProjectTimer.projectId === p.id) {
+          if (!activeSessions.some(a => a.project.id === p.id)) {
+            activeSessions.push({
+              session: {
+                userName: (state.employee && state.employee.name) || 'Executive Specialist',
+                userId: (state.employee && state.employee.id) || 'emp001',
+                start: fmt(state.activeProjectTimer.startTime),
+                startTime: state.activeProjectTimer.startTime
+              },
+              project: p,
+              elapsedMs: Math.max(0, now - state.activeProjectTimer.startTime)
+            });
+          }
+        }
+      });
+
+      if (liveCountBadge) {
+        liveCountBadge.textContent = `${activeSessions.length} Working Now`;
+      }
+
+      if (liveWrap) {
+        if (activeSessions.length === 0) {
+          liveWrap.innerHTML = `
+            <div style="padding:22px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:12px;text-align:center;color:#94a3b8">
+              <span style="font-size:24px;display:block;margin-bottom:6px">☕</span>
+              <strong style="color:#fff;font-size:14px;display:block">No specialists are actively running a project timer right now</strong>
+              <p style="font-size:12px;margin:4px 0 0 0;color:#64748b">When specialists click "Start Work" in their studio workspace, their live progress and deliverable title appear here in real time.</p>
+            </div>
+          `;
+        } else {
+          liveWrap.innerHTML = `
+            <div class="live-work-grid">
+              ${activeSessions.map(item => `
+                <div class="live-work-card clickable-row" onclick="openAdminProjectDetail('${item.project.id}')" title="Click to inspect deliverable">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#34d399">
+                        ${computeInitials(item.session.userName)}
+                      </div>
+                      <div>
+                        <strong style="color:#fff;font-size:13px;display:block">${item.session.userName}</strong>
+                        <span style="font-size:10.5px;color:#94a3b8;font-family:monospace">${item.session.userId || 'Specialist'}</span>
+                      </div>
+                    </div>
+                    <span class="timer-live-badge" style="font-size:10.5px;padding:2px 8px">
+                      <span class="timer-pulse-circle"></span> WORKING NOW
+                    </span>
+                  </div>
+
+                  <div style="margin-bottom:10px">
+                    <strong style="color:#fff;font-size:14px;display:block;margin-bottom:3px">${item.project.name}</strong>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#cbd5e1">
+                      <span class="stat-badge cyan" style="font-size:10.5px;padding:1px 6px">🏢 ${item.project.client || 'Agency Client'}</span>
+                      <span>•</span>
+                      <span>${item.project.service || 'Creative Work'}</span>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
+                    <span style="font-size:11px;color:#94a3b8">Started at ${item.session.start || '--:--'}</span>
+                    <strong style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#34d399">⏱️ ${fmtHHMMSS(item.elapsedMs)}</strong>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+
+      // 2. Gather today's completed deliverables and sessions
+      const completedTodayItems = [];
+      (state.projects || []).forEach(p => {
+        // Was deliverable marked Completed today?
+        if (p.status === 'Completed' && (p.completedDate === todayDateStr || fmtDate(p.completedAt) === todayDateStr)) {
+          completedTodayItems.push({
+            type: 'deliverable',
+            title: p.name,
+            client: p.client || 'Agency Client',
+            specialist: p.completedBy || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Specialist'),
+            service: p.service,
+            timeSpent: fmtDuration(p.totalTimeSpent),
+            id: p.id
+          });
+        }
+        // Work sessions completed today
+        (p.sessions || []).forEach(s => {
+          if (s && !s.isActive && (s.date === todayDateStr || fmtDate(s.completedAt) === todayDateStr)) {
+            completedTodayItems.push({
+              type: 'session',
+              title: p.name,
+              client: p.client || 'Agency Client',
+              specialist: s.user || 'Specialist',
+              userId: s.userId || '',
+              durationStr: s.durationStr || fmtDuration(s.durationMs || 0),
+              interval: `${s.start || ''} – ${s.end || ''}`,
+              id: p.id
+            });
+          }
+        });
+      });
+
+      if (compBadge) {
+        compBadge.textContent = `${completedTodayItems.length} Finished Today`;
+      }
+
+      if (compWrap) {
+        if (completedTodayItems.length === 0) {
+          compWrap.innerHTML = `
+            <div style="padding:18px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);border-radius:10px;text-align:center;color:#94a3b8;font-size:12.5px">
+              No deliverables or work sessions concluded today yet. Concluded tasks and completed work sessions will automatically populate here.
+            </div>
+          `;
+        } else {
+          compWrap.innerHTML = `
+            <div class="today-completed-grid">
+              ${completedTodayItems.map(item => `
+                <div class="today-completed-card clickable-row" onclick="openAdminProjectDetail('${item.id}')" title="Inspect deliverable">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <span class="stat-badge ${item.type === 'deliverable' ? 'green' : 'purple'}" style="font-size:10.5px;padding:2px 7px">
+                      ${item.type === 'deliverable' ? '✅ Deliverable Completed' : '⏱️ Work Session Concluded'}
+                    </span>
+                    <strong style="font-family:'JetBrains Mono';font-size:11.5px;color:#34d399">
+                      ${item.type === 'deliverable' ? item.timeSpent : item.durationStr}
+                    </strong>
+                  </div>
+                  <strong style="color:#fff;font-size:13px;display:block;margin-bottom:3px">${item.title}</strong>
+                  <div style="font-size:11px;color:#94a3b8;display:flex;justify-content:space-between">
+                    <span>🏢 ${item.client} • 👤 ${item.specialist}</span>
+                    ${item.interval ? `<span style="color:#a78bfa">${item.interval}</span>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+    }
+
+    // ====================================================================
+    // 📸 TODAY'S ATTENDANCE STATION (PRESENT VS ABSENT BREAKDOWN)
+    // ====================================================================
     function renderAdminAttendanceTable() {
       const tbody = document.getElementById('admin-attendance-tbody');
       if (!tbody) return;
 
       const state = getCRMState();
-      const staff = (state.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
+      const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
       const todayDateStr = fmtDate(Date.now());
       const attLogs = window._adminAttLogs || [];
 
-      if (staff.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">No hired staff members recruited in roster yet.</td></tr>';
-        return;
-      }
+      // Calculate counts for pills
+      let presentCount = 0;
+      let absentCount = 0;
+      let lunchCount = 0;
 
-      tbody.innerHTML = staff.map(m => {
+      const annotatedStaff = staff.map(m => {
+        const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const todayAtt = attLogs.find(a =>
-          (a.employee_id === m.id || (a.employee_name && a.employee_name.toLowerCase() === m.name.toLowerCase())) &&
-          a.date === todayDateStr
+          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
+           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
+          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
         ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? {
           status: state.attendance.status,
           check_in: state.attendance.checkInTime,
@@ -1728,33 +2238,95 @@
           effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime)
         } : null);
 
-        const isPresent = !!todayAtt;
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done'));
+        const isLunch = todayAtt && todayAtt.status === 'lunch';
+
+        if (isPresent) {
+          presentCount++;
+          if (isLunch) lunchCount++;
+        } else {
+          absentCount++;
+        }
+
+        // Active project work task if any
+        const activeProj = (state.projects || []).find(p =>
+          (p.sessions || []).some(s => s && s.isActive && ((s.userId && s.userId.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) || (s.user && s.user.toLowerCase() === m.name.toLowerCase())))
+        );
+
+        return { member: m, todayAtt, isPresent, isLunch, activeProj };
+      });
+
+      // Update count badges
+      const elAll = document.getElementById('att-filter-all-cnt');
+      if (elAll) elAll.textContent = staff.length;
+      const elPres = document.getElementById('att-filter-pres-cnt');
+      if (elPres) elPres.textContent = presentCount;
+      const elAbs = document.getElementById('att-filter-abs-cnt');
+      if (elAbs) elAbs.textContent = absentCount;
+      const elLunch = document.getElementById('att-filter-lunch-cnt');
+      if (elLunch) elLunch.textContent = lunchCount;
+
+      if (staff.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">No hired staff members recruited in roster yet. Click "+ Add Team Member" to add specialists.</td></tr>';
+        return;
+      }
+
+      // Filter by current pill selection
+      let displayList = annotatedStaff;
+      if (_currentAttFilter === 'present') {
+        displayList = annotatedStaff.filter(x => x.isPresent);
+      } else if (_currentAttFilter === 'absent') {
+        displayList = annotatedStaff.filter(x => !x.isPresent);
+      } else if (_currentAttFilter === 'lunch') {
+        displayList = annotatedStaff.filter(x => x.isLunch);
+      }
+
+      if (displayList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8">No staff members match the selected attendance filter (${_currentAttFilter.toUpperCase()}).</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = displayList.map(({ member: m, todayAtt, isPresent, isLunch, activeProj }) => {
         const checkInStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
         const checkOutStr = todayAtt && todayAtt.check_out ? fmt(todayAtt.check_out) : '--:--';
-        const lunchStr = (todayAtt && todayAtt.lunch_start && todayAtt.lunch_end)
-          ? `${fmt(todayAtt.lunch_start)} – ${fmt(todayAtt.lunch_end)}`
-          : (todayAtt && todayAtt.status === 'lunch' ? 'On Lunch Break' : '--:--');
         const hoursStr = todayAtt && todayAtt.effective_hours ? todayAtt.effective_hours : (isPresent ? 'In Progress' : '0h 0m');
         const photoUrl = todayAtt && todayAtt.photo_url ? todayAtt.photo_url : null;
+
+        // Current status label
+        let liveStatusHtml = '';
+        if (activeProj) {
+          liveStatusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;color:#34d399;font-weight:600;font-size:11.5px"><span class="timer-pulse-circle"></span> Working on "${activeProj.name}"</span>`;
+        } else if (isLunch) {
+          liveStatusHtml = `<span style="color:#fbbf24;font-size:11.5px">🟡 On Lunch Break</span>`;
+        } else if (todayAtt && todayAtt.status === 'done') {
+          liveStatusHtml = `<span style="color:#a78bfa;font-size:11.5px">🟣 Shift Concluded</span>`;
+        } else if (isPresent) {
+          liveStatusHtml = `<span style="color:#34d399;font-size:11.5px">🟢 In Studio (Standby)</span>`;
+        } else {
+          liveStatusHtml = `<span style="color:#f87171;font-size:11.5px">🔴 Shift: ${m.shift || '10:00 AM – 07:00 PM'}</span>`;
+        }
 
         return `
         <tr>
           <td>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:30px;height:30px;border-radius:6px;background:rgba(124,58,237,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#c4b5fd">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:32px;height:32px;border-radius:6px;background:rgba(124,58,237,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#c4b5fd">
                 ${computeInitials(m.name)}
               </div>
               <div>
                 <strong style="color:#fff;font-size:13px;display:block">${m.name}</strong>
-                <span style="color:#94a3b8;font-size:11px">${m.id} • ${m.role}</span>
+                <span style="color:#94a3b8;font-size:11px">${m.role}</span>
               </div>
             </div>
           </td>
           <td>
+            <span style="font-family:monospace;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.05);padding:3px 7px;border-radius:5px">${m.id}</span>
+          </td>
+          <td>
             ${isPresent ? `
-              <span class="stat-badge green">● Present</span>
+              <span class="stat-badge green">● Present Today</span>
             ` : `
-              <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">Absent</span>
+              <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent</span>
             `}
           </td>
           <td>
@@ -1771,8 +2343,8 @@
               <span style="font-size:11px;color:#64748b">—</span>
             `)}
           </td>
-          <td>${checkInStr}</td>
-          <td>${lunchStr}</td>
+          <td><strong>${checkInStr}</strong></td>
+          <td>${liveStatusHtml}</td>
           <td>${checkOutStr}</td>
           <td><span class="stat-badge purple">${hoursStr}</span></td>
         </tr>
@@ -1782,36 +2354,92 @@
 
     function updateAdminKpis() {
       const state = getCRMState();
+      const todayDateStr = fmtDate(Date.now());
+      const attLogs = window._adminAttLogs || [];
 
       // 1. Clients
       const clientCount = (state.clients || []).length;
-      document.getElementById('admin-kpi-clients').textContent = clientCount;
-      document.getElementById('admin-tab-client-count').textContent = clientCount;
+      const kpiClients = document.getElementById('admin-kpi-clients');
+      if (kpiClients) kpiClients.textContent = clientCount;
+      const tabClient = document.getElementById('admin-tab-client-count');
+      if (tabClient) tabClient.textContent = clientCount;
 
       // 2. Hired Staff (Excluding Founder Amaan Khan who is Executive Owner)
-      const staffList = (state.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
-      document.getElementById('admin-kpi-team').textContent = staffList.length;
-      document.getElementById('admin-tab-emp-count').textContent = staffList.length;
+      const staffList = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
+      const kpiTeam = document.getElementById('admin-kpi-team');
+      if (kpiTeam) kpiTeam.textContent = staffList.length;
+      const tabEmp = document.getElementById('admin-tab-emp-count');
+      if (tabEmp) tabEmp.textContent = staffList.length;
 
-      let inStudio = 0;
+      // 3. Today's Attendance breakdown
+      let presentCount = 0;
+      let absentCount = 0;
+      let inStudioCount = 0;
+
       staffList.forEach(m => {
-        if (m.attendanceStatus === 'in' || (m.isCurrent && state.attendance && state.attendance.status === 'in')) {
-          inStudio++;
+        const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const todayAtt = attLogs.find(a =>
+          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
+           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
+          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
+        ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? state.attendance : null);
+
+        if (todayAtt && (todayAtt.check_in || todayAtt.checkInTime || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done')) {
+          presentCount++;
+          if (todayAtt.status === 'in') inStudioCount++;
+        } else {
+          absentCount++;
         }
       });
-      document.getElementById('admin-kpi-team-active').textContent = `${inStudio} in studio • 1 Founder / Owner`;
 
-      // 3. Content Calendars
+      const kpiTeamActive = document.getElementById('admin-kpi-team-active');
+      if (kpiTeamActive) {
+        kpiTeamActive.textContent = `${presentCount} Present • ${absentCount} Absent`;
+      }
+      const kpiPresent = document.getElementById('admin-kpi-present');
+      if (kpiPresent) kpiPresent.textContent = presentCount;
+      const kpiAbsent = document.getElementById('admin-kpi-absent');
+      if (kpiAbsent) kpiAbsent.textContent = absentCount;
+
+      // 4. Working Live Now
+      let liveActiveCount = 0;
+      (state.projects || []).forEach(p => {
+        if ((p.sessions || []).some(s => s && s.isActive && (Date.now() - (s.startTime || 0)) < 24 * 3600 * 1000)) {
+          liveActiveCount++;
+        }
+      });
+      if (state.activeProjectTimer) liveActiveCount = Math.max(liveActiveCount, 1);
+      const kpiLive = document.getElementById('admin-kpi-live-work');
+      if (kpiLive) kpiLive.textContent = liveActiveCount;
+
+      // 5. Completed Today
+      let completedTodayCount = 0;
+      (state.projects || []).forEach(p => {
+        if (p.status === 'Completed' && (p.completedDate === todayDateStr || fmtDate(p.completedAt) === todayDateStr)) {
+          completedTodayCount++;
+        }
+        (p.sessions || []).forEach(s => {
+          if (s && !s.isActive && (s.date === todayDateStr || fmtDate(s.completedAt) === todayDateStr)) {
+            completedTodayCount++;
+          }
+        });
+      });
+      const kpiCompleted = document.getElementById('admin-kpi-completed-today');
+      if (kpiCompleted) kpiCompleted.textContent = completedTodayCount;
+
+      // 6. Content Calendars
       const calCount = (state.calendars || []).length;
       const kpiCals = document.getElementById('admin-kpi-cals');
       if (kpiCals) kpiCals.textContent = calCount;
       const tabCalCount = document.getElementById('admin-tab-cal-count');
       if (tabCalCount) tabCalCount.textContent = calCount;
 
-      // 4. Projects
+      // 7. Projects
       const activeProjects = (state.projects || []).filter(p => p.status !== 'Completed' && p.status !== 'Cancelled').length;
-      document.getElementById('admin-kpi-projects').textContent = activeProjects;
-      document.getElementById('admin-tab-proj-count').textContent = (state.projects || []).length;
+      const kpiProjects = document.getElementById('admin-kpi-projects');
+      if (kpiProjects) kpiProjects.textContent = activeProjects;
+      const tabProj = document.getElementById('admin-tab-proj-count');
+      if (tabProj) tabProj.textContent = (state.projects || []).length;
     }
 
     function switchAdminTab(tabName) {
@@ -2012,18 +2640,93 @@
       return ['Specialist'];
     }
 
+    let _currentRosterAttFilter = 'all';
+
+    function setRosterAttFilter(filter, btn) {
+      _currentRosterAttFilter = filter;
+      if (btn) {
+        document.querySelectorAll('#admin-roster-att-filters .att-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      renderAdminEmployees();
+    }
+
     function renderAdminEmployees() {
       const tbody = document.getElementById('admin-roster-tbody');
       if (!tbody) return;
 
       const state = getCRMState();
-      const search = (document.getElementById('admin-emp-search')?.value || '').toLowerCase();
+      const search = (document.getElementById('admin-emp-search')?.value || '').toLowerCase().trim();
+      const todayDateStr = fmtDate(Date.now());
+      const attLogs = window._adminAttLogs || [];
 
       // Hired Agency Staff only (Founder Amaan Khan has top executive profile)
-      let list = (state.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
+      const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
 
+      let presentCount = 0;
+      let absentCount = 0;
+      let lunchCount = 0;
+
+      const annotatedStaff = staff.map(m => {
+        const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const todayAtt = attLogs.find(a =>
+          ((a.employee_id && a.employee_id.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
+           (a.employee_name && m.name && a.employee_name.toLowerCase().trim() === m.name.toLowerCase().trim())) &&
+          (a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr)
+        ) || (m.isCurrent && state.attendance && state.attendance.checkInTime ? {
+          status: state.attendance.status,
+          check_in: state.attendance.checkInTime,
+          check_out: state.attendance.checkOutTime,
+          lunch_start: state.attendance.lunchStartTime,
+          lunch_end: state.attendance.lunchEndTime,
+          photo_url: state.attendance.photoUrl,
+          effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime)
+        } : null);
+
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done'));
+        const isLunch = todayAtt && todayAtt.status === 'lunch';
+
+        if (isPresent) {
+          presentCount++;
+          if (isLunch) lunchCount++;
+        } else {
+          absentCount++;
+        }
+
+        // Active project work task if any
+        const activeProj = (state.projects || []).find(p =>
+          (p.sessions || []).some(s => s && s.isActive && (
+            (s.userId && s.userId.toLowerCase().replace(/[^a-z0-9]/g, '') === normEmpId) ||
+            (s.user && m.name && s.user.toLowerCase().trim() === m.name.toLowerCase().trim())
+          ))
+        );
+
+        return { member: m, todayAtt, isPresent, isLunch, activeProj };
+      });
+
+      // Update counts on filter pills
+      const elAll = document.getElementById('roster-filter-all-cnt');
+      if (elAll) elAll.textContent = staff.length;
+      const elPres = document.getElementById('roster-filter-pres-cnt');
+      if (elPres) elPres.textContent = presentCount;
+      const elAbs = document.getElementById('roster-filter-abs-cnt');
+      if (elAbs) elAbs.textContent = absentCount;
+      const elLunch = document.getElementById('roster-filter-lunch-cnt');
+      if (elLunch) elLunch.textContent = lunchCount;
+
+      // Filter by attendance pill
+      let list = annotatedStaff;
+      if (_currentRosterAttFilter === 'present') {
+        list = list.filter(x => x.isPresent);
+      } else if (_currentRosterAttFilter === 'absent') {
+        list = list.filter(x => !x.isPresent);
+      } else if (_currentRosterAttFilter === 'lunch') {
+        list = list.filter(x => x.isLunch);
+      }
+
+      // Filter by search
       if (search) {
-        list = list.filter(m =>
+        list = list.filter(({ member: m }) =>
           (m.name || '').toLowerCase().includes(search) ||
           (m.role || '').toLowerCase().includes(search) ||
           (m.id || '').toLowerCase().includes(search) ||
@@ -2034,7 +2737,7 @@
       if (list.length === 0) {
         tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align:center;padding:45px 20px;color:#94a3b8">
+          <td colspan="7" style="text-align:center;padding:45px 20px;color:#94a3b8">
             <div style="font-size:32px;margin-bottom:8px">👥</div>
             <strong style="color:#fff;font-size:15px;display:block;margin-bottom:6px">${search ? 'No Staff Matches Found' : 'No Hired Staff Members Added Yet'}</strong>
             <p style="font-size:12.5px;margin-bottom:14px;max-width:440px;margin-left:auto;margin-right:auto">
@@ -2047,32 +2750,12 @@
         return;
       }
 
-      tbody.innerHTML = list.map(m => {
-        const isCurrent = (m.id === (state.employee && state.employee.id) || m.isCurrent);
+      tbody.innerHTML = list.map(({ member: m, todayAtt, isPresent, isLunch, activeProj }) => {
         const initials = computeInitials(m.name);
         const domains = getEmpDomains(m);
 
-        let statusDotColor = '#64748b';
-        let statusLabel = 'Offline';
-        let statusBadgeClass = 'purple';
-
-        const attStatus = (isCurrent && state.attendance) ? state.attendance.status : (m.attendanceStatus || 'out');
-        if (attStatus === 'in') { statusDotColor = '#34d399'; statusLabel = 'In Studio'; statusBadgeClass = 'green'; }
-        else if (attStatus === 'lunch') { statusDotColor = '#fbbf24'; statusLabel = 'Lunch Break'; statusBadgeClass = 'orange'; }
-        else if (attStatus === 'done') { statusDotColor = '#a78bfa'; statusLabel = 'Shift Done'; statusBadgeClass = 'purple'; }
-        else { statusDotColor = '#64748b'; statusLabel = 'Offline'; statusBadgeClass = 'purple'; }
-
-        // Check attendance for today
-        const todayDateStr = fmtDate(Date.now());
-        const attLogs = window._adminAttLogs || [];
-        const todayAtt = attLogs.find(a =>
-          (a.employee_id === m.id || (a.employee_name && a.employee_name.toLowerCase() === m.name.toLowerCase())) &&
-          a.date === todayDateStr
-        ) || (isCurrent && state.attendance && state.attendance.checkInTime ? {
-          status: state.attendance.status,
-          check_in: state.attendance.checkInTime,
-          photo_url: state.attendance.photoUrl
-        } : null);
+        let statusDotColor = isPresent ? '#34d399' : '#64748b';
+        if (isLunch) statusDotColor = '#fbbf24';
 
         const hasSelfie = todayAtt && todayAtt.photo_url;
         const checkInTimeStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '';
@@ -2082,6 +2765,28 @@
           const icon = ROLE_ICONS[d] || '💼';
           return `<span class="domain-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:#c4b5fd;border-radius:12px;font-size:11px;font-weight:600;margin:2px 3px 2px 0">${icon} ${d}</span>`;
         }).join('');
+
+        // Attendance label badge
+        let attBadgeHtml = '';
+        if (isPresent) {
+          attBadgeHtml = `<span class="stat-badge green" style="font-size:11px;padding:2px 8px">● Present Today</span>`;
+        } else {
+          attBadgeHtml = `<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);font-size:11px;padding:2px 8px">● Absent</span>`;
+        }
+
+        // Current live task
+        let currentTaskHtml = '';
+        if (activeProj) {
+          currentTaskHtml = `<span style="display:inline-flex;align-items:center;gap:5px;color:#34d399;font-weight:600;font-size:12px"><span class="timer-pulse-circle"></span> Working on "${activeProj.name}"</span>`;
+        } else if (isLunch) {
+          currentTaskHtml = `<span style="color:#fbbf24;font-size:12px">🟡 On Lunch Break</span>`;
+        } else if (todayAtt && todayAtt.status === 'done') {
+          currentTaskHtml = `<span style="color:#a78bfa;font-size:12px">🟣 Shift Concluded</span>`;
+        } else if (isPresent) {
+          currentTaskHtml = `<span style="color:#34d399;font-size:12px">🟢 In Studio (Standby)</span>`;
+        } else {
+          currentTaskHtml = `<span style="color:#64748b;font-size:12px">Offline (Not punched in)</span>`;
+        }
 
         return `
         <tr class="clickable-row" onclick="openAdminEmpDetail('${m.id}')" title="Click to view specialist profile, assignments & timesheets">
@@ -2098,7 +2803,7 @@
             </div>
           </td>
           <td>
-            <span style="font-family:monospace;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.05);padding:3px 7px;border-radius:5px">${m.id}</span>
+            <span style="font-family:monospace;font-size:12.5px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);padding:3px 8px;border-radius:6px">${m.id}</span>
           </td>
           <td>
             <div style="display:flex;flex-wrap:wrap;max-width:280px">
@@ -2110,11 +2815,12 @@
           </td>
           <td>
             <div style="display:flex;align-items:center;gap:6px">
-              <span class="stat-badge ${statusBadgeClass}" style="font-size:11px;padding:2px 8px">
-                ● ${statusLabel}
-              </span>
+              ${attBadgeHtml}
               ${hasSelfie ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px" onclick="event.stopPropagation(); openAdminPhotoPreview('${m.name.replace(/'/g, "\\'")}', '${todayAtt.photo_url}', '${checkInTimeStr}', '${m.role}')">📸</span>` : ''}
             </div>
+          </td>
+          <td>
+            ${currentTaskHtml}
           </td>
           <td style="text-align:right" onclick="event.stopPropagation()">
             <div style="display:inline-flex;align-items:center;gap:6px">
@@ -2134,10 +2840,20 @@
     function openAddEmployeeModal() {
       const state = getCRMState();
       document.getElementById('new-emp-name').value = '';
-      const hired = (state.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
-      const nextNum = hired.length + 1;
-      const formattedNum = nextNum < 10 ? `00${nextNum}` : (nextNum < 100 ? `0${nextNum}` : nextNum);
-      document.getElementById('new-emp-id').value = `EMP-${formattedNum}`;
+      const hired = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
+      
+      // Auto suggest next numeric ID like emp001, emp002, emp101
+      let maxNum = 0;
+      hired.forEach(m => {
+        const digits = (m.id || '').replace(/\D/g, '');
+        if (digits) {
+          const val = parseInt(digits, 10);
+          if (!isNaN(val) && val > maxNum) maxNum = val;
+        }
+      });
+      const nextNum = maxNum > 0 ? maxNum + 1 : (hired.length + 1);
+      const formattedNum = nextNum < 10 ? `00${nextNum}` : (nextNum < 100 ? `0${nextNum}` : `${nextNum}`);
+      document.getElementById('new-emp-id').value = `emp${formattedNum}`;
 
       // Reset domain pills to default: Video Editor selected
       const pills = document.querySelectorAll('#new-emp-domains-wrap .domain-pill');
@@ -2157,9 +2873,17 @@
 
     function saveNewEmployee() {
       const name = (document.getElementById('new-emp-name')?.value || '').trim();
-      const id = (document.getElementById('new-emp-id')?.value || '').trim();
+      let id = (document.getElementById('new-emp-id')?.value || '').trim();
       const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:00 AM – 07:00 PM';
       const password = (document.getElementById('new-emp-pass')?.value || '').trim() || '123';
+
+      // Normalize employee ID: lowercase, prefix emp if user just typed a number
+      if (id) {
+        id = id.toLowerCase();
+        if (/^\d+$/.test(id)) {
+          id = 'emp' + (id.length === 1 ? '00' + id : (id.length === 2 ? '0' + id : id));
+        }
+      }
 
       // Collect all selected domain specialties
       const activePills = document.querySelectorAll('#new-emp-domains-wrap .domain-pill.active');
@@ -2170,14 +2894,15 @@
       const role = domains.join(', ');
 
       if (!name || !id) {
-        toast('⚠️ Please fill out team member name & ID', 'error');
+        toast('⚠️ Please fill out team member name & ID (e.g. emp001)', 'error');
         return;
       }
 
       const state = getCRMState();
       if (!Array.isArray(state.team)) state.team = [];
 
-      if (state.team.some(m => m.id.toLowerCase() === id.toLowerCase())) {
+      const normId = id.replace(/[^a-z0-9]/g, '');
+      if (state.team.some(m => (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normId)) {
         toast(`⚠️ Employee ID "${id}" already exists`, 'error');
         return;
       }
@@ -2191,28 +2916,33 @@
       closeModal('employee-add-modal');
       updateAdminKpis();
       renderAdminEmployees();
+      renderAdminAttendanceTable();
+      renderLiveWorkAndCompletions();
       toast(`Team member ${name} (${id}) added with ${domains.length} domain(s)! Password: "${password}" 🎉`, 'success');
     }
 
     function deleteEmployee(id) {
-      if (id === 'EMP-000') {
+      const normId = (id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normId === 'emp000') {
         toast('❌ Cannot remove Agency Founder Amaan Khan', 'error');
         return;
       }
 
       const state = getCRMState();
-      const emp = (state.team || []).find(m => m.id === id);
+      const emp = (state.team || []).find(m => (m.id || '').toLowerCase() === (id || '').toLowerCase());
       if (!emp) return;
 
       if (!confirm(`Are you sure you want to remove ${emp.name} (${emp.id} - ${emp.role})?`)) return;
 
-      state.team = state.team.filter(m => m.id !== id);
+      state.team = state.team.filter(m => (m.id || '').toLowerCase() !== (id || '').toLowerCase());
       saveCRMState(state);
       if (typeof SupabaseData !== 'undefined') {
         SupabaseData.deleteTeamMember(id);
       }
       updateAdminKpis();
       renderAdminEmployees();
+      renderAdminAttendanceTable();
+      renderLiveWorkAndCompletions();
       toast(`Team member ${emp.name} removed from roster`, 'info');
     }
 
@@ -2463,21 +3193,34 @@
       }
 
       tbody.innerHTML = list.map(p => {
-        const isLive = state.activeProjectTimer && state.activeProjectTimer.projectId === p.id;
+        const activeSession = (p.sessions || []).find(s => s && s.isActive && (Date.now() - (s.startTime || 0)) < 24 * 3600 * 1000);
+        const isLocalLive = state.activeProjectTimer && state.activeProjectTimer.projectId === p.id;
+        const isLive = !!activeSession || isLocalLive;
+
         let liveElapsed = 0;
-        if (isLive) {
-          liveElapsed = Math.max(0, Date.now() - state.activeProjectTimer.startTime);
+        let activeWorkerName = '';
+        let liveStartTime = Date.now();
+
+        if (activeSession) {
+          liveStartTime = activeSession.startTime || Date.now();
+          liveElapsed = Math.max(0, Date.now() - liveStartTime);
+          activeWorkerName = activeSession.userName || activeSession.user || 'Specialist';
+        } else if (isLocalLive) {
+          liveStartTime = state.activeProjectTimer.startTime || Date.now();
+          liveElapsed = Math.max(0, Date.now() - liveStartTime);
+          activeWorkerName = state.employee?.name || 'Current User';
         }
+
         const totalMs = (p.totalTimeSpent || 0) + liveElapsed;
         const sessionCount = p.sessions ? p.sessions.length : 0;
 
         let liveStateBadge = '';
         if (isLive) {
           liveStateBadge = `
-          <span class="timer-live-badge">
-            <span class="timer-pulse-circle"></span> RUNNING NOW
+          <span class="timer-live-badge" title="Actively worked on right now">
+            <span class="timer-pulse-circle"></span> RUNNING NOW (${activeWorkerName})
           </span>
-          <span id="admin-clock-${p.id}" class="timesheet-clock" style="font-family:'JetBrains Mono';font-size:11.5px;color:#34d399;font-weight:700;margin-left:6px">
+          <span id="admin-clock-${p.id}" class="timesheet-clock" data-start-time="${liveStartTime}" style="font-family:'JetBrains Mono';font-size:11.5px;color:#34d399;font-weight:700;margin-left:6px">
             ${fmtHHMMSS(liveElapsed)}
           </span>
         `;
@@ -2536,7 +3279,7 @@
 
       // Assign specialists pills
       const assignWrap = document.getElementById('admin-proj-assign-wrap');
-      const staff = (state.team || []).filter(m => !m.isFounder && m.id !== 'EMP-000');
+      const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
       if (staff.length === 0) {
         assignWrap.innerHTML = `<span class="domain-pill active" data-name="Amaan Khan">👑 Amaan Khan (Owner)</span>`;
       } else {

@@ -476,7 +476,7 @@ async function handleEmployeeLogin(e) {
   const pass = (passInput?.value || '').trim();
 
   if (!id) {
-    toast('⚠️ Please enter your Employee ID (e.g. EMP-000)', 'error');
+    toast('⚠️ Please enter your Employee ID (e.g. emp001, emp101)', 'error');
     if (idInput) idInput.focus();
     return;
   }
@@ -486,35 +486,39 @@ async function handleEmployeeLogin(e) {
     return;
   }
 
+  const normId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+
   // 1. Try finding in loaded team state
-  let member = (STATE.team || []).find(m => m.id.toLowerCase() === id.toLowerCase());
+  let member = (STATE.team || []).find(m => m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normId);
 
   // 2. Query Supabase directly for real-time authentication
   if (window.sbClient) {
     try {
       const { data, error } = await window.sbClient
         .from('team_members')
-        .select('*')
-        .ilike('id', id)
-        .maybeSingle();
+        .select('*');
 
-      if (!error && data) {
-        if (!member) {
-          member = {
-            id: data.id,
-            name: data.name,
-            role: data.role,
-            shift: data.shift,
-            password: data.password,
-            isFounder: data.is_founder,
-            email: data.email,
-            phone: data.phone,
-          };
-          if (!STATE.team) STATE.team = [];
-          STATE.team.push(member);
-        } else {
-          // Keep password synchronized with latest in database
-          member.password = data.password;
+      if (!error && Array.isArray(data)) {
+        const matchedDb = data.find(m => m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normId);
+        if (matchedDb) {
+          if (!member) {
+            member = {
+              id: matchedDb.id,
+              name: matchedDb.name,
+              role: matchedDb.role,
+              shift: matchedDb.shift,
+              password: matchedDb.password,
+              isFounder: matchedDb.is_founder,
+              email: matchedDb.email,
+              phone: matchedDb.phone,
+              domains: matchedDb.role ? String(matchedDb.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
+            };
+            if (!STATE.team) STATE.team = [];
+            STATE.team.push(member);
+          } else {
+            // Keep password synchronized with latest in database
+            member.password = matchedDb.password;
+          }
         }
       }
     } catch (err) {
@@ -533,7 +537,7 @@ async function handleEmployeeLogin(e) {
 
   // Check custom local override if any
   const adminSecret = localStorage.getItem('agency_admin_secret_key');
-  const isFounderMatch = (member.isFounder || member.id === 'EMP-000') && adminSecret && pass === adminSecret;
+  const isFounderMatch = (member.isFounder || (member.id && member.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')) && adminSecret && pass === adminSecret;
 
   const expectedPass = member.password || (member.isFounder ? 'amnik2026' : '123');
   if (pass !== expectedPass && !isFounderMatch) {
@@ -1690,8 +1694,16 @@ function changeProjectStatus() {
   if (!p) return;
   const newStatus = document.getElementById('proj-status-change').value;
   p.status = newStatus;
+  if (newStatus === 'Completed') {
+    p.completedAt = Date.now();
+    p.completedDate = fmtDate(Date.now());
+    p.completedBy = STATE.employee.name;
+    if (Array.isArray(p.sessions)) {
+      p.sessions = p.sessions.filter(s => !(s && s.isActive));
+    }
+    triggerConfetti();
+  }
   renderProjects();
-  if (newStatus === 'Completed') triggerConfetti();
   addActivity(`Project "${p.name}" → ${newStatus}`, 'purple');
   toast(`Status updated: ${newStatus}`, 'success');
   save();
@@ -1751,14 +1763,31 @@ function startProjectWork(id) {
     stopProjectWork(STATE.activeProjectTimer.projectId, true);
   }
 
+  const now = Date.now();
   STATE.activeProjectTimer = {
     projectId: id,
-    startTime: Date.now(),
+    startTime: now,
   };
 
   if (proj.status === 'Assigned') {
     proj.status = 'In Progress';
   }
+
+  // Active work indicator in sessions array for real-time executive admin pulse
+  if (!Array.isArray(proj.sessions)) proj.sessions = [];
+  proj.sessions = proj.sessions.filter(s => !(s && s.isActive && (s.userId === STATE.employee.id || s.user === STATE.employee.name)));
+  proj.sessions.unshift({
+    id: 'act_' + uid(),
+    isActive: true,
+    userId: STATE.employee.id,
+    userName: STATE.employee.name,
+    userRole: STATE.employee.role,
+    projectId: proj.id,
+    projectName: proj.name,
+    date: fmtDate(now),
+    start: fmt(now),
+    startTime: now
+  });
 
   updateProjectTimerTicker();
   renderProjects();
@@ -1769,6 +1798,11 @@ function startProjectWork(id) {
   addActivity(`Started work on: "${proj.name}"`, 'green');
   toast(`▶ Work session active on: ${proj.name}`, 'success');
   save();
+
+  // Instant broadcast to Supabase Cloud so Admin immediately sees live work
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(proj);
+  }
 }
 
 function stopProjectWork(id, isSwitching = false) {
@@ -1780,6 +1814,9 @@ function stopProjectWork(id, isSwitching = false) {
   if (proj) {
     proj.totalTimeSpent = (proj.totalTimeSpent || 0) + duration;
     if (!proj.sessions) proj.sessions = [];
+    // Clear out active live session marker
+    proj.sessions = proj.sessions.filter(s => !(s && s.isActive && (s.userId === STATE.employee.id || s.user === STATE.employee.name)));
+
     const session = {
       id: uid(),
       projectId: proj.id,
@@ -1790,8 +1827,12 @@ function stopProjectWork(id, isSwitching = false) {
       durationMs: duration,
       durationStr: fmtDuration(duration),
       user: STATE.employee.name,
+      userId: STATE.employee.id,
+      completedToday: true,
+      completedAt: Date.now()
     };
     proj.sessions.unshift(session);
+    if (!STATE.timeLogs) STATE.timeLogs = [];
     STATE.timeLogs.unshift(session);
 
     if (!isSwitching) {

@@ -40,7 +40,7 @@
       <form onsubmit="handleEmployeeLogin(event)">
         <div class="form-group">
           <label class="form-label">Employee ID <span class="req">*</span></label>
-          <input type="text" class="form-input" id="emp-login-id" placeholder="e.g. EMP-001" autocomplete="username" autofocus />
+          <input type="text" class="form-input" id="emp-login-id" placeholder="e.g. emp001" autocomplete="username" autofocus />
         </div>
         <div class="form-group">
           <label class="form-label">Password <span class="req">*</span></label>
@@ -84,7 +84,7 @@
         <span class="emp-name" id="sidebar-name">Team Member</span>
       </div>
       <div class="emp-meta-row">
-        <span class="emp-id" id="sidebar-id">EMP-001</span>
+        <span class="emp-id" id="sidebar-id">emp001</span>
         <span class="emp-bullet">·</span>
         <span class="emp-status-text" id="sidebar-status-text">Offline</span>
       </div>
@@ -948,8 +948,7 @@
       }
       if (Array.isArray(parsed.team)) {
         const filteredTeam = parsed.team.filter(m =>
-          m && (m.id === 'EMP-000' || (!['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'].includes(m.id) &&
-          !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || '')))
+          m && (!/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || ''))
         );
         if (filteredTeam.length !== parsed.team.length) {
           parsed.team = filteredTeam;
