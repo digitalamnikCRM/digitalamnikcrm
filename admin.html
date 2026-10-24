@@ -2290,8 +2290,29 @@
       const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const normEmpName = (m.name || '').toLowerCase().trim();
       const todayDateStr = fmtDate(Date.now());
+      const curId = (state?.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const curName = (state?.employee?.name || '').toLowerCase().trim();
+      const isCurrentStaff = (curId && curId === normEmpId) || (curName && curName === normEmpName) || m.isCurrent;
 
-      // 1. Check in window._adminAttLogs (cloud logs)
+      // 1. Check active live session in state.attendance (Real-time studio state)
+      if (isCurrentStaff && state?.attendance && state.attendance.checkInTime) {
+        let liveStatus = (state.attendance.status || 'in').toLowerCase();
+        if (state.attendance.lunchStartTime && !state.attendance.lunchEndTime) {
+          liveStatus = 'lunch';
+        }
+        return {
+          status: liveStatus,
+          check_in: state.attendance.checkInTime,
+          check_out: state.attendance.checkOutTime,
+          lunch_start: state.attendance.lunchStartTime,
+          lunch_end: state.attendance.lunchEndTime,
+          photo_url: state.attendance.photoUrl,
+          effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime),
+          date: todayDateStr
+        };
+      }
+
+      // 2. Check in window._adminAttLogs (cloud logs)
       let found = (attLogs || []).find(a => {
         const aId = (a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const aName = (a.employee_name || a.employeeName || '').toLowerCase().trim();
@@ -2309,8 +2330,15 @@
         if (!photo && found.late_lunch_reason && String(found.late_lunch_reason).startsWith('photo:')) {
           photo = String(found.late_lunch_reason).slice(6);
         }
+        let status = (found.status || 'in').toLowerCase();
+        if (found.lunch_start && !found.lunch_end) {
+          status = 'lunch';
+        }
+        if (isCurrentStaff && state?.attendance?.status) {
+          status = state.attendance.status.toLowerCase();
+        }
         return {
-          status: found.status || 'in',
+          status: status,
           check_in: found.check_in || found.checkIn,
           check_out: found.check_out || found.checkOut,
           lunch_start: found.lunch_start || found.lunchStartTime,
@@ -2321,7 +2349,7 @@
         };
       }
 
-      // 2. Check in state.attendance.log (locally stored log array)
+      // 3. Check in state.attendance.log (locally stored log array)
       if (Array.isArray(state?.attendance?.log)) {
         const localLog = state.attendance.log.find(l => {
           const lId = (l.employee_id || l.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2334,33 +2362,22 @@
         });
 
         if (localLog) {
+          let status = (localLog.status || 'in').toLowerCase();
+          if ((localLog.lunchStart || localLog.lunchStartTime) && !(localLog.lunchEnd || localLog.lunchEndTime)) {
+            status = 'lunch';
+          }
+          if (isCurrentStaff && state?.attendance?.status) {
+            status = state.attendance.status.toLowerCase();
+          }
           return {
-            status: localLog.status || 'in',
+            status: status,
             check_in: localLog.checkIn || localLog.check_in,
             check_out: localLog.checkOut || localLog.check_out,
-            lunch_start: localLog.lunchStartTime || localLog.lunch_start,
-            lunch_end: localLog.lunchEndTime || localLog.lunch_end,
+            lunch_start: localLog.lunchStartTime || localLog.lunch_start || localLog.lunchStart,
+            lunch_end: localLog.lunchEndTime || localLog.lunch_end || localLog.lunchEnd,
             photo_url: localLog.photoUrl || localLog.photo_url,
             effective_hours: localLog.effectiveHours || localLog.workHrs || 'In Progress',
             date: localLog.date
-          };
-        }
-      }
-
-      // 3. Check active state.attendance
-      if (state?.attendance && state.attendance.checkInTime) {
-        const curId = (state.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const curName = (state.employee?.name || '').toLowerCase().trim();
-        if (curId === normEmpId || curName === normEmpName || m.isCurrent) {
-          return {
-            status: state.attendance.status,
-            check_in: state.attendance.checkInTime,
-            check_out: state.attendance.checkOutTime,
-            lunch_start: state.attendance.lunchStartTime,
-            lunch_end: state.attendance.lunchEndTime,
-            photo_url: state.attendance.photoUrl,
-            effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime),
-            date: todayDateStr
           };
         }
       }
@@ -2394,8 +2411,8 @@
       const annotatedStaff = staff.map(m => {
         const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const todayAtt = getMemberTodayAttendance(m, state, attLogs);
-        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
-        const isLunch = !!(todayAtt && todayAtt.status === 'lunch');
+        const isLunch = !!(todayAtt && (todayAtt.status === 'lunch' || (todayAtt.lunch_start && !todayAtt.lunch_end)));
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || isLunch || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
 
         if (isPresent) {
           presentCount++;
@@ -2481,11 +2498,13 @@
             <span style="font-family:monospace;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.05);padding:3px 7px;border-radius:5px">${m.id}</span>
           </td>
           <td>
-            ${isPresent ? `
+            ${isLunch ? `
+              <span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">🟡 On Lunch Break</span>
+            ` : (isPresent ? `
               <span class="stat-badge green">● Present Today</span>
             ` : `
               <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent</span>
-            `}
+            `)}
           </td>
           <td>
             ${photoUrl ? `
@@ -2811,8 +2830,8 @@
       const annotatedStaff = staff.map(m => {
         const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const todayAtt = getMemberTodayAttendance(m, state, attLogs);
-        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || todayAtt.status === 'lunch' || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
-        const isLunch = !!(todayAtt && todayAtt.status === 'lunch');
+        const isLunch = !!(todayAtt && (todayAtt.status === 'lunch' || (todayAtt.lunch_start && !todayAtt.lunch_end)));
+        const isPresent = !!(todayAtt && (todayAtt.check_in || todayAtt.status === 'in' || isLunch || todayAtt.status === 'done' || todayAtt.status === 'Completed'));
 
         if (isPresent) {
           presentCount++;
@@ -2896,7 +2915,9 @@
 
         // Attendance label badge
         let attBadgeHtml = '';
-        if (isPresent) {
+        if (isLunch) {
+          attBadgeHtml = `<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3);font-size:11px;padding:2px 8px">🟡 On Lunch</span>`;
+        } else if (isPresent) {
           attBadgeHtml = `<span class="stat-badge green" style="font-size:11px;padding:2px 8px">● Present Today</span>`;
         } else {
           attBadgeHtml = `<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);font-size:11px;padding:2px 8px">● Absent</span>`;

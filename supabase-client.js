@@ -441,29 +441,44 @@ const SupabaseData = {
       const rawDate = String(entry.date || '').trim();
       const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9]/g, '_');
       const deterministicId = entry.id || `att_${rawEmpId.replace(/[^a-z0-9]/g, '')}_${sanitizedDate}`;
-      const photo = entry.photoUrl || entry.photo_url || null;
+      const photo = entry.photoUrl || entry.photo_url || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.photoUrl) ? STATE.attendance.photoUrl : null);
+      const rawCheckIn = typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : ((typeof STATE !== 'undefined' && STATE.attendance && typeof STATE.attendance.checkInTime === 'number') ? STATE.attendance.checkInTime : Date.now()));
+      const rawLunchStart = entry.lunchStart || entry.lunch_start || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchStartTime) ? STATE.attendance.lunchStartTime : null);
+      const rawLunchEnd = entry.lunchEnd || entry.lunch_end || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchEndTime) ? STATE.attendance.lunchEndTime : null);
+      const rawCheckOut = entry.checkOut || entry.check_out || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.checkOutTime) ? STATE.attendance.checkOutTime : null);
+      const rawStatus = entry.status || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.status) ? STATE.attendance.status : (rawLunchStart && !rawLunchEnd ? 'lunch' : 'in'));
 
-      // Note: remote Supabase table attendance_logs has text column late_lunch_reason.
-      // We store photo prefixed as photo:data:image... to guarantee HTTP 201 without missing photo_url column error!
       const row = {
         id: deterministicId,
         employee_id: rawEmpId,
         employee_name: entry.employeeName || entry.employee_name || currentEmpName,
         date: rawDate,
-        check_in: typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : Date.now()),
-        lunch_start: entry.lunchStart || entry.lunch_start || null,
-        lunch_end: entry.lunchEnd || entry.lunch_end || null,
-        check_out: entry.checkOut || entry.check_out || null,
+        check_in: rawCheckIn,
+        lunch_start: rawLunchStart,
+        lunch_end: rawLunchEnd,
+        check_out: rawCheckOut,
         effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
         late_lunch_reason: photo ? `photo:${photo}` : (entry.lateLunchReason || entry.late_lunch_reason || null),
-        status: entry.status || 'in',
+        status: rawStatus,
         created_at: new Date().toISOString(),
       };
-      const { error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' });
+      const { data: upsertedRow, error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' }).select();
       if (error) {
         console.error('Supabase logAttendance error:', error);
       } else {
         console.log('✅ Attendance successfully logged to Supabase Cloud for:', rawEmpId);
+        if (Array.isArray(window._adminAttLogs)) {
+          const idx = window._adminAttLogs.findIndex(a => a.id === deterministicId || ((a.employee_id || a.employeeId) === rawEmpId && a.date === rawDate));
+          const updatedEntry = {
+            ...row,
+            photo_url: photo
+          };
+          if (idx !== -1) {
+            window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...updatedEntry };
+          } else {
+            window._adminAttLogs.unshift(updatedEntry);
+          }
+        }
       }
     } catch (e) {
       console.error('logAttendance exception:', e);

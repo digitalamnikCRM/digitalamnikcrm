@@ -637,6 +637,22 @@ function finishLunch(nowMs, reason) {
   STATE.attendance.status = 'in';
   STATE.attendance.lunchEndTime = nowMs;
 
+  const todayDateStr = fmtDate(nowMs);
+  let lunchDurationStr = 'None';
+  if (STATE.attendance.lunchStartTime) {
+    const ms = nowMs - STATE.attendance.lunchStartTime;
+    lunchDurationStr = `${Math.max(1, Math.round(ms / 60000))}m`;
+  }
+
+  if (!STATE.attendance.log) STATE.attendance.log = [];
+  const existingLog = STATE.attendance.log.find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
+  if (existingLog) {
+    existingLog.status = 'in';
+    existingLog.lunch = lunchDurationStr;
+    existingLog.lunchEnd = nowMs;
+    if (reason) existingLog.lateLunchReason = reason;
+  }
+
   if (reason) {
     STATE.attendance.lateLunchReason = reason;
     if (Array.isArray(STATE.team)) {
@@ -657,10 +673,13 @@ function finishLunch(nowMs, reason) {
   save();
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.logAttendance({
-      date: fmtDate(nowMs),
+      date: todayDateStr,
+      checkIn: STATE.attendance.checkInTime,
+      lunchStart: STATE.attendance.lunchStartTime,
       lunchEnd: nowMs,
       lateLunchReason: reason || null,
-      status: 'in'
+      status: 'in',
+      photoUrl: STATE.attendance.photoUrl
     });
   }
 }
@@ -1290,10 +1309,30 @@ function doLunch() {
   if (STATE.attendance.status === 'in') {
     STATE.attendance.status = 'lunch';
     STATE.attendance.lunchStartTime = nowMs;
+
+    const todayDateStr = fmtDate(nowMs);
+    if (!STATE.attendance.log) STATE.attendance.log = [];
+    const existingLog = STATE.attendance.log.find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
+    if (existingLog) {
+      existingLog.status = 'lunch';
+      existingLog.lunch = 'On Break';
+      existingLog.lunchStart = nowMs;
+    }
+
     addActivity(`Started lunch break at ${fmt(nowMs)}`, 'orange');
     toast('Lunch break logged. Relax and recharge!', 'info');
     syncAttendanceUI();
     save();
+
+    if (typeof SupabaseData !== 'undefined') {
+      SupabaseData.logAttendance({
+        date: todayDateStr,
+        checkIn: STATE.attendance.checkInTime,
+        lunchStart: nowMs,
+        status: 'lunch',
+        photoUrl: STATE.attendance.photoUrl
+      });
+    }
   } else if (STATE.attendance.status === 'lunch') {
     // If lunch is ended at or after 3:00 PM (15:00), employee must provide justification
     if (now.getHours() >= 15) {
