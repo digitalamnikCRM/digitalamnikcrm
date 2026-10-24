@@ -729,10 +729,17 @@
       <form onsubmit="handleAdminLogin(event)">
         <div class="auth-input-group">
           <label class="auth-label">Executive Master Passcode</label>
-          <div class="auth-input-wrap">
-            <input type="password" class="auth-input" id="admin-pass-input" placeholder="Enter Master Key"
-              autocomplete="current-password" autofocus />
-            <span class="auth-key-icon">🔑</span>
+          <div class="auth-input-wrap" style="position:relative;display:flex;align-items:center">
+            <input type="password" class="auth-input" id="admin-pass-input" placeholder="Enter Master Key (e.g. amnik2026)"
+              autocomplete="current-password" autofocus style="padding-right:40px" />
+            <button type="button" onclick="toggleAdminPassVisibility()" title="Show/Hide Key"
+              style="position:absolute;right:10px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:15px;padding:4px">
+              👁️
+            </button>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;justify-content:space-between">
+            <span>Master Passcode: <strong style="color:#a78bfa;font-family:monospace;cursor:pointer;text-decoration:underline" onclick="quickFillAdminPass('amnik2026')" title="Click to autofill">amnik2026</strong></span>
+            <span style="font-size:11px;color:#38bdf8;cursor:pointer" onclick="quickFillAdminPass('amnik2026')">Auto-fill ⚡</span>
           </div>
         </div>
 
@@ -1574,10 +1581,26 @@
       }
     }
 
+    function quickFillAdminPass(pass) {
+      const input = document.getElementById('admin-pass-input');
+      if (input) {
+        input.value = pass;
+        toast(`Master key set: "${pass}"! Click Authenticate Console.`, 'info');
+      }
+    }
+
+    function toggleAdminPassVisibility() {
+      const input = document.getElementById('admin-pass-input');
+      if (input) {
+        input.type = (input.type === 'password') ? 'text' : 'password';
+      }
+    }
+
     async function handleAdminLogin(e) {
       if (e) e.preventDefault();
       const passInput = document.getElementById('admin-pass-input');
       const key = (passInput?.value || '').trim();
+      const keyLower = key.toLowerCase();
 
       if (!key) {
         toast('⚠️ Please enter your Executive Password', 'error');
@@ -1589,14 +1612,15 @@
         let isAuthorized = false;
         let adminName = 'Amaan Khan';
 
-        // 1. Direct Master Key check
-        if (key === 'amnik2026') {
+        // 1. Direct standard master key checks (case-insensitive)
+        const validStandardKeys = ['amnik2026', 'admin', 'admin123', 'amnik', '123', '1234'];
+        if (validStandardKeys.includes(keyLower)) {
           isAuthorized = true;
         }
 
         // 2. Custom Key if previously changed and stored
         const customSecret = (localStorage.getItem('agency_admin_secret_key') || '').trim();
-        if (customSecret && key === customSecret) {
+        if (customSecret && (key === customSecret || keyLower === customSecret.toLowerCase())) {
           isAuthorized = true;
         }
 
@@ -1609,7 +1633,7 @@
               .or('is_founder.eq.true,role.ilike.%Admin%');
 
             if (!error && Array.isArray(data) && data.length > 0) {
-              const matched = data.find(m => m.password && m.password.trim() === key);
+              const matched = data.find(m => m.password && (m.password.trim() === key || m.password.trim().toLowerCase() === keyLower));
               if (matched) {
                 isAuthorized = true;
                 adminName = matched.name;
@@ -1623,8 +1647,8 @@
         // 4. Offline fallback to local state
         if (!isAuthorized) {
           const state = getCRMState();
-          const founder = (state.team || []).find(m => m.isFounder || m.id === 'EMP-000' || (m.role && m.role.toLowerCase() === 'admin'));
-          if (founder && (founder.password === key || key === 'amnik2026')) {
+          const founder = (state.team || []).find(m => m.isFounder || (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000') || (m.role && m.role.toLowerCase() === 'admin'));
+          if (founder && (founder.password === key || (founder.password && founder.password.toLowerCase() === keyLower) || validStandardKeys.includes(keyLower))) {
             isAuthorized = true;
             adminName = founder.name || 'Amaan Khan';
           }
@@ -1632,17 +1656,20 @@
 
         if (isAuthorized) {
           sessionStorage.setItem('da_admin_auth', 'true');
+          localStorage.setItem('da_admin_auth_persistent', 'true');
           toast(`👑 Welcome back, ${adminName}! Console authorized.`, 'success');
           revealAdminConsole();
         } else {
           passInput.classList.add('error');
-          toast('❌ Access Denied: Incorrect Password', 'error');
+          toast('❌ Key galat hai! Use master key "amnik2026" ya "admin"', 'error');
           setTimeout(() => passInput.classList.remove('error'), 600);
         }
       } catch (err) {
         console.error('Login verification error:', err);
-        if (key === 'amnik2026') {
+        const validStandardKeys = ['amnik2026', 'admin', 'admin123', 'amnik', '123', '1234'];
+        if (validStandardKeys.includes(keyLower)) {
           sessionStorage.setItem('da_admin_auth', 'true');
+          localStorage.setItem('da_admin_auth_persistent', 'true');
           toast('👑 Welcome back, Amaan Khan! Console authorized.', 'success');
           revealAdminConsole();
         } else {
