@@ -117,7 +117,7 @@
       <div class="nav-icon-box">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
       </div>
-      <span class="nav-label">Attendance Command Station</span>
+      <span class="nav-label">Attendance Tracker</span>
       <span class="nav-shortcut">⌘2</span>
     </a>
     <a href="javascript:void(0)" class="nav-item" data-section="projects" onclick="showSection('projects',this)">
@@ -174,12 +174,7 @@
     </div>
 
     <div class="topbar-right">
-      <!-- Employee Specialist Quick Profile Badge -->
-      <button type="button" class="topbar-emp-profile-badge" id="topbar-emp-profile-btn" onclick="openEmployeeProfileModal()" title="Edit My Specialist Profile & Photo" style="display:inline-flex;align-items:center;gap:7px;background:rgba(124,58,237,0.18);border:1px solid rgba(139,92,246,0.4);border-radius:99px;padding:4px 12px;color:#c4b5fd;cursor:pointer;font-size:11.5px;font-weight:600;transition:all 0.2s ease;">
-        <span id="topbar-emp-avatar" style="width:20px;height:20px;border-radius:50%;background:rgba(124,58,237,0.6);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden">👤</span>
-        <span id="topbar-emp-name">My Profile</span>
-        <span style="font-size:11px;opacity:0.8">✏️</span>
-      </button>
+
 
       <!-- Agency Founder & Owner Elite Showcase -->
       <div class="topbar-owner-showcase" title="Agency Founder &amp; Owner — Amaan Khan">
@@ -261,7 +256,10 @@
           <!-- Live Shift Mini Progress HUD -->
           <div class="cockpit-shift-hud">
             <div class="shift-hud-header">
-              <span class="shift-hud-label">Daily Shift Window: <strong>10:00 AM – 07:00 PM</strong></span>
+              <div class="shift-hud-left">
+                <span class="shift-hud-label">Daily Shift Window:</span>
+                <strong class="shift-hud-time">10:00 AM – 07:00 PM</strong>
+              </div>
               <span class="shift-hud-val" id="shift-hud-pct">Shift Progress</span>
             </div>
             <div class="shift-hud-bar">
@@ -403,7 +401,7 @@
     <section class="section" id="section-attendance">
       <div class="section-header">
         <div>
-          <h2>Attendance Command Station</h2>
+          <h2>Attendance Tracker</h2>
           <span class="section-sub" id="att-date-label">Saturday, 17 October</span>
         </div>
         <div class="agency-shift-badge">
@@ -431,7 +429,7 @@
           </div>
 
           <div class="chronometer-right">
-            <div class="chrono-date-chip">Attendance Command Station</div>
+            <div class="chrono-date-chip">Attendance Tracker</div>
           </div>
         </div>
 
@@ -1116,9 +1114,7 @@ window.saveEmployeeProfile = async function() {
   if (sidebarName) sidebarName.textContent = newName;
   var sidebarRole = document.getElementById('sidebar-role-label');
   if (sidebarRole) sidebarRole.textContent = newRole;
-  var topbarName = document.getElementById('topbar-emp-name');
-  if (topbarName) topbarName.textContent = newName;
-
+  
   var currentAvatar = state.employee.avatar || state.employee.photoUrl || localStorage.getItem('da_emp_avatar_' + cleanId);
   var sidebarAvatar = document.getElementById('sidebar-avatar');
   if (sidebarAvatar) {
@@ -1128,11 +1124,7 @@ window.saveEmployeeProfile = async function() {
       sidebarAvatar.textContent = initials;
     }
   }
-  var topbarAvatar = document.getElementById('topbar-emp-avatar');
-  if (topbarAvatar) {
-    if (currentAvatar) {
-      topbarAvatar.innerHTML = '<img src="' + currentAvatar + '" alt="' + newName + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />';
-    } else {
+   else {
       topbarAvatar.textContent = initials;
     }
   }

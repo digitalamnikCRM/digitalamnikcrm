@@ -337,17 +337,7 @@ function syncProfileUI() {
   const nameEl = document.getElementById('sidebar-name');
   if (nameEl) nameEl.textContent = emp.name;
 
-  const topbarEmpName = document.getElementById('topbar-emp-name');
-  if (topbarEmpName) topbarEmpName.textContent = emp.name || 'My Profile';
 
-  const topbarEmpAvatar = document.getElementById('topbar-emp-avatar');
-  if (topbarEmpAvatar) {
-    if (avatarSrc) {
-      topbarEmpAvatar.innerHTML = `<img src="${avatarSrc}" alt="${emp.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`;
-    } else {
-      topbarEmpAvatar.textContent = emp.initials || computeInitials(emp.name || 'DA');
-    }
-  }
 
   const idEl = document.getElementById('sidebar-id');
   if (idEl) idEl.textContent = emp.id;
@@ -1125,7 +1115,7 @@ function showSection(name, el) {
 
   const titles = {
     dashboard: 'Executive Dashboard',
-    attendance: 'Attendance Command Station',
+    attendance: 'Attendance Tracker',
     projects: 'Deliverables & Project Board',
     calendars: 'Social Media Content Calendars',
   };
