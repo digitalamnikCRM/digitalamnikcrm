@@ -885,19 +885,120 @@ function logoutEmployee() {
 }
 
 // ========================
-// LATE LUNCH PROTOCOL (POST 3:00 PM)
+// LUNCH TIME FORMATTING HELPER
 // ========================
-function openLateLunchModal() {
+function formatLunchDurationDisplay(lunchVal, lunchStart, lunchEnd, status) {
+  if (lunchStart && lunchEnd) {
+    const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+    const e = typeof lunchEnd === 'number' ? lunchEnd : new Date(lunchEnd).getTime();
+    if (!isNaN(s) && !isNaN(e) && e >= s) {
+      const totalMins = Math.round((e - s) / 60000);
+      const hrs = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    }
+  }
+  if (status === 'lunch' && lunchStart) {
+    const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+    if (!isNaN(s)) {
+      const elapsedMins = Math.max(0, Math.round((Date.now() - s) / 60000));
+      const hrs = Math.floor(elapsedMins / 60);
+      const mins = elapsedMins % 60;
+      return hrs > 0 ? `${hrs}h ${mins}m (Live)` : `${mins}m (Live)`;
+    }
+  }
+  if (typeof lunchVal === 'string' && lunchVal.trim()) {
+    const cleaned = lunchVal.trim();
+    if (cleaned.toLowerCase() === 'none' || cleaned === '--:--' || cleaned === '0m') return 'None';
+    if (cleaned.includes('h')) return cleaned;
+    const mMatch = cleaned.match(/^(\d+)\s*m$/i);
+    if (mMatch) {
+      const totalMins = parseInt(mMatch[1], 10);
+      const hrs = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    }
+    return cleaned;
+  }
+  return 'None';
+}
+
+// ========================
+// LUNCH PROTOCOL (PRE 2:00 PM / POST 3:00 PM / RESUMPTION)
+// ========================
+let _lunchModalAction = 'late_end'; // 'early_start' | 'late_start' | 'late_end'
+
+function openLunchProtocolModal(action) {
+  _lunchModalAction = action || 'late_end';
+  const tagEl = document.getElementById('late-lunch-modal-tag');
+  const titleEl = document.getElementById('late-lunch-modal-title');
+  const descEl = document.getElementById('late-lunch-modal-desc');
+  const timeLabel = document.getElementById('late-lunch-time-label');
   const textarea = document.getElementById('late-lunch-reason-text');
+  const submitBtn = document.getElementById('late-lunch-submit-btn');
+  const cancelBtn = document.getElementById('late-lunch-cancel-btn');
+  const quickBtnsWrap = document.getElementById('late-lunch-quick-buttons');
+
+  const nowTime = fmt(Date.now());
+  if (timeLabel) timeLabel.textContent = nowTime;
   if (textarea) {
     textarea.value = '';
     textarea.classList.remove('error');
   }
-  const timeLabel = document.getElementById('late-lunch-time-label');
-  if (timeLabel) {
-    timeLabel.textContent = fmt(Date.now());
+
+  if (action === 'early_start') {
+    if (tagEl) tagEl.textContent = '⚠️ EARLY LUNCH PROTOCOL (PRE-2:00 PM)';
+    if (titleEl) titleEl.textContent = 'Early Lunch Start Justification';
+    if (descEl) descEl.innerHTML = `<strong>Attention: Current time is before 2:00 PM (${nowTime}).</strong><br />Official agency lunch break is scheduled strictly between 02:00 PM – 03:00 PM. Please state the operational justification for initiating lunch early. This record will be submitted to Admin <strong>Amaan Khan</strong>.`;
+    if (submitBtn) submitBtn.textContent = 'Confirm & Start Early Lunch';
+    if (cancelBtn) cancelBtn.textContent = 'Cancel (Stay Working)';
+    if (quickBtnsWrap) {
+      quickBtnsWrap.innerHTML = `
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🎬 Early Client Shoot / On-Site Recording')">🎬 Early Client Shoot</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🏥 Health / Prescribed Medication Schedule')">🏥 Health / Medication Schedule</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🚗 Studio Field Transit / Client Travel')">🚗 Studio Transit</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('⚡ Shift Schedule Pre-Approval by Admin')">⚡ Shift Pre-Approval</button>
+      `;
+    }
+    if (textarea) textarea.placeholder = 'Explain why you are starting lunch break before 2:00 PM...';
+  } else if (action === 'late_start') {
+    if (tagEl) tagEl.textContent = '⚠️ LATE LUNCH PROTOCOL (POST-3:00 PM)';
+    if (titleEl) titleEl.textContent = 'Late Lunch Start Justification';
+    if (descEl) descEl.innerHTML = `<strong>Attention: Current time is past 3:00 PM (${nowTime}).</strong><br />Official agency lunch break is scheduled strictly between 02:00 PM – 03:00 PM. Please state why lunch is starting after the 3:00 PM window. This record will be logged for Admin <strong>Amaan Khan</strong>.`;
+    if (submitBtn) submitBtn.textContent = 'Confirm & Start Late Lunch';
+    if (cancelBtn) cancelBtn.textContent = 'Cancel (Stay Working)';
+    if (quickBtnsWrap) {
+      quickBtnsWrap.innerHTML = `
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🎬 Client Shoot / Recording Overrun')">🎬 Shoot Overrun</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('⚡ Urgent Deliverable Client Revision Sprint')">⚡ Urgent Revision Sprint</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('📞 Prolonged Client Strategy Meeting')">📞 Prolonged Client Call</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🚗 Studio Field Delay')">🚗 Studio Field Delay</button>
+      `;
+    }
+    if (textarea) textarea.placeholder = 'Explain why you are starting lunch break after 3:00 PM...';
+  } else {
+    // late_end (resuming after 3:00 PM)
+    if (tagEl) tagEl.textContent = '⚠️ EXTENDED LUNCH PROTOCOL (POST-3:00 PM)';
+    if (titleEl) titleEl.textContent = 'Late Lunch Resumption Justification';
+    if (descEl) descEl.innerHTML = `<strong>Attention: Current time is past 3:00 PM (${nowTime}).</strong><br />Agency policy mandates all lunch breaks must conclude by 3:00 PM. Please state the operational justification for resuming lunch after 3:00 PM. This record will be logged for Admin <strong>Amaan Khan</strong>.`;
+    if (submitBtn) submitBtn.textContent = 'Confirm & Resume Work';
+    if (cancelBtn) cancelBtn.textContent = 'Cancel (Stay on Lunch)';
+    if (quickBtnsWrap) {
+      quickBtnsWrap.innerHTML = `
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🎬 Client Shoot / Recording Overrun')">🎬 Shoot Overrun</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('⚡ Urgent Deliverable Revision Sprint')">⚡ Revision Sprint</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🚗 Transit / Studio Travel Delay')">🚗 Travel Delay</button>
+        <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🏥 Personal / Medical Emergency')">🏥 Medical / Emergency</button>
+      `;
+    }
+    if (textarea) textarea.placeholder = 'Explain why lunch concluded after 3:00 PM...';
   }
+
   openModal('late-lunch-modal');
+}
+
+function openLateLunchModal() {
+  openLunchProtocolModal('late_end');
 }
 
 function setLateLunchReason(val) {
@@ -913,12 +1014,74 @@ function submitLateLunchReason() {
   const reason = (textarea?.value || '').trim();
   if (!reason) {
     if (textarea) textarea.classList.add('error');
-    toast('⚠️ Mandatory: Please provide an operational reason for ending lunch after 3:00 PM', 'error');
+    toast('⚠️ Mandatory: Please provide an operational reason for the lunch schedule exception.', 'error');
     return;
   }
   const nowMs = Date.now();
   closeModal('late-lunch-modal');
-  finishLunch(nowMs, reason);
+
+  if (_lunchModalAction === 'early_start') {
+    startLunch(nowMs, `Early Start (Pre-2PM): ${reason}`);
+  } else if (_lunchModalAction === 'late_start') {
+    startLunch(nowMs, `Late Start (Post-3PM): ${reason}`);
+  } else {
+    finishLunch(nowMs, `Late Resume (Post-3PM): ${reason}`);
+  }
+}
+
+function startLunch(nowMs, protocolReason) {
+  STATE.attendance.status = 'lunch';
+  STATE.attendance.lunchStartTime = nowMs;
+  STATE.attendance.lunchEndTime = null;
+
+  const todayDateStr = fmtDate(nowMs);
+  if (!STATE.attendance.log) STATE.attendance.log = [];
+  let existingLog = STATE.attendance.log.find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
+  if (!existingLog) {
+    existingLog = {
+      date: todayDateStr,
+      employeeId: STATE.employee.id,
+      employee_id: STATE.employee.id,
+      employeeName: STATE.employee.name,
+      checkIn: STATE.attendance.checkInTime || nowMs,
+      lunch: 'Ongoing',
+      lunchStart: nowMs,
+      lunchEnd: null,
+      status: 'in' // Present
+    };
+    STATE.attendance.log.unshift(existingLog);
+  } else {
+    existingLog.status = 'in'; // Present
+    existingLog.lunch = 'Ongoing';
+    existingLog.lunchStart = nowMs;
+    existingLog.lunchEnd = null;
+  }
+
+  if (protocolReason) {
+    existingLog.lateLunchReason = protocolReason;
+    STATE.attendance.lateLunchReason = protocolReason;
+    addActivity(`Started lunch break at ${fmt(nowMs)} · Justification: "${protocolReason}"`, 'orange');
+    toast(`Lunch break logged with protocol justification. Recharge!`, 'info');
+  } else {
+    addActivity(`Started lunch break at ${fmt(nowMs)}`, 'orange');
+    toast('Lunch break logged. Relax and recharge!', 'info');
+  }
+
+  syncAttendanceUI();
+  renderAttLog();
+  save();
+
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.logAttendance({
+      date: todayDateStr,
+      checkIn: STATE.attendance.checkInTime,
+      lunchStart: nowMs,
+      lunchEnd: null,
+      lateLunchReason: STATE.attendance.lateLunchReason || null,
+      status: 'in', // Record is Present
+      photoUrl: STATE.attendance.photoUrl
+    });
+  }
 }
 
 function finishLunch(nowMs, reason) {
@@ -926,10 +1089,13 @@ function finishLunch(nowMs, reason) {
   STATE.attendance.lunchEndTime = nowMs;
 
   const todayDateStr = fmtDate(nowMs);
-  let lunchDurationStr = 'None';
+  let lunchDurationStr = '0m';
   if (STATE.attendance.lunchStartTime) {
-    const ms = nowMs - STATE.attendance.lunchStartTime;
-    lunchDurationStr = `${Math.max(1, Math.round(ms / 60000))}m`;
+    const ms = Math.max(0, nowMs - STATE.attendance.lunchStartTime);
+    const totalMins = Math.round(ms / 60000);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    lunchDurationStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
   }
 
   if (!STATE.attendance.log) STATE.attendance.log = [];
@@ -938,26 +1104,30 @@ function finishLunch(nowMs, reason) {
     existingLog.status = 'in';
     existingLog.lunch = lunchDurationStr;
     existingLog.lunchEnd = nowMs;
-    if (reason) existingLog.lateLunchReason = reason;
+    if (reason) {
+      existingLog.lateLunchReason = existingLog.lateLunchReason ? `${existingLog.lateLunchReason} | ${reason}` : reason;
+    }
   }
 
   if (reason) {
-    STATE.attendance.lateLunchReason = reason;
+    const fullReason = STATE.attendance.lateLunchReason ? `${STATE.attendance.lateLunchReason} | ${reason}` : reason;
+    STATE.attendance.lateLunchReason = fullReason;
     if (Array.isArray(STATE.team)) {
       const curr = STATE.team.find(m => m.id === STATE.employee.id || m.isCurrent);
       if (curr) {
-        curr.lateLunchReason = reason;
+        curr.lateLunchReason = fullReason;
         curr.lateLunchTime = nowMs;
       }
     }
-    addActivity(`Resumed work at ${fmt(nowMs)} · Late Lunch Reason (Post 3 PM): "${reason}"`, 'orange');
-    toast(`Late lunch justification logged: "${reason}". Momentum resumed!`, 'info');
+    addActivity(`Resumed work at ${fmt(nowMs)} · Justification: "${reason}"`, 'orange');
+    toast(`Lunch resumption justification logged: "${reason}". Momentum resumed!`, 'info');
   } else {
-    addActivity(`Resumed work at ${fmt(nowMs)}`, 'green');
-    toast('Welcome back! Productive momentum resumed.', 'success');
+    addActivity(`Resumed work at ${fmt(nowMs)} (Duration: ${lunchDurationStr})`, 'green');
+    toast(`Welcome back! Lunch break (${lunchDurationStr}) concluded.`, 'success');
   }
 
   syncAttendanceUI();
+  renderAttLog();
   save();
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.logAttendance({
@@ -965,7 +1135,7 @@ function finishLunch(nowMs, reason) {
       checkIn: STATE.attendance.checkInTime,
       lunchStart: STATE.attendance.lunchStartTime,
       lunchEnd: nowMs,
-      lateLunchReason: reason || null,
+      lateLunchReason: STATE.attendance.lateLunchReason || null,
       status: 'in',
       photoUrl: STATE.attendance.photoUrl
     });
@@ -1603,39 +1773,28 @@ function doCheckIn(photoUrl) {
 function doLunch() {
   const now = new Date();
   const nowMs = now.getTime();
+  const currentHour = now.getHours();
+
   if (STATE.attendance.status === 'in') {
-    STATE.attendance.status = 'lunch';
-    STATE.attendance.lunchStartTime = nowMs;
-
-    const todayDateStr = fmtDate(nowMs);
-    if (!STATE.attendance.log) STATE.attendance.log = [];
-    const existingLog = STATE.attendance.log.find(l => l.date === todayDateStr && (l.employeeId === STATE.employee.id || l.employee_id === STATE.employee.id));
-    if (existingLog) {
-      existingLog.status = 'lunch';
-      existingLog.lunch = 'On Break';
-      existingLog.lunchStart = nowMs;
-    }
-
-    addActivity(`Started lunch break at ${fmt(nowMs)}`, 'orange');
-    toast('Lunch break logged. Relax and recharge!', 'info');
-    syncAttendanceUI();
-    save();
-
-    if (typeof SupabaseData !== 'undefined') {
-      SupabaseData.logAttendance({
-        date: todayDateStr,
-        checkIn: STATE.attendance.checkInTime,
-        lunchStart: nowMs,
-        status: 'lunch',
-        photoUrl: STATE.attendance.photoUrl
-      });
-    }
-  } else if (STATE.attendance.status === 'lunch') {
-    // If lunch is ended at or after 3:00 PM (15:00), employee must provide justification
-    if (now.getHours() >= 15) {
-      openLateLunchModal();
+    // 1. Before 2:00 PM (14:00) -> Prompt Early Lunch Protocol Modal
+    if (currentHour < 14) {
+      openLunchProtocolModal('early_start');
       return;
     }
+    // 2. At or after 3:00 PM (15:00) -> Prompt Late Lunch Protocol Modal
+    if (currentHour >= 15) {
+      openLunchProtocolModal('late_start');
+      return;
+    }
+    // 3. Normal Window (14:00 - 14:59) -> Start Lunch directly
+    startLunch(nowMs, null);
+  } else if (STATE.attendance.status === 'lunch') {
+    // If lunch ends at or after 3:00 PM (15:00), prompt Late Resumption Protocol Modal
+    if (currentHour >= 15) {
+      openLunchProtocolModal('late_end');
+      return;
+    }
+    // Concluded before 3:00 PM -> Finish Lunch directly
     finishLunch(nowMs, null);
   }
 }
@@ -1651,19 +1810,29 @@ function doCheckOut() {
   let lunchMs = 0;
   if (STATE.attendance.lunchStartTime) {
     const lend = STATE.attendance.lunchEndTime || now;
-    lunchMs = lend - STATE.attendance.lunchStartTime;
+    lunchMs = Math.max(0, lend - STATE.attendance.lunchStartTime);
     totalMs -= lunchMs;
   }
   if (totalMs < 0) totalMs = 0;
 
+  let lunchDurationStr = 'None';
+  if (lunchMs > 0) {
+    const totalMins = Math.round(lunchMs / 60000);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    lunchDurationStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  }
+
   STATE.attendance.log.unshift({
     date: fmtDate(now),
     checkIn: fmt(STATE.attendance.checkInTime),
-    lunch: lunchMs > 0 ? `${Math.round(lunchMs / 60000)}m` : 'None',
+    lunch: lunchDurationStr,
+    lunchStart: STATE.attendance.lunchStartTime,
+    lunchEnd: STATE.attendance.lunchEndTime || now,
     lateLunchReason: STATE.attendance.lateLunchReason || null,
     checkOut: fmt(now),
     workHrs: fmtDuration(totalMs),
-    status: 'Completed',
+    status: 'done', // Rendered as Present
   });
 
   syncAttendanceUI();
@@ -1677,6 +1846,8 @@ function doCheckOut() {
     SupabaseData.logAttendance({
       date: fmtDate(now),
       checkIn: STATE.attendance.checkInTime,
+      lunchStart: STATE.attendance.lunchStartTime,
+      lunchEnd: STATE.attendance.lunchEndTime || now,
       checkOut: now,
       effectiveHours: fmtDuration(totalMs),
       lateLunchReason: STATE.attendance.lateLunchReason,
@@ -1696,11 +1867,16 @@ function showAttendanceSummary() {
   let lunch = 0;
   if (STATE.attendance.lunchStartTime) {
     const lend = STATE.attendance.lunchEndTime || outTime;
-    lunch = lend - STATE.attendance.lunchStartTime;
+    lunch = Math.max(0, lend - STATE.attendance.lunchStartTime);
     total -= lunch;
   }
+  const totalMins = Math.round(lunch / 60000);
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  const lunchStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
   document.getElementById('att-total-work').textContent = fmtDuration(total);
-  document.getElementById('att-lunch-dur').textContent = `${Math.round(lunch / 60000)}m`;
+  document.getElementById('att-lunch-dur').textContent = lunchStr;
 }
 
 function renderAttLog() {
@@ -1713,39 +1889,43 @@ function renderAttLog() {
   tbody.innerHTML = STATE.attendance.log.map(r => {
     const checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
-    const lunchStr = r.lunch && r.lunch !== 'undefined' ? r.lunch : (r.lunchStartTime ? (typeof r.lunchStartTime === 'number' ? fmt(r.lunchStartTime) : r.lunchStartTime) : 'None');
+    
+    // Format lunch duration in hours and minutes
+    const lunchDurFormatted = formatLunchDurationDisplay(r.lunch, r.lunchStart || r.lunchStartTime, r.lunchEnd || r.lunchEndTime, r.status);
+    
     const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
+    
+    // STRICT USER REQUIREMENT: Status only shows "Present" or "Absent"
     const rawStatus = String(r.status || '').toLowerCase();
     const isAbsent = (rawStatus === 'absent');
-    const isPresent = (rawStatus === 'in' || rawStatus === 'done' || rawStatus === 'completed' || rawStatus === 'present');
-    const isLunch = (rawStatus === 'lunch');
+    const statusLabel = isAbsent ? '● Absent' : '● Present';
+    const statusClass = isAbsent ? 'red' : 'green';
 
-    const statusLabel = isAbsent ? '● Absent' : (rawStatus === 'in' ? '● Present' : (isLunch ? '● Lunch' : (rawStatus === 'done' || rawStatus === 'completed' ? '● Shift Done' : '● ' + (r.status || 'Active'))));
-    const statusClass = isAbsent ? 'red' : (isPresent ? 'green' : (isLunch ? 'orange' : 'purple'));
+    const reasonText = r.lateLunchReason || r.late_lunch_reason || '';
 
     return `
       <tr>
-        <td data-label="Shift Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
-        <td data-label="Check In Time">
+        <td data-label="Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
+        <td data-label="Check In">
           <div style="display:flex;align-items:center;gap:6px">
             <strong>${checkInStr}</strong>
-            ${r.photoUrl ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
+            ${r.photoUrl ? `<span title="Selfie photo verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
           </div>
         </td>
-        <td data-label="Lunch Break">
-          ${lunchStr}
-          ${r.lateLunchReason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${r.lateLunchReason}">⚠️ Post-3PM: ${r.lateLunchReason}</div>` : ''}
+        <td data-label="Lunch Time">
+          <strong style="color:#fcd34d">${lunchDurFormatted}</strong>
+          ${reasonText ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ${reasonText}">⚠️ ${reasonText}</div>` : ''}
         </td>
-        <td data-label="Check Out Time"><span>${checkOutStr}</span></td>
+        <td data-label="Check Out"><span>${checkOutStr}</span></td>
         <td data-label="Effective Hours"><span class="stat-badge purple">${workHrsStr}</span></td>
-        <td data-label="Shift Status"><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
+        <td data-label="Status"><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
       </tr>
     `;
   }).join('');
 }
 
 function clearAttLog() {
-  toast('Attendance history is a permanent agency record and cannot be deleted.', 'info');
+  toast('Attendance records are permanent agency logs. Only Admin can clear attendance history.', 'warning');
 }
 
 // ========================

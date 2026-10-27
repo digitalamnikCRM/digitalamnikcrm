@@ -1167,27 +1167,28 @@ window.saveEmployeeProfile = async function() {
 </script>
 
 <!-- ============= LATE LUNCH REASON MODAL (POST 3:00 PM) ============= -->
+<!-- ============= LUNCH PROTOCOL REASON MODAL (PRE 2:00 PM / POST 3:00 PM / RESUMPTION) ============= -->
 <div class="modal-overlay" id="late-lunch-modal" onclick="closeModalOutside(event,'late-lunch-modal')">
   <div class="modal modal-md">
     <div class="modal-header">
       <div class="modal-title-wrap">
-        <span class="modal-tag" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4)">⚠️ ATTENDANCE PROTOCOL</span>
-        <h3 style="color:#fff">Late Lunch Resumption Justification</h3>
+        <span class="modal-tag" id="late-lunch-modal-tag" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4)">⚠️ ATTENDANCE PROTOCOL</span>
+        <h3 id="late-lunch-modal-title" style="color:#fff">Lunch Protocol Justification</h3>
       </div>
       <button class="modal-close" onclick="closeModal('late-lunch-modal')">&#10005;</button>
     </div>
     <div class="modal-body">
       <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
         <span style="font-size:20px;line-height:1">🕒</span>
-        <div style="font-size:12.5px;color:#fde68a;line-height:1.5">
+        <div id="late-lunch-modal-desc" style="font-size:12.5px;color:#fde68a;line-height:1.5">
           <strong>Attention: Current time is past 3:00 PM (<span id="late-lunch-time-label">--:--</span>).</strong><br />
           Agency policy mandates that all lunch breaks must conclude by 3:00 PM. Please state the operational justification for resuming lunch after 3:00 PM. This reason will be logged for <strong>Admin Amaan Khan</strong>.
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Select Quick Justification</label>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <label class="form-label" id="late-lunch-quick-label">Select Quick Justification</label>
+        <div id="late-lunch-quick-buttons" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
           <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🎬 Client Shoot / Recording Overrun')">🎬 Client Shoot Overrun</button>
           <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('⚡ Urgent Deliverable Revision Sprint')">⚡ Urgent Deliverable Sprint</button>
           <button type="button" class="btn-small btn-ghost" onclick="setLateLunchReason('🚗 Transit / Studio Travel Delay')">🚗 Travel Delay</button>
@@ -1197,12 +1198,12 @@ window.saveEmployeeProfile = async function() {
 
       <div class="form-group">
         <label class="form-label">Operational Justification / Reason <span class="req">*</span></label>
-        <textarea class="form-textarea" id="late-lunch-reason-text" placeholder="Explain the specific client deliverable or reason why lunch ended after 3:00 PM..." style="min-height:90px"></textarea>
+        <textarea class="form-textarea" id="late-lunch-reason-text" placeholder="Explain the specific client deliverable or reason..." style="min-height:90px"></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('late-lunch-modal')">Cancel (Stay on Lunch)</button>
-      <button class="btn-primary btn-glow" onclick="submitLateLunchReason()">Confirm &amp; Resume Work</button>
+      <button class="btn-ghost" id="late-lunch-cancel-btn" onclick="closeModal('late-lunch-modal')">Cancel</button>
+      <button class="btn-primary btn-glow" id="late-lunch-submit-btn" onclick="submitLateLunchReason()">Confirm &amp; Proceed</button>
     </div>
   </div>
 </div>

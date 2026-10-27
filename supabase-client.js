@@ -476,11 +476,20 @@ const SupabaseData = {
         lunch_end: rawLunchEnd,
         check_out: rawCheckOut,
         effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
-        late_lunch_reason: photo ? `photo:${photo}` : (entry.lateLunchReason || entry.late_lunch_reason || null),
+        photo_url: photo,
+        late_lunch_reason: (entry.lateLunchReason || entry.late_lunch_reason || null),
         status: rawStatus,
         created_at: new Date().toISOString(),
       };
-      const { data: upsertedRow, error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' }).select();
+      let { data: upsertedRow, error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' }).select();
+      if (error && error.message && error.message.includes('photo_url')) {
+        const fallbackRow = { ...row };
+        delete fallbackRow.photo_url;
+        if (photo && !fallbackRow.late_lunch_reason) fallbackRow.late_lunch_reason = `photo:${photo}`;
+        const res = await window.sbClient.from('attendance_logs').upsert(fallbackRow, { onConflict: 'id' }).select();
+        upsertedRow = res.data;
+        error = res.error;
+      }
       if (error) {
         console.error('Supabase logAttendance error:', error);
       } else {

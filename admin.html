@@ -1472,9 +1472,14 @@
               <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
               <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
             </div>
-            <button class="btn-small btn-secondary" onclick="loadAdminAll()" style="gap:6px">
-              <span>🔄 Refresh All</span>
-            </button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-small btn-secondary" onclick="loadAdminAll()" style="gap:6px">
+                <span>🔄 Refresh All</span>
+              </button>
+              <button class="btn-small btn-ghost-danger" onclick="adminClearAttendanceLogs()" style="border:1px solid rgba(239,68,68,0.4);color:#fca5a5" title="Clear all agency attendance logs (Admin Only)">
+                <span>🗑️ Clear Attendance Logs</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="glass-table-wrap">
@@ -1486,6 +1491,7 @@
                 <th>Today's Presence</th>
                 <th>Snapshot</th>
                 <th>Punch In</th>
+                <th>Lunch Break</th>
                 <th>Current Status / Active Task</th>
                 <th>Punch Out</th>
                 <th>Effective Hours</th>
@@ -2840,6 +2846,7 @@
           lunch_start: state.attendance.lunchStartTime,
           lunch_end: state.attendance.lunchEndTime,
           photo_url: state.attendance.photoUrl,
+          late_lunch_reason: state.attendance.lateLunchReason || null,
           effective_hours: fmtDuration(Date.now() - state.attendance.checkInTime),
           date: todayDateStr
         };
@@ -2870,12 +2877,15 @@
         if (isCurrentStaff && state?.attendance?.status) {
           status = state.attendance.status.toLowerCase();
         }
+        let reason = found.late_lunch_reason || found.lateLunchReason || null;
+        if (reason && String(reason).startsWith('photo:')) reason = null;
         return {
           status: status,
           check_in: found.check_in || found.checkIn,
           check_out: found.check_out || found.checkOut,
           lunch_start: found.lunch_start || found.lunchStartTime,
           lunch_end: found.lunch_end || found.lunchEndTime,
+          late_lunch_reason: reason,
           photo_url: photo,
           effective_hours: found.effective_hours || found.effectiveHours || found.workHrs || 'In Progress',
           date: found.date
@@ -2908,6 +2918,7 @@
             check_out: localLog.checkOut || localLog.check_out,
             lunch_start: localLog.lunchStartTime || localLog.lunch_start || localLog.lunchStart,
             lunch_end: localLog.lunchEndTime || localLog.lunch_end || localLog.lunchEnd,
+            late_lunch_reason: localLog.lateLunchReason || localLog.late_lunch_reason || null,
             photo_url: localLog.photoUrl || localLog.photo_url,
             effective_hours: localLog.effectiveHours || localLog.workHrs || 'In Progress',
             date: localLog.date
@@ -2926,6 +2937,88 @@
       }
 
       return null;
+    }
+
+        // Helper to format lunch duration
+    function formatLunchDurationDisplay(lunchVal, lunchStart, lunchEnd, status) {
+      if (lunchStart && lunchEnd) {
+        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+        const e = typeof lunchEnd === 'number' ? lunchEnd : new Date(lunchEnd).getTime();
+        if (!isNaN(s) && !isNaN(e) && e >= s) {
+          const totalMins = Math.round((e - s) / 60000);
+          const hrs = Math.floor(totalMins / 60);
+          const mins = totalMins % 60;
+          return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        }
+      }
+      if (status === 'lunch' && lunchStart) {
+        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+        if (!isNaN(s)) {
+          const elapsedMins = Math.max(0, Math.round((Date.now() - s) / 60000));
+          const hrs = Math.floor(elapsedMins / 60);
+          const mins = elapsedMins % 60;
+          return hrs > 0 ? `${hrs}h ${mins}m (Live)` : `${mins}m (Live)`;
+        }
+      }
+      if (typeof lunchVal === 'string' && lunchVal.trim()) {
+        const cleaned = lunchVal.trim();
+        if (cleaned.toLowerCase() === 'none' || cleaned === '--:--' || cleaned === '0m') return 'None';
+        if (cleaned.includes('h')) return cleaned;
+        const mMatch = cleaned.match(/^(\d+)\s*m$/i);
+        if (mMatch) {
+          const totalMins = parseInt(mMatch[1], 10);
+          const hrs = Math.floor(totalMins / 60);
+          const mins = totalMins % 60;
+          return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        }
+        return cleaned;
+      }
+      return 'None';
+    }
+
+    async function adminClearAttendanceLogs() {
+      const pwd = prompt('Enter Admin Master Password to clear all agency attendance logs:');
+      if (!pwd) return;
+      if (pwd !== 'amnik2026') {
+        toast('Access Denied: Incorrect Admin Password.', 'error');
+        return;
+      }
+      if (!confirm('⚠️ Are you sure you want to PERMANENTLY CLEAR all attendance logs from the cloud database and active roster? This action is irreversible.')) {
+        return;
+      }
+
+      try {
+        if (typeof SupabaseData !== 'undefined' && SupabaseConfig.isConfigured() && window.sbClient) {
+          const { error } = await window.sbClient.from('attendance_logs').delete().neq('id', 'dummy_non_existent');
+          if (error) {
+            console.error('Supabase clear attendance logs error:', error);
+          } else {
+            console.log('✅ Supabase attendance_logs cleared by Admin.');
+          }
+        }
+
+        window._adminAttLogs = [];
+        localStorage.removeItem('da_admin_att_logs');
+
+        const state = getCRMState();
+        if (state.attendance) {
+          state.attendance.log = [];
+          state.attendance.status = 'out';
+          state.attendance.checkInTime = null;
+          state.attendance.lunchStartTime = null;
+          state.attendance.lunchEndTime = null;
+          state.attendance.checkOutTime = null;
+          state.attendance.lateLunchReason = null;
+        }
+        saveCRMState(state);
+
+        renderAdminAttendanceTable();
+        updateAdminKpis();
+        toast('✅ All attendance logs have been permanently cleared by Admin.', 'success');
+      } catch (e) {
+        console.error('Error clearing attendance logs:', e);
+        toast('Failed to clear logs: ' + e.message, 'error');
+      }
     }
 
     function renderAdminAttendanceTable() {
@@ -2973,7 +3066,7 @@
       if (elLunch) elLunch.textContent = lunchCount;
 
       if (staff.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">No hired staff members recruited in roster yet. Click "+ Add Team Member" to add specialists.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">No hired staff members recruited in roster yet. Click "+ Add Team Member" to add specialists.</td></tr>';
         return;
       }
 
@@ -2988,12 +3081,26 @@
       }
 
       if (displayList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8">No staff members match the selected attendance filter (${_currentAttFilter.toUpperCase()}).</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:#94a3b8">No staff members match the selected attendance filter (${_currentAttFilter.toUpperCase()}).</td></tr>`;
         return;
       }
 
       tbody.innerHTML = displayList.map(({ member: m, todayAtt, isPresent, isLunch, activeProj }) => {
         const checkInStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
+        
+        let lunchDurHtml = '<span style="color:#64748b">—</span>';
+        if (todayAtt && (todayAtt.lunch_start || todayAtt.lunchStart || todayAtt.lunch)) {
+          const lStart = todayAtt.lunch_start || todayAtt.lunchStart;
+          const lEnd = todayAtt.lunch_end || todayAtt.lunchEnd;
+          const formattedLunch = formatLunchDurationDisplay(todayAtt.lunch, lStart, lEnd, todayAtt.status);
+          const reason = todayAtt.late_lunch_reason || todayAtt.lateLunchReason || '';
+          lunchDurHtml = `
+            <div>
+              <strong style="color:#fcd34d">${formattedLunch}</strong>
+              ${reason ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Reason: ${reason}">⚠️ ${reason}</div>` : ''}
+            </div>
+          `;
+        }
         const checkOutStr = todayAtt && todayAtt.check_out ? fmt(todayAtt.check_out) : '--:--';
         const hoursStr = todayAtt && todayAtt.effective_hours ? todayAtt.effective_hours : (isPresent ? 'In Progress' : '0h 0m');
         const photoUrl = todayAtt && todayAtt.photo_url ? todayAtt.photo_url : null;
@@ -3031,13 +3138,11 @@
             <span style="font-family:monospace;font-size:12px;color:#cbd5e1;background:rgba(255,255,255,0.05);padding:3px 7px;border-radius:5px">${m.id}</span>
           </td>
           <td data-label="Today's Presence">
-            ${isLunch ? `
-              <span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">🟡 On Lunch Break</span>
-            ` : (isPresent ? `
-              <span class="stat-badge green">● Present Today</span>
+            ${isPresent ? `
+              <span class="stat-badge green">● Present</span>
             ` : `
               <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent</span>
-            `)}
+            `}
           </td>
           <td data-label="Snapshot Selfie">
             ${photoUrl ? `
@@ -3054,6 +3159,7 @@
             `)}
           </td>
           <td data-label="Punch In"><strong>${checkInStr}</strong></td>
+          <td data-label="Lunch Break">${lunchDurHtml}</td>
           <td data-label="Current Status">${liveStatusHtml}</td>
           <td data-label="Punch Out"><span>${checkOutStr}</span></td>
           <td data-label="Effective Hours"><span class="stat-badge purple">${hoursStr}</span></td>
