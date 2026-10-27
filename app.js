@@ -1715,8 +1715,13 @@ function renderAttLog() {
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
     const lunchStr = r.lunch && r.lunch !== 'undefined' ? r.lunch : (r.lunchStartTime ? (typeof r.lunchStartTime === 'number' ? fmt(r.lunchStartTime) : r.lunchStartTime) : 'None');
     const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
-    const statusLabel = r.status === 'in' ? '● Present' : (r.status === 'lunch' ? '● Lunch' : (r.status === 'done' || r.status === 'Completed' ? '● Shift Done' : '● ' + (r.status || 'Active')));
-    const statusClass = (r.status === 'in' || r.status === 'Completed' || r.status === 'done') ? 'green' : (r.status === 'lunch' ? 'orange' : 'purple');
+    const rawStatus = String(r.status || '').toLowerCase();
+    const isAbsent = (rawStatus === 'absent');
+    const isPresent = (rawStatus === 'in' || rawStatus === 'done' || rawStatus === 'completed' || rawStatus === 'present');
+    const isLunch = (rawStatus === 'lunch');
+
+    const statusLabel = isAbsent ? '● Absent' : (rawStatus === 'in' ? '● Present' : (isLunch ? '● Lunch' : (rawStatus === 'done' || rawStatus === 'completed' ? '● Shift Done' : '● ' + (r.status || 'Active'))));
+    const statusClass = isAbsent ? 'red' : (isPresent ? 'green' : (isLunch ? 'orange' : 'purple'));
 
     return `
       <tr>
@@ -1740,11 +1745,7 @@ function renderAttLog() {
 }
 
 function clearAttLog() {
-  if (!confirm('Clear all attendance logs?')) return;
-  STATE.attendance.log = [];
-  renderAttLog();
-  toast('Attendance history cleared', 'info');
-  save();
+  toast('Attendance history is a permanent agency record and cannot be deleted.', 'info');
 }
 
 // ========================

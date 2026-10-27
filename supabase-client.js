@@ -503,21 +503,23 @@ const SupabaseData = {
     }
   },
 
-  // 7. 7-DAY PHOTO RETENTION AUTO-PURGE
+  // 7. 30-DAY / MONTHLY PHOTO RETENTION AUTO-PURGE (ONLY RESETS PHOTO, ATTENDANCE RECORD IS PERMANENT!)
   async purgeOldPhotos() {
     if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
     try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      // Monthly photo reset: photos cleared after 30 days to save storage.
+      // THE ATTENDANCE RECORD (Present/Absent, Date, Hours, Employee) IS NEVER DELETED!
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { error } = await window.sbClient
         .from('attendance_logs')
         .update({ photo_url: null })
-        .lt('created_at', sevenDaysAgo)
+        .lt('created_at', thirtyDaysAgo)
         .not('photo_url', 'is', null);
 
       if (error) {
         console.warn('Auto-purge photos warning:', error.message);
       } else {
-        console.log('🧹 7-Day Attendance photo hygiene check completed.');
+        console.log('🧹 Monthly Attendance photo reset completed. Attendance records remain permanently saved.');
       }
     } catch (e) {
       console.warn('Purge photos error:', e);
