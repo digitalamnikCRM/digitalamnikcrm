@@ -211,6 +211,11 @@ function save() {
     const curEmpId = String(STATE.employee?.id || 'emp').toLowerCase().replace(/[^a-z0-9]/g, '');
     const curDate = fmtDate(Date.now());
     localStorage.setItem(`da_att_${curEmpId}_${curDate}`, JSON.stringify(STATE.attendance));
+    if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId) {
+      localStorage.setItem(`da_active_timer_${curEmpId}`, JSON.stringify(STATE.activeProjectTimer));
+    } else {
+      localStorage.removeItem(`da_active_timer_${curEmpId}`);
+    }
   } catch (e) {}
 }
 
@@ -309,7 +314,7 @@ function load() {
       STATE.activityLog = [];
     }
 
-    if (data.activeProjectTimer && data.activeProjectTimer.projectId) {
+    if (data.activeProjectTimer && data.activeProjectTimer.projectId && (Date.now() - (data.activeProjectTimer.startTime || 0) < 24 * 3600 * 1000)) {
       STATE.activeProjectTimer = {
         projectId: data.activeProjectTimer.projectId,
         startTime: data.activeProjectTimer.startTime,
@@ -317,6 +322,20 @@ function load() {
     } else {
       STATE.activeProjectTimer = null;
     }
+
+    // Check dedicated active timer backup key for current employee
+    try {
+      const activeEmpId = String(localStorage.getItem('da_logged_in_emp') || (STATE.employee && STATE.employee.id) || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (activeEmpId) {
+        const savedTimer = localStorage.getItem(`da_active_timer_${activeEmpId}`);
+        if (savedTimer) {
+          const parsed = JSON.parse(savedTimer);
+          if (parsed && parsed.projectId && (Date.now() - (Number(parsed.startTime) || 0) < 24 * 3600 * 1000)) {
+            STATE.activeProjectTimer = parsed;
+          }
+        }
+      }
+    } catch (e) {}
 
     if (data.attendance) {
       STATE.attendance.status = data.attendance.status || 'out';

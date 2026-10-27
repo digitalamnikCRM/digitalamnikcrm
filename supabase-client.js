@@ -346,6 +346,11 @@ const SupabaseData = {
               st.attendance.status = 'in'; // ACTIVE PUNCH IN RESTORED!
             }
 
+            // Cache active attendance session locally as immediate offline backup
+            try {
+              localStorage.setItem(`da_att_${empNorm}_${todayDateStr}`, JSON.stringify(st.attendance));
+            } catch (e) {}
+
             console.log(`✅ Restored active attendance session for ${loggedId}: status=${st.attendance.status}, checkIn=${st.attendance.checkInTime}`);
             if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
             if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
@@ -355,6 +360,78 @@ const SupabaseData = {
         }
       } catch (attRestErr) {
         console.warn('Attendance session restoration warning:', attRestErr);
+      }
+
+      // 8. RESTORE ACTIVE PROJECT WORK TIMER FROM SUPABASE CLOUD (ZERO-DEVICE DEPENDENCY)
+      // Even if laptop shuts down or browser tab is closed, active work session continues in Supabase
+      try {
+        const loggedId = localStorage.getItem('da_logged_in_emp') || (st && st.employee && st.employee.id);
+        const loggedName = (st && st.employee && st.employee.name) || '';
+        if (loggedId && Array.isArray(st.projects)) {
+          const empNorm = String(loggedId).toLowerCase().replace(/[^a-z0-9]/g, '');
+          let activeSession = null;
+          let activeProj = null;
+
+          // 1st Check: Look for active session in Supabase projects.sessions
+          for (const p of st.projects) {
+            if (Array.isArray(p.sessions)) {
+              const found = p.sessions.find(s => {
+                if (!s || !s.isActive) return false;
+                const sTime = Number(s.startTime) || 0;
+                // Allow sessions started within the last 24 hours
+                if (sTime && (Date.now() - sTime) > 24 * 3600 * 1000) return false;
+                const sUid = String(s.userId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const sUname = String(s.userName || s.user || '').trim().toLowerCase();
+                return (sUid === empNorm || (loggedName && sUname === loggedName.toLowerCase()));
+              });
+              if (found) {
+                activeSession = found;
+                activeProj = p;
+                break;
+              }
+            }
+          }
+
+          // 2nd Check: Look in dedicated localStorage backup
+          if (!activeProj) {
+            try {
+              const savedTimer = localStorage.getItem(`da_active_timer_${empNorm}`);
+              if (savedTimer) {
+                const parsed = JSON.parse(savedTimer);
+                if (parsed && parsed.projectId && (Date.now() - (Number(parsed.startTime) || 0) < 24 * 3600 * 1000)) {
+                  const matchedProj = st.projects.find(p => p.id === parsed.projectId);
+                  if (matchedProj) {
+                    activeProj = matchedProj;
+                    activeSession = { startTime: Number(parsed.startTime) };
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+
+          if (activeProj && activeSession) {
+            st.activeProjectTimer = {
+              projectId: activeProj.id,
+              startTime: Number(activeSession.startTime) || Date.now()
+            };
+            try {
+              localStorage.setItem(`da_active_timer_${empNorm}`, JSON.stringify(st.activeProjectTimer));
+            } catch (e) {}
+            console.log(`⏱️ Restored live cloud project timer for "${activeProj.name}" from Supabase Cloud (Started: ${typeof fmt === 'function' ? fmt(st.activeProjectTimer.startTime) : st.activeProjectTimer.startTime})`);
+            if (typeof updateProjectTimerTicker === 'function') updateProjectTimerTicker();
+            if (typeof syncActiveTaskTopbar === 'function') syncActiveTaskTopbar();
+            if (typeof renderProjects === 'function') renderProjects();
+            if (typeof renderAdminProjectsTime === 'function') renderAdminProjectsTime();
+          } else if (!activeProj && st.activeProjectTimer) {
+            // Verify if existing local timer is stale (more than 24h old)
+            if (st.activeProjectTimer.startTime && (Date.now() - st.activeProjectTimer.startTime > 24 * 3600 * 1000)) {
+              st.activeProjectTimer = null;
+              try { localStorage.removeItem(`da_active_timer_${empNorm}`); } catch (e) {}
+            }
+          }
+        }
+      } catch (timerRestErr) {
+        console.warn('Active project timer cloud restoration warning:', timerRestErr);
       }
 
       // Keep active logged-in employee in sync with database record
