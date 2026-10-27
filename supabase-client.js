@@ -314,6 +314,49 @@ const SupabaseData = {
       // Background Maintenance: Auto-purge check-in photos older than 7 days
       this.purgeOldPhotos();
 
+      // 7. RESTORE ACTIVE LOGGED-IN EMPLOYEE ATTENDANCE SESSION FROM SUPABASE CLOUD
+      try {
+        const loggedId = localStorage.getItem('da_logged_in_emp') || (st && st.employee && st.employee.id);
+        if (loggedId && Array.isArray(attData)) {
+          const empNorm = String(loggedId).toLowerCase().replace(/[^a-z0-9]/g, '');
+          const todayDateStr = typeof fmtDate === 'function' ? fmtDate(Date.now()) : '';
+          
+          const myTodayAtt = attData.find(a => {
+            const aEmpId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const aDate = String(a.date || '').trim();
+            const isTodayDate = (aDate === todayDateStr);
+            const isRecentCheckIn = a.check_in && (Math.abs(Date.now() - Number(a.check_in)) < 24 * 3600 * 1000);
+            return aEmpId === empNorm && (isTodayDate || isRecentCheckIn);
+          });
+
+          if (myTodayAtt) {
+            if (!st.attendance) st.attendance = {};
+            st.attendance.checkInTime = Number(myTodayAtt.check_in) || myTodayAtt.checkIn;
+            st.attendance.lunchStartTime = myTodayAtt.lunch_start ? Number(myTodayAtt.lunch_start) : null;
+            st.attendance.lunchEndTime = myTodayAtt.lunch_end ? Number(myTodayAtt.lunch_end) : null;
+            st.attendance.checkOutTime = myTodayAtt.check_out ? Number(myTodayAtt.check_out) : null;
+            st.attendance.photoUrl = myTodayAtt.photo_url || null;
+            st.attendance.lateLunchReason = myTodayAtt.late_lunch_reason || null;
+
+            if (st.attendance.checkOutTime) {
+              st.attendance.status = 'done';
+            } else if (st.attendance.lunchStartTime && !st.attendance.lunchEndTime) {
+              st.attendance.status = 'lunch';
+            } else if (st.attendance.checkInTime) {
+              st.attendance.status = 'in'; // ACTIVE PUNCH IN RESTORED!
+            }
+
+            console.log(`✅ Restored active attendance session for ${loggedId}: status=${st.attendance.status}, checkIn=${st.attendance.checkInTime}`);
+            if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+            if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
+              startAttElapsed();
+            }
+          }
+        }
+      } catch (attRestErr) {
+        console.warn('Attendance session restoration warning:', attRestErr);
+      }
+
       // Keep active logged-in employee in sync with database record
       if (st && st.employee && Array.isArray(st.team)) {
         const empNorm = String(st.employee.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');

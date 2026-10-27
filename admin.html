@@ -3892,10 +3892,15 @@
         return `<button type="button" class="emp-domain-toggle-pill ${isSelected ? 'active' : ''}" data-domain="${d}" onclick="this.classList.toggle('active')">${icon} ${d}</button>`;
       }).join(' ');
 
-      const assignedProjects = (state.projects || []).filter(p =>
-        (p.assigned || []).includes(m.name) ||
-        domains.includes(p.service)
-      );
+      const assignedProjects = (state.projects || []).filter(p => {
+        const empName = String(m.name || '').toLowerCase().trim();
+        const empId = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const pAssigned = (Array.isArray(p.assigned) ? p.assigned : [p.assignedTo, p.assigned]).filter(Boolean).map(x => String(x).toLowerCase().trim());
+        const matchName = pAssigned.some(a => a === empName || empName.includes(a) || a.includes(empName));
+        const matchId = pAssigned.some(a => a.replace(/[^a-z0-9]/g, '') === empId);
+        const matchDomain = domains.map(d => d.toLowerCase()).includes(String(p.service || '').toLowerCase());
+        return matchName || matchId || matchDomain;
+      });
 
       const avatarSrc = m.photoUrl || m.avatar || localStorage.getItem('da_emp_avatar_' + String(m.id).toLowerCase());
       modalBody.innerHTML = `
@@ -4240,7 +4245,7 @@
       const specialistPills = staff.map(m => {
         const doms = getEmpDomains(m);
         const isSelected = preSelectedEmp && (preSelectedEmp === m.name || preSelectedEmp === m.id);
-        return `<span class="domain-pill ${isSelected ? 'active' : ''}" data-name="${m.name}" onclick="toggleDomainPill(this)">👤 ${m.name} (${m.id} • ${doms[0] || m.role})</span>`;
+        return `<span class="domain-pill ${isSelected ? 'active' : ''}" data-name="${m.name}" data-id="${m.id}" onclick="toggleDomainPill(this)">👤 ${m.name} (${m.id} • ${doms[0] || m.role})</span>`;
       });
 
       const domainPills = [
@@ -4287,8 +4292,14 @@
       const desc = (document.getElementById('admin-proj-desc')?.value || '').trim();
 
       const activePills = document.querySelectorAll('#admin-proj-assign-wrap .domain-pill.active');
-      let assigned = Array.from(activePills).map(p => p.getAttribute('data-name')).filter(Boolean);
-      if (assigned.length === 0) assigned = ['Amaan Khan'];
+      let assigned = [];
+      activePills.forEach(p => {
+        const name = p.getAttribute('data-name');
+        const id = p.getAttribute('data-id');
+        if (name && !assigned.includes(name)) assigned.push(name);
+        if (id && !assigned.includes(id)) assigned.push(id);
+      });
+      if (assigned.length === 0) assigned = ['Amaan Khan', 'emp000'];
 
       const state = getCRMState();
       if (!Array.isArray(state.projects)) state.projects = [];

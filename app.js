@@ -207,6 +207,11 @@ function save() {
     },
   };
   localStorage.setItem('da_crm_state_v3', JSON.stringify(toSave));
+  try {
+    const curEmpId = String(STATE.employee?.id || 'emp').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const curDate = fmtDate(Date.now());
+    localStorage.setItem(`da_att_${curEmpId}_${curDate}`, JSON.stringify(STATE.attendance));
+  } catch (e) {}
 }
 
 function load() {
@@ -322,6 +327,24 @@ function load() {
       STATE.attendance.lateLunchReason = data.attendance.lateLunchReason || null;
       STATE.attendance.log = data.attendance.log || [];
     }
+
+    // Restore dedicated employee attendance for today if saved
+    try {
+      const activeEmpId = String(localStorage.getItem('da_logged_in_emp') || STATE.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const curDateStr = fmtDate(Date.now());
+      const savedEmpAtt = localStorage.getItem(`da_att_${activeEmpId}_${curDateStr}`);
+      if (savedEmpAtt) {
+        const parsedAtt = JSON.parse(savedEmpAtt);
+        if (parsedAtt && (parsedAtt.checkInTime || parsedAtt.status === 'in' || parsedAtt.status === 'lunch')) {
+          STATE.attendance.status = parsedAtt.status;
+          STATE.attendance.checkInTime = parsedAtt.checkInTime;
+          STATE.attendance.lunchStartTime = parsedAtt.lunchStartTime;
+          STATE.attendance.lunchEndTime = parsedAtt.lunchEndTime;
+          STATE.attendance.checkOutTime = parsedAtt.checkOutTime;
+          STATE.attendance.lateLunchReason = parsedAtt.lateLunchReason || null;
+        }
+      }
+    } catch (e) {}
   } catch (e) {
     console.warn('Storage parse error, resetting clean:', e);
     STATE.projects = [];
@@ -732,41 +755,109 @@ function renderRoleNotice() {
 // ========================
 // EMPLOYEE STUDIO AUTHENTICATION GATE
 // ========================
+// ========================
+// ASSIGNMENT MATCHING ENGINE (CASE-INSENSITIVE & ROBUST)
+// ========================
+function isProjectAssignedTo(p, emp) {
+  if (!p) return false;
+  if (!emp) emp = STATE.employee;
+  if (!emp) return true;
+
+  if (emp.isFounder || emp.id === 'EMP-000') return true;
+
+  const empId = String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const empName = String(emp.name || '').toLowerCase().trim();
+  const empRole = String(emp.role || '').toLowerCase().trim();
+  const empDomains = (Array.isArray(emp.domains) && emp.domains.length > 0 ? emp.domains : [emp.role])
+    .filter(Boolean)
+    .map(d => String(d).toLowerCase().trim());
+
+  let assignedArr = [];
+  if (Array.isArray(p.assigned)) {
+    assignedArr = p.assigned.map(x => String(x || '').toLowerCase().trim());
+  } else if (p.assigned) {
+    assignedArr = [String(p.assigned).toLowerCase().trim()];
+  }
+  const assignedToStr = String(p.assignedTo || '').toLowerCase();
+  const pService = String(p.service || p.serviceDomain || '').toLowerCase().trim();
+
+  // 1. Direct ID match (e.g. "emp001")
+  const matchId = (empId && assignedArr.some(a => a.replace(/[^a-z0-9]/g, '') === empId)) ||
+                  (empId && assignedToStr.replace(/[^a-z0-9]/g, '').includes(empId));
+
+  // 2. Direct Name match (case-insensitive)
+  const matchName = (empName && assignedArr.some(a => a === empName || empName.includes(a) || a.includes(empName))) ||
+                    (empName && (assignedToStr.includes(empName) || empName.includes(assignedToStr)));
+
+  // 3. Domain or Role match
+  const matchRole = (empRole && assignedArr.includes(empRole)) ||
+                    empDomains.some(d => assignedArr.includes(d) || assignedToStr.includes(d));
+
+  // 4. Service Domain match
+  const matchService = pService && (pService === empRole || empDomains.includes(pService));
+
+  return Boolean(matchId || matchName || matchRole || matchService);
+}
+window.isProjectAssignedTo = isProjectAssignedTo;
+
 function checkEmployeeLogin() {
   const overlay = document.getElementById('emp-login-overlay');
   const loggedInId = localStorage.getItem('da_logged_in_emp');
 
   if (loggedInId) {
-    const member = (STATE.team || []).find(m => m.id.toLowerCase() === loggedInId.toLowerCase());
-    if (member) {
-      const empDomains = Array.isArray(member.domains) && member.domains.length > 0
-        ? member.domains
-        : (member.role ? String(member.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
+    // 1. Check cached session object in localStorage
+    let cachedEmp = null;
+    try {
+      const raw = localStorage.getItem('da_logged_in_emp_data');
+      if (raw) cachedEmp = JSON.parse(raw);
+    } catch (e) {}
+
+    const member = (STATE.team || []).find(m => (m.id || '').toLowerCase() === loggedInId.toLowerCase());
+    const activeObj = member || cachedEmp;
+
+    if (activeObj) {
+      const empDomains = Array.isArray(activeObj.domains) && activeObj.domains.length > 0
+        ? activeObj.domains
+        : (activeObj.role ? String(activeObj.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
       const primaryDomain = empDomains[0] || 'Video Editor';
       const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
-      const empAvatar = member.avatar || member.photoUrl || localStorage.getItem('da_emp_avatar_' + String(member.id).toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const empAvatar = activeObj.avatar || activeObj.photoUrl || localStorage.getItem('da_emp_avatar_' + String(activeObj.id).toLowerCase().replace(/[^a-z0-9]/g, ''));
+
       STATE.employee = {
-        name: member.name,
-        id: member.id,
-        role: member.role || empDomains.join(', '),
+        name: activeObj.name,
+        id: activeObj.id,
+        role: activeObj.role || empDomains.join(', '),
         domains: empDomains,
-        isFounder: Boolean(member.isFounder || (member.id && member.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')),
+        isFounder: Boolean(activeObj.isFounder || (activeObj.id && activeObj.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')),
         icon: roleObj ? roleObj.icon : '🎬',
-        initials: computeInitials(member.name),
+        initials: computeInitials(activeObj.name),
         avatar: empAvatar || null,
         photoUrl: empAvatar || null,
       };
+
+      // Keep cached session data fresh
+      localStorage.setItem('da_logged_in_emp_data', JSON.stringify(STATE.employee));
+
       if (overlay) {
         overlay.classList.remove('show');
         overlay.style.display = 'none';
       }
       document.body.style.overflow = '';
       syncProfileUI();
+      renderProjects();
+      return;
+    } else {
+      // Logged in ID exists, keep overlay hidden while Supabase hydrates in background!
+      if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+      }
+      document.body.style.overflow = '';
       return;
     }
   }
 
-  // Not logged in -> show login gate
+  // Strictly only show login gate if user has NO stored session
   if (overlay) {
     overlay.classList.add('show');
     overlay.style.display = 'flex';
@@ -874,6 +965,7 @@ async function handleEmployeeLogin(e) {
     avatar: postAvatar || null,
     photoUrl: postAvatar || null,
   };
+  localStorage.setItem('da_logged_in_emp_data', JSON.stringify(STATE.employee));
 
   (STATE.team || []).forEach(m => {
     m.isCurrent = (m.id.toLowerCase() === member.id.toLowerCase());
@@ -897,6 +989,7 @@ async function handleEmployeeLogin(e) {
 function logoutEmployee() {
   if (!confirm(`Sign out from ${STATE.employee.name} (${STATE.employee.id})?`)) return;
   localStorage.removeItem('da_logged_in_emp');
+  localStorage.removeItem('da_logged_in_emp_data');
   const overlay = document.getElementById('emp-login-overlay');
   if (overlay) {
     overlay.classList.add('show');
@@ -2184,16 +2277,7 @@ function renderProjects() {
     : [STATE.employee.role].filter(Boolean);
 
   if (_activeFilter === 'my') {
-    list = list.filter(p => {
-      if (STATE.employee.isFounder || STATE.employee.id === 'EMP-000') return true;
-      const assigned = p.assigned || [];
-      const assignedTo = p.assignedTo || '';
-      const isAssignedByName = assigned.includes(STATE.employee.name) || assignedTo.includes(STATE.employee.name);
-      const isAssignedById = assigned.includes(STATE.employee.id) || assignedTo.includes(STATE.employee.id);
-      const isAssignedByRole = assigned.includes(STATE.employee.role) || empDomains.some(d => assigned.includes(d));
-      const isMatchingService = p.service === STATE.employee.role || empDomains.includes(p.service);
-      return isAssignedByName || isAssignedById || isAssignedByRole || isMatchingService;
-    });
+    list = list.filter(p => isProjectAssignedTo(p, STATE.employee));
   } else if (_activeFilter !== 'all') {
     list = list.filter(p => {
       const s = p.status || '';
@@ -4056,14 +4140,7 @@ function updateDashCounts() {
 
   const myProjects = (STATE.projects || []).filter(p => {
     if (p.status === 'Completed' || p.status === 'Cancelled') return false;
-    if (STATE.employee.isFounder || STATE.employee.id === 'EMP-000') return true;
-    const assigned = p.assigned || [];
-    const assignedTo = p.assignedTo || '';
-    const isAssignedByName = assigned.includes(STATE.employee.name) || assignedTo.includes(STATE.employee.name);
-    const isAssignedById = assigned.includes(STATE.employee.id) || assignedTo.includes(STATE.employee.id);
-    const isAssignedByRole = assigned.includes(STATE.employee.role) || empDomains.some(d => assigned.includes(d));
-    const isMatchingService = p.service === STATE.employee.role || empDomains.includes(p.service);
-    return isAssignedByName || isAssignedById || isAssignedByRole || isMatchingService;
+    return isProjectAssignedTo(p, STATE.employee);
   });
 
   const todayStr = new Date().toISOString().slice(0, 10);
