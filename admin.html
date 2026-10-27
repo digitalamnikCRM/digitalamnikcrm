@@ -1085,6 +1085,30 @@
         padding: 5px 8px;
       }
     }
+  
+    /* Select & Option dark styling fix */
+    select,
+    select.form-input,
+    select.form-select,
+    .form-select,
+    option {
+      color-scheme: dark !important;
+      background-color: #131722 !important;
+      color: #f1f5f9 !important;
+    }
+    select option,
+    select.form-input option,
+    .form-select option {
+      background-color: #131722 !important;
+      color: #f1f5f9 !important;
+      padding: 10px 14px !important;
+    }
+    select option:hover,
+    select option:checked {
+      background-color: #7c3aed !important;
+      color: #ffffff !important;
+    }
+
   </style>
 </head>
 
@@ -1189,6 +1213,12 @@
           for agency client accounts, team rosters, tracked billable time &amp; live deliverable operations.</span>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn-primary btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);box-shadow:0 0 16px rgba(139,92,246,0.35);gap:6px">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          </svg>
+          <span>+ Add Assignment</span>
+        </button>
         <button class="btn-primary btn-glow" onclick="openAddClientModal()">
           <svg viewBox="0 0 24 24" width="16" height="16">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -1211,7 +1241,7 @@
       <div class="admin-kpi-card cyan" onclick="switchAdminTab('employees')" style="cursor:pointer" title="View recruited staff specialists">
         <div class="kpi-icon-box">👥</div>
         <div class="kpi-info">
-          <span class="kpi-label">Staff Specialists</span>
+          <span class="kpi-label">Employees</span>
           <strong class="kpi-val" id="admin-kpi-team">0</strong>
           <span class="kpi-sub" id="admin-kpi-team-active">0 in studio • 1 Owner</span>
         </div>
@@ -1238,7 +1268,7 @@
       <div class="admin-kpi-card amber" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to see who is working live on projects">
         <div class="kpi-icon-box">⚡</div>
         <div class="kpi-info">
-          <span class="kpi-label">Working Live Now</span>
+          <span class="kpi-label">Active Assignment</span>
           <strong class="kpi-val" id="admin-kpi-live-work" style="color:#fbbf24">0</strong>
           <span class="kpi-sub">Running project timers</span>
         </div>
@@ -1411,7 +1441,7 @@
               <th>Assigned Domains</th>
               <th>Shift Timing</th>
               <th>Today's Attendance</th>
-              <th>Current Live Task</th>
+              <th>Activity</th>
               <th style="text-align:right">Actions</th>
             </tr>
           </thead>
@@ -1492,7 +1522,7 @@
                 <th>Snapshot</th>
                 <th>Punch In</th>
                 <th>Lunch Break</th>
-                <th>Current Status / Active Task</th>
+                <th>Activity</th>
                 <th>Punch Out</th>
                 <th>Effective Hours</th>
               </tr>
@@ -2049,13 +2079,13 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Client Account <span class="req">*</span></label>
-            <select class="form-input" id="admin-proj-client">
+            <select class="form-input form-select" id="admin-proj-client">
               <!-- Populated dynamically -->
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Service Domain</label>
-            <select class="form-input" id="admin-proj-service">
+            <select class="form-input form-select" id="admin-proj-service">
               <option value="Video Editing">🎬 Video Editing</option>
               <option value="Social Media Management">📱 Social Media Management</option>
               <option value="Graphic Design">🎨 Graphic Design</option>
@@ -2069,7 +2099,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Priority</label>
-            <select class="form-input" id="admin-proj-priority">
+            <select class="form-input form-select" id="admin-proj-priority">
               <option value="High">🔴 High Priority</option>
               <option value="Medium" selected>🟡 Medium Priority</option>
               <option value="Low">🔵 Low Priority</option>
@@ -3190,20 +3220,18 @@
         const hoursStr = todayAtt && todayAtt.effective_hours ? todayAtt.effective_hours : (isPresent ? 'In Progress' : '0h 0m');
         const photoUrl = todayAtt && todayAtt.photo_url ? todayAtt.photo_url : null;
 
-        // Current status label
+        // Activity: Working, On Lunch, Check Out
         let liveStatusHtml = '';
         if (activeProj) {
-          liveStatusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;color:#34d399;font-weight:600;font-size:11.5px"><span class="timer-pulse-circle"></span> Working on "${activeProj.name}"</span>`;
+          liveStatusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;color:#34d399;font-weight:600;font-size:11.5px"><span class="timer-pulse-circle"></span> Working</span>`;
         } else if (isLunch) {
-          liveStatusHtml = `<span style="color:#fbbf24;font-size:11.5px">🟡 On Lunch Break</span>`;
-        } else if (todayAtt && todayAtt.status === 'done') {
-          liveStatusHtml = `<span style="color:#a78bfa;font-size:11.5px">🟣 Shift Concluded</span>`;
+          liveStatusHtml = `<span style="color:#fbbf24;font-size:11.5px;font-weight:600">🟡 On Lunch</span>`;
+        } else if (todayAtt && (todayAtt.status === 'done' || todayAtt.check_out)) {
+          liveStatusHtml = `<span style="color:#f87171;font-size:11.5px;font-weight:600">🔴 Check Out</span>`;
         } else if (isPresent) {
-          liveStatusHtml = `<span style="color:#34d399;font-size:11.5px">🟢 In Studio (Standby)</span>`;
-        } else if (todayAtt && (todayAtt.status === 'absent' || todayAtt.isAutoAbsent)) {
-          liveStatusHtml = `<span style="color:#f87171;font-size:11.5px">🔴 Auto-Absent (Post 7:00 PM Deadline)</span>`;
+          liveStatusHtml = `<span style="color:#34d399;font-size:11.5px;font-weight:600">🟢 Working</span>`;
         } else {
-          liveStatusHtml = `<span style="color:#f87171;font-size:11.5px">🔴 Shift: ${m.shift || '10:00 AM – 07:00 PM'}</span>`;
+          liveStatusHtml = `<span style="color:#64748b;font-size:11.5px;font-weight:600">🔴 Check Out</span>`;
         }
 
         return `
@@ -3245,7 +3273,7 @@
           </td>
           <td data-label="Punch In"><strong>${checkInStr}</strong></td>
           <td data-label="Lunch Break">${lunchDurHtml}</td>
-          <td data-label="Current Status">${liveStatusHtml}</td>
+          <td data-label="Activity">${liveStatusHtml}</td>
           <td data-label="Punch Out"><span>${checkOutStr}</span></td>
           <td data-label="Effective Hours"><span class="stat-badge purple">${hoursStr}</span></td>
         </tr>
@@ -3658,18 +3686,18 @@
           attBadgeHtml = `<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);font-size:11px;padding:2px 8px">● Absent</span>`;
         }
 
-        // Current live task
+        // Activity: Working, On Lunch, Check Out
         let currentTaskHtml = '';
         if (activeProj) {
-          currentTaskHtml = `<span style="display:inline-flex;align-items:center;gap:5px;color:#34d399;font-weight:600;font-size:12px"><span class="timer-pulse-circle"></span> Working on "${activeProj.name}"</span>`;
+          currentTaskHtml = `<span style="display:inline-flex;align-items:center;gap:5px;color:#34d399;font-weight:600;font-size:12px"><span class="timer-pulse-circle"></span> Working</span>`;
         } else if (isLunch) {
-          currentTaskHtml = `<span style="color:#fbbf24;font-size:12px">🟡 On Lunch Break</span>`;
-        } else if (todayAtt && todayAtt.status === 'done') {
-          currentTaskHtml = `<span style="color:#a78bfa;font-size:12px">🟣 Shift Concluded</span>`;
+          currentTaskHtml = `<span style="color:#fbbf24;font-weight:600;font-size:12px">🟡 On Lunch</span>`;
+        } else if (todayAtt && (todayAtt.status === 'done' || todayAtt.check_out)) {
+          currentTaskHtml = `<span style="color:#f87171;font-weight:600;font-size:12px">🔴 Check Out</span>`;
         } else if (isPresent) {
-          currentTaskHtml = `<span style="color:#34d399;font-size:12px">🟢 In Studio (Standby)</span>`;
+          currentTaskHtml = `<span style="color:#34d399;font-weight:600;font-size:12px">🟢 Working</span>`;
         } else {
-          currentTaskHtml = `<span style="color:#64748b;font-size:12px">Offline (Not punched in)</span>`;
+          currentTaskHtml = `<span style="color:#64748b;font-weight:600;font-size:12px">🔴 Check Out</span>`;
         }
 
         return `
@@ -3703,7 +3731,7 @@
               ${hasSelfie ? `<span title="Photo selfie verified" style="cursor:pointer;font-size:12px" onclick="event.stopPropagation(); openAdminPhotoPreview('${m.name.replace(/'/g, "\\'")}', '${todayAtt.photo_url}', '${checkInTimeStr}', '${m.role}')">📸</span>` : ''}
             </div>
           </td>
-          <td data-label="Live Activity">
+          <td data-label="Activity">
             ${currentTaskHtml}
           </td>
           <td data-label="Actions" style="text-align:right" onclick="event.stopPropagation()">

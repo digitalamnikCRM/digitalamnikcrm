@@ -1,3 +1,29 @@
+
+/* UNIVERSAL DARK SELECT & OPTION STYLES */
+select,
+.form-select,
+.form-input[type="select"],
+select.form-input,
+option {
+  color-scheme: dark !important;
+  background-color: #131722 !important;
+  color: #f1f5f9 !important;
+}
+
+select option,
+.form-select option,
+select.form-input option {
+  background-color: #131722 !important;
+  color: #f1f5f9 !important;
+  padding: 10px 14px !important;
+}
+
+select option:hover,
+select option:checked {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+
   /* =========================================================
    DIGITAL AMNIK CRM — LINEAR / STRIPE ELITE DESIGN SYSTEM
    Style: World-Class Enterprise SaaS • High-Precision Dark Mode
