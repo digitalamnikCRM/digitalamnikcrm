@@ -205,7 +205,9 @@ const SupabaseData = {
         .order('created_at', { ascending: false });
 
       if (!projErr && Array.isArray(projData)) {
-        st.projects = projData.map(p => ({
+        st.projects = projData
+          .filter(p => p && p.id !== 'mvm1nuia2euxf' && !/automated growth campaign/i.test(p.name || ''))
+          .map(p => ({
           id: p.id,
           name: p.name,
           client: p.client,

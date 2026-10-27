@@ -249,9 +249,11 @@ function load() {
     }
 
     if (Array.isArray(data.projects)) {
-      // Filter out only legacy sample mock IDs
+      // Filter out legacy mock/sample projects
       STATE.projects = data.projects.filter(p =>
-        p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3'
+        p && p.id !== 'p-1' && p.id !== 'p-2' && p.id !== 'p-3' &&
+        p.id !== 'mvm1nuia2euxf' &&
+        !/automated growth campaign|growth campaign|techvibe|luxe/i.test((p.name || '') + ' ' + (p.client || ''))
       );
     } else {
       STATE.projects = [];
