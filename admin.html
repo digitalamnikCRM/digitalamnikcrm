@@ -1154,10 +1154,6 @@
         </div>
       </div>
       <div class="admin-topbar-actions">
-        <div class="supabase-status-badge connected" title="Supabase Cloud Database Connected">
-          <span class="sb-dot connected"></span>
-          <span>Cloud Live</span>
-        </div>
         <button class="btn-portal-back" onclick="openChangePasswordModal()" title="Change Admin Password"
           style="cursor:pointer">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -1253,7 +1249,16 @@
         <div class="kpi-info">
           <span class="kpi-label">Completed Today</span>
           <strong class="kpi-val" id="admin-kpi-completed-today" style="color:#c4b5fd">0</strong>
-          <span class="kpi-sub">Deliverables / Sessions done</span>
+          <span class="kpi-sub">Assignments done</span>
+        </div>
+      </div>
+
+      <div class="admin-kpi-card rose" onclick="switchAdminTab('timesheets'); filterPendingAdminProjects()" style="cursor:pointer;border-color:rgba(239,68,68,0.4);background:linear-gradient(135deg,rgba(239,68,68,0.08) 0%,rgba(19,22,33,0.9) 100%)" title="Click to view pending/overdue assignments">
+        <div class="kpi-icon-box" style="background:rgba(239,68,68,0.2);color:#ef4444">⚠️</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Pending Assignments</span>
+          <strong class="kpi-val" id="admin-kpi-pending-assignments" style="color:#ef4444;text-shadow:0 0 16px rgba(239,68,68,0.5)">0</strong>
+          <span class="kpi-sub" style="color:#fca5a5">Overdue past target date</span>
         </div>
       </div>
 
@@ -1278,7 +1283,7 @@
         <span class="admin-tab-count" id="admin-tab-emp-count">0</span>
       </button>
       <button class="admin-tab-btn" id="tab-btn-timesheets" onclick="switchAdminTab('timesheets')">
-        <span>⏱️ Project Hours &amp; Timesheets</span>
+        <span>⏱️ Project Hours &amp; Assignments</span>
         <span class="admin-tab-count" id="admin-tab-proj-count">0</span>
       </button>
       <button class="admin-tab-btn" id="tab-btn-calendars" onclick="switchAdminTab('calendars')">
@@ -1347,6 +1352,14 @@
               <div class="founder-status-chip">
                 <span>☁️ Cloud Database Master</span>
               </div>
+              <button type="button" class="btn-founder-key" onclick="openAdminProfileModal()"
+                style="background:rgba(6,182,212,0.18);border:1px solid rgba(6,182,212,0.4);color:#67e8f9"
+                title="Edit Admin Profile &amp; Update Executive Details">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+                <span>Edit Profile</span>
+              </button>
               <button type="button" class="btn-founder-key" onclick="openChangePasswordModal()"
                 title="Change Admin Master Key">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
@@ -1541,7 +1554,13 @@
             <button class="filter-btn active" onclick="filterAdminCalendars('all', this)">All Calendars</button>
             <button class="filter-btn" onclick="filterAdminCalendars('current', this)">Current Month</button>
           </div>
-          <div class="search-input-box" style="max-width:320px">
+          <div class="cal-client-select-wrap" style="display:inline-flex;align-items:center;gap:6px">
+            <label for="admin-cal-client-select" style="font-size:12px;color:#94a3b8;font-weight:600">Client:</label>
+            <select class="form-select" id="admin-cal-client-select" onchange="filterAdminCalendarsByClient(this.value)" style="min-width:180px;padding:6px 12px;font-size:12.5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#fff;cursor:pointer">
+              <option value="all">🏢 All Client Calendars</option>
+            </select>
+          </div>
+          <div class="search-input-box" style="max-width:300px">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path
                 d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
@@ -1564,6 +1583,28 @@
         <!-- Rendered by JS -->
       </div>
     </div>
+
+    <!-- Executive Admin Footer Credit Bar -->
+    <footer class="admin-footer-credits" style="margin-top:40px;padding:22px 0 30px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;color:#94a3b8;font-size:12.5px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.3));border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;font-size:13px">⚡</span>
+        <div>
+          <strong style="color:#fff;font-family:'Outfit',sans-serif;font-size:13.5px">Digital Amnik OS</strong>
+          <span style="display:block;font-size:11px;color:#64748b">Executive Agency Operating System &amp; Enterprise CRM</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#64748b">Engineered by</span>
+          <strong style="color:#e2e8f0;font-weight:700">Mohammad Ilhan</strong>
+        </div>
+        <span style="color:rgba(255,255,255,0.15)">•</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#64748b">Conceptualised By</span>
+          <strong style="color:#e2e8f0;font-weight:700">Salman Sahir</strong>
+        </div>
+      </div>
+    </footer>
 
   </div>
 
@@ -1704,6 +1745,103 @@
     </div>
   </div>
 
+  <!-- ============= ADMIN PROFILE EDIT MODAL ============= -->
+  <div class="modal-overlay" id="admin-profile-modal" onclick="closeModalOutside(event,'admin-profile-modal')">
+    <div class="modal modal-md">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-tag" style="background:rgba(6,182,212,0.15);color:#38bdf8;border:1px solid rgba(6,182,212,0.3)">EXECUTIVE LEADERSHIP</span>
+          <h3>Edit Admin Executive Profile</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('admin-profile-modal')">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px;background:linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.09);border-radius:14px;margin-bottom:18px">
+          <div style="position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(124,58,237,0.5),rgba(6,182,212,0.4));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,0.2);box-shadow:0 0 20px rgba(124,58,237,0.35);overflow:hidden;flex-shrink:0" id="admin-profile-avatar-box">
+            <img id="admin-profile-img-preview" src="" alt="Admin Avatar" style="display:none;width:100%;height:100%;object-fit:cover" />
+            <span id="admin-profile-avatar-preview">👑 AK</span>
+          </div>
+          <div style="flex:1">
+            <strong style="color:#fff;font-size:15.5px;display:block;margin-bottom:2px" id="admin-profile-preview-name">Amaan Khan</strong>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="color:#94a3b8;font-size:12px;font-family:monospace">EMP-000</span>
+              <span style="font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3)">👑 Executive Owner</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <input type="file" id="admin-profile-pic-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleAdminAvatarChange(event)" />
+              <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('admin-profile-pic-file').click()" style="padding:4px 10px;font-size:11.5px;display:inline-flex;align-items:center;gap:5px;background:rgba(6,182,212,0.18);border:1px solid rgba(6,182,212,0.35);color:#a5f3fc;cursor:pointer">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+                <span>Upload Photo</span>
+              </button>
+              <button type="button" class="btn-ghost btn-sm" id="btn-remove-admin-avatar" onclick="removeAdminAvatar()" style="padding:4px 9px;font-size:11.5px;color:#f87171;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);display:none;cursor:pointer">
+                ✕ Remove
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="admin-edit-name" value="Amaan Khan" placeholder="Agency Founder Name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Executive Title / Designation</label>
+          <input type="text" class="form-input" id="admin-edit-role" value="Agency Founder &amp; Executive Owner" placeholder="Designation" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Executive Bio / Manifesto</label>
+          <textarea class="form-textarea" id="admin-edit-bio" style="min-height:80px" placeholder="Executive bio..."></textarea>
+        </div>
+
+        <div style="margin-top:16px;padding:12px 14px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:10px">
+          <label style="font-size:11.5px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px">🔑 Master Password Change (Optional)</label>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">New Master Password</label>
+              <input type="password" class="form-input" id="admin-edit-pass" placeholder="Leave blank to keep current" />
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">Confirm Password</label>
+              <input type="password" class="form-input" id="admin-edit-pass-confirm" placeholder="Confirm new password" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('admin-profile-modal')">Cancel</button>
+        <button class="btn-primary btn-glow" onclick="saveAdminProfile()">Save Admin Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= ADMIN CHANGE EMPLOYEE PASSWORD MODAL ============= -->
+  <div class="modal-overlay" id="admin-emp-password-modal" onclick="closeModalOutside(event,'admin-emp-password-modal')">
+    <div class="modal modal-md" style="max-width:440px">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-tag" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4)">STAFF CREDENTIALS</span>
+          <h3 id="admin-emp-pass-title">Update Specialist Password</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('admin-emp-password-modal')">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12.5px;color:#94a3b8;margin-bottom:14px;line-height:1.5">
+          As Agency Administrator, you have exclusive authority to assign or reset specialist studio passwords.
+        </p>
+        <div class="form-group">
+          <label class="form-label">New Assigned Password <span class="req">*</span></label>
+          <input type="text" class="form-input" id="admin-emp-new-pass-input" placeholder="e.g. 123456 or strong password" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('admin-emp-password-modal')">Cancel</button>
+        <button class="btn-primary btn-glow" onclick="saveAdminEmpPassword()">Update Employee Password</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============= ADMIN CHECK-IN PHOTO INSPECTION MODAL ============= -->
   <div class="modal-overlay" id="admin-photo-preview-modal"
     onclick="closeModalOutside(event,'admin-photo-preview-modal')">
@@ -1809,7 +1947,12 @@
               <path
                 d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
             </svg>
-            <span>Open Fullscreen</span>
+            <span>Open in Browser</span>
+          </a>
+          <a id="admin-pdf-viewer-download-link" href="#" download="calendar.pdf" class="btn-small btn-primary"
+            title="Download PDF to Device" style="gap:6px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span>Download PDF</span>
           </a>
           <button class="modal-close" onclick="closePDFViewerModal()">&#10005;</button>
         </div>
@@ -2351,6 +2494,7 @@
               isFounder: false,
               email: m.email || '',
               phone: m.phone || '',
+              photoUrl: m.photo_url || null,
               domains: m.role ? String(m.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
               addedAt: m.created_at ? new Date(m.created_at).getTime() : Date.now()
             }));
@@ -2998,6 +3142,17 @@
       if (kpiProjects) kpiProjects.textContent = activeProjects;
       const tabProj = document.getElementById('admin-tab-proj-count');
       if (tabProj) tabProj.textContent = (state.projects || []).length;
+
+      // 8. Pending Assignments (Overdue beyond deadline date)
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const pendingAssignmentsCount = (state.projects || []).filter(p =>
+        p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled'
+      ).length;
+      const kpiPending = document.getElementById('admin-kpi-pending-assignments');
+      if (kpiPending) {
+        kpiPending.textContent = pendingAssignmentsCount;
+        kpiPending.style.color = pendingAssignmentsCount > 0 ? '#ef4444' : '#10b981';
+      }
     }
 
     function switchAdminTab(tabName) {
@@ -3360,8 +3515,8 @@
           </td>
           <td data-label="Actions" style="text-align:right" onclick="event.stopPropagation()">
             <div style="display:inline-flex;align-items:center;gap:6px">
-              <button class="btn-small btn-secondary" onclick="openAdminEmpDetail('${m.id}')" title="Inspect Staff Profile">
-                <span>View</span>
+              <button class="btn-small btn-secondary" onclick="openAdminEmpDetail('${m.id}')" title="Edit Specialist Profile & Details" style="display:inline-flex;align-items:center;gap:4px">
+                <span>✏️ Edit</span>
               </button>
               <button class="btn-icon danger" onclick="deleteEmployee('${m.id}')" title="Remove Member from Roster" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -3521,15 +3676,36 @@
         domains.includes(p.service)
       );
 
+      const avatarSrc = m.photoUrl || m.avatar || localStorage.getItem('da_emp_avatar_' + String(m.id).toLowerCase());
       modalBody.innerHTML = `
-      <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:16px">
-        <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,rgba(124,58,237,0.4),rgba(6,182,212,0.3));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">
-          ${computeInitials(m.name)}
+      <div style="display:flex;align-items:center;gap:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin-bottom:16px">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,rgba(124,58,237,0.4),rgba(6,182,212,0.3));border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">
+          ${avatarSrc ? `<img src="${avatarSrc}" alt="${m.name}" style="width:100%;height:100%;object-fit:cover;display:block;" />` : computeInitials(m.name)}
         </div>
-        <div>
-          <h4 style="margin:0;font-size:16px;color:#fff">${m.name}</h4>
-          <span style="color:#94a3b8;font-size:12px">${m.id} • Shift: ${m.shift || '10:00 AM – 07:00 PM'}</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <h4 style="margin:0;font-size:16.5px;color:#fff">${m.name}</h4>
+            <span style="font-family:monospace;font-size:11.5px;color:#38bdf8;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px">${m.id}</span>
+          </div>
+          <span style="color:#94a3b8;font-size:12px;display:block;margin-top:2px">Shift Window: ${m.shift || '10:00 AM – 07:00 PM'}</span>
         </div>
+      </div>
+
+      <!-- Editable Staff Profile Details Form -->
+      <div style="margin-bottom:16px;padding:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px">
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Specialist Full Name <span class="req">*</span></label>
+            <input type="text" class="form-input" id="admin-detail-emp-name" value="${m.name.replace(/"/g, '&quot;')}" placeholder="e.g. Mohammad Ilhan" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Shift Window</label>
+            <input type="text" class="form-input" id="admin-detail-emp-shift" value="${(m.shift || '10:00 AM – 07:00 PM').replace(/"/g, '&quot;')}" placeholder="10:00 AM – 07:00 PM" />
+          </div>
+        </div>
+        <button type="button" class="btn-primary btn-small btn-glow" onclick="saveAdminEmpFullProfile('${m.id}')" style="margin-top:4px">
+          💾 Save Name &amp; Profile Details
+        </button>
       </div>
 
       <!-- Multiple Domain Manager Station -->
@@ -3548,7 +3724,12 @@
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div style="padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px">
-          <span style="font-size:11px;color:#94a3b8;display:block">Assigned Studio Password</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:#94a3b8">Assigned Studio Password</span>
+            <button type="button" class="btn-small btn-secondary" onclick="openAdminChangeEmpPasswordModal('${m.id}')" style="font-size:10.5px;padding:2px 8px;background:rgba(124,58,237,0.25);border:1px solid rgba(124,58,237,0.45);color:#c4b5fd" title="Change Employee Password">
+              🔑 Change
+            </button>
+          </div>
           <strong style="font-family:monospace;font-size:14px;color:#38bdf8">${m.password || '123'}</strong>
         </div>
         <div style="padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px">
@@ -3771,12 +3952,21 @@
           liveStateBadge = `<span class="stat-badge purple" style="font-size:11px;padding:3px 8px">⏸️ Standby</span>`;
         }
 
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const isPending = p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled';
+
         return `
-        <tr class="clickable-row" onclick="openAdminProjectDetail('${p.id}')" title="Click to view deliverable details, timers & session history">
+        <tr class="clickable-row ${isPending ? 'is-pending-overdue' : ''}" 
+            style="${isPending ? 'background:rgba(239,68,68,0.07);border-left:3px solid #ef4444;' : ''}"
+            onclick="openAdminProjectDetail('${p.id}')" title="Click to view assignment details, timers & session history">
           <td data-label="Deliverable">
             <div style="display:flex;flex-direction:column;gap:3px">
               <strong style="color:#fff;font-size:14px;line-height:1.3">${p.name}</strong>
-              <span style="font-size:11.5px;color:#94a3b8">👤 Assigned: ${p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Unassigned')}</span>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:11.5px;color:#94a3b8">👤 Assigned: ${p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Unassigned')}</span>
+                ${p.deadline ? `<span style="font-size:11px;color:#cbd5e1">📅 Due: ${p.deadline}</span>` : ''}
+                ${isPending ? `<span class="stat-badge red" style="background:rgba(239,68,68,0.25);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-size:10px;font-weight:800;letter-spacing:0.5px">⚠️ PENDING OVERDUE</span>` : ''}
+              </div>
             </div>
           </td>
           <td data-label="Client Account">
@@ -4069,6 +4259,32 @@
       return val;
     }
 
+    let _adminCalClient = 'all';
+
+    function filterAdminCalendarsByClient(client) {
+      _adminCalClient = client;
+      renderAdminCalendars();
+    }
+
+    function populateAdminCalendarClientDropdown() {
+      const select = document.getElementById('admin-cal-client-select');
+      if (!select) return;
+
+      const state = getCRMState();
+      const currentVal = _adminCalClient || 'all';
+      const clientNames = new Set();
+      (state.clients || []).forEach(c => c && c.name && clientNames.add(c.name.trim()));
+      (state.calendars || []).forEach(c => c && c.client && clientNames.add(c.client.trim()));
+
+      const sortedClients = Array.from(clientNames).sort();
+      let html = `<option value="all" ${currentVal === 'all' ? 'selected' : ''}>🏢 All Client Calendars (${(state.calendars || []).length})</option>`;
+      sortedClients.forEach(name => {
+        const count = (state.calendars || []).filter(c => (c.client || '').toLowerCase() === name.toLowerCase()).length;
+        html += `<option value="${name}" ${currentVal.toLowerCase() === name.toLowerCase() ? 'selected' : ''}>🏢 ${name} (${count})</option>`;
+      });
+      select.innerHTML = html;
+    }
+
     function filterAdminCalendars(filter, el) {
       _adminCalFilter = filter;
       document.querySelectorAll('#admin-cal-filter-chips .filter-btn').forEach(b => b.classList.remove('active'));
@@ -4078,16 +4294,15 @@
 
     function viewClientCalendars(clientName) {
       switchAdminTab('calendars');
-      const searchInput = document.getElementById('admin-cal-search');
-      if (searchInput) {
-        searchInput.value = clientName || '';
-        renderAdminCalendars();
-      }
+      _adminCalClient = clientName || 'all';
+      renderAdminCalendars();
     }
 
     function renderAdminCalendars() {
       const grid = document.getElementById('admin-calendars-grid');
       if (!grid) return;
+
+      populateAdminCalendarClientDropdown();
 
       const state = getCRMState();
       const search = (document.getElementById('admin-cal-search')?.value || '').toLowerCase();
@@ -4098,6 +4313,10 @@
 
       if (_adminCalFilter === 'current') {
         list = list.filter(c => c.month === currentYM || (c.monthLabel && c.monthLabel.toLowerCase().includes('october 2026')));
+      }
+
+      if (_adminCalClient && _adminCalClient !== 'all') {
+        list = list.filter(c => (c.client || '').toLowerCase() === _adminCalClient.toLowerCase());
       }
 
       if (search) {
@@ -4114,9 +4333,9 @@
         <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px;">
           <div style="font-size: 42px; margin-bottom: 12px; opacity: 0.6;">🗓️</div>
           <h4 style="color: #fff; margin-bottom: 6px; font-size: 16px;">No Content Calendars Found</h4>
-          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 18px; max-width: 440px; margin-left: auto; margin-right: auto;">Upload monthly client content calendar PDFs to keep the entire agency aligned and give team members instant access.</p>
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 18px; max-width: 440px; margin-left: auto; margin-right: auto;">${_adminCalClient !== 'all' ? `No calendar uploaded yet for "${_adminCalClient}".` : 'Upload monthly client content calendar PDFs to keep the entire agency aligned and give team members instant access.'}</p>
           <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()" style="display: inline-flex; margin: 0 auto;">
-            <span>+ Upload First Client Calendar</span>
+            <span>+ Upload Client Calendar</span>
           </button>
         </div>
       `;
@@ -4144,7 +4363,7 @@
                 <span>•</span>
                 <span>👤 ${c.uploadedBy || 'Team'}</span>
                 <span>•</span>
-                <span>🕒 ${fmtDate(c.uploadedAt || Date.now())}</span>
+                <span>🕒 ${fmtDate(c.uploadedAt)}</span>
               </div>
             </div>
           </div>
@@ -4153,12 +4372,16 @@
         </div>
 
         <div class="cal-card-footer">
-          <div class="cal-actions">
-            <button class="btn-cal-action view" onclick="viewCalendarPDF('${c.id}')" title="Preview PDF Calendar">
+          <div class="cal-actions" style="flex-wrap:wrap;gap:6px">
+            <button class="btn-cal-action view" onclick="viewCalendarPDF('${c.id}')" title="Preview PDF Inside Website">
               <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-              <span>View PDF</span>
+              <span>Website View</span>
             </button>
-            <a class="btn-cal-action download" href="${c.fileUrl}" download="${c.fileName}" title="Download PDF">
+            <a class="btn-cal-action" href="${c.fileUrl}" target="_blank" title="Open PDF in Browser Tab" style="display:inline-flex;align-items:center;gap:4px">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+              <span>New Tab</span>
+            </a>
+            <a class="btn-cal-action download" href="${c.fileUrl}" download="${c.fileName}" title="Download PDF to Device">
               <svg viewBox="0 0 24 24" width="13" height="13"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
               <span>Download</span>
             </a>
@@ -4184,9 +4407,14 @@
 
       const frame = document.getElementById('pdf-viewer-frame');
       const extLink = document.getElementById('pdf-viewer-external-link');
+      const dloadLink = document.getElementById('admin-pdf-viewer-download-link');
 
       if (frame) frame.src = cal.fileUrl;
       if (extLink) extLink.href = cal.fileUrl;
+      if (dloadLink) {
+        dloadLink.href = cal.fileUrl;
+        dloadLink.download = cal.fileName || `${cal.client}-calendar.pdf`;
+      }
 
       openModal('pdf-viewer-modal');
     }
@@ -4195,6 +4423,270 @@
       const frame = document.getElementById('pdf-viewer-frame');
       if (frame) frame.src = 'about:blank';
       closeModal('pdf-viewer-modal');
+    }
+
+    // ========================
+    // ADMIN PROFILE & CREDENTIALS CONTROLLER
+    // ========================
+    let _currentEditingEmpId = null;
+    let _pendingAdminProfilePic = undefined;
+
+    function handleAdminAvatarChange(e) {
+      const file = e && e.target && e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        toast('Please select an image file (PNG, JPG, WebP)', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const maxDim = 220;
+          let w = img.width, h = img.height;
+          if (w > h) {
+            if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          } else {
+            if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          _pendingAdminProfilePic = compressed;
+
+          const imgPreview = document.getElementById('admin-profile-img-preview');
+          const textPreview = document.getElementById('admin-profile-avatar-preview');
+          const removeBtn = document.getElementById('btn-remove-admin-avatar');
+          if (imgPreview) { imgPreview.src = compressed; imgPreview.style.display = 'block'; }
+          if (textPreview) textPreview.style.display = 'none';
+          if (removeBtn) removeBtn.style.display = 'inline-flex';
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeAdminAvatar() {
+      _pendingAdminProfilePic = '';
+      const imgPreview = document.getElementById('admin-profile-img-preview');
+      const textPreview = document.getElementById('admin-profile-avatar-preview');
+      const removeBtn = document.getElementById('btn-remove-admin-avatar');
+      const fileInput = document.getElementById('admin-profile-pic-file');
+      if (fileInput) fileInput.value = '';
+      if (imgPreview) { imgPreview.src = ''; imgPreview.style.display = 'none'; }
+      if (textPreview) { textPreview.style.display = 'inline-block'; }
+      if (removeBtn) removeBtn.style.display = 'none';
+    }
+
+    function openAdminProfileModal() {
+      const nameInput = document.getElementById('admin-edit-name');
+      const roleInput = document.getElementById('admin-edit-role');
+      const bioInput = document.getElementById('admin-edit-bio');
+      const newPassInput = document.getElementById('admin-edit-pass');
+      const confirmPassInput = document.getElementById('admin-edit-pass-confirm');
+      const imgPreview = document.getElementById('admin-profile-img-preview');
+      const textPreview = document.getElementById('admin-profile-avatar-preview');
+      const removeBtn = document.getElementById('btn-remove-admin-avatar');
+      const fileInput = document.getElementById('admin-profile-pic-file');
+
+      if (fileInput) fileInput.value = '';
+      _pendingAdminProfilePic = undefined;
+
+      const savedName = localStorage.getItem('da_crm_admin_name') || 'Amaan Khan';
+      const savedRole = localStorage.getItem('da_crm_admin_role') || 'Agency Founder & Executive Owner';
+      const savedBio = localStorage.getItem('da_crm_admin_bio') || 'Founder & sole proprietor of Digital Amnik. Holds complete executive authority over agency clients, creative deliverables, team management, and Supabase cloud operations.';
+      const savedAvatar = localStorage.getItem('da_admin_avatar');
+
+      if (nameInput) nameInput.value = savedName;
+      if (roleInput) roleInput.value = savedRole;
+      if (bioInput) bioInput.value = savedBio;
+      if (newPassInput) newPassInput.value = '';
+      if (confirmPassInput) confirmPassInput.value = '';
+
+      const previewName = document.getElementById('admin-profile-preview-name');
+      if (previewName) previewName.textContent = savedName;
+
+      if (savedAvatar) {
+        if (imgPreview) { imgPreview.src = savedAvatar; imgPreview.style.display = 'block'; }
+        if (textPreview) textPreview.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+      } else {
+        if (imgPreview) { imgPreview.src = ''; imgPreview.style.display = 'none'; }
+        if (textPreview) textPreview.style.display = 'inline-block';
+        if (removeBtn) removeBtn.style.display = 'none';
+      }
+
+      openModal('admin-profile-modal');
+    }
+
+    async function saveAdminProfile() {
+      const name = document.getElementById('admin-edit-name')?.value.trim();
+      const role = document.getElementById('admin-edit-role')?.value.trim();
+      const bio = document.getElementById('admin-edit-bio')?.value.trim();
+      const newPass = document.getElementById('admin-edit-pass')?.value;
+      const confirmPass = document.getElementById('admin-edit-pass-confirm')?.value;
+
+      if (!name) {
+        toast('Admin name is required', 'error');
+        return;
+      }
+
+      if (newPass) {
+        if (newPass.length < 3) {
+          toast('New password must be at least 3 characters', 'error');
+          return;
+        }
+        if (newPass !== confirmPass) {
+          toast('Passwords do not match', 'error');
+          return;
+        }
+        ADMIN_MASTER_PASSWORD = newPass;
+        localStorage.setItem('da_crm_admin_pass', newPass);
+        localStorage.setItem('da_crm_admin_auth_v3', 'authenticated');
+      }
+
+      localStorage.setItem('da_crm_admin_name', name);
+      localStorage.setItem('da_crm_admin_role', role);
+      localStorage.setItem('da_crm_admin_bio', bio);
+
+      if (_pendingAdminProfilePic !== undefined) {
+        if (_pendingAdminProfilePic) {
+          localStorage.setItem('da_admin_avatar', _pendingAdminProfilePic);
+        } else {
+          localStorage.removeItem('da_admin_avatar');
+        }
+      }
+
+      const state = getCRMState();
+      const founder = (state.team || []).find(m => m.isFounder || (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000'));
+      if (founder) {
+        founder.name = name;
+        founder.role = role;
+        if (newPass) founder.password = newPass;
+        if (_pendingAdminProfilePic !== undefined) {
+          if (_pendingAdminProfilePic) founder.photoUrl = _pendingAdminProfilePic;
+          else delete founder.photoUrl;
+        }
+      }
+      saveCRMState(state);
+
+      const founderNameEl = document.querySelector('.founder-name');
+      if (founderNameEl) founderNameEl.textContent = name;
+      const founderRoleEl = document.querySelector('.founder-role-badge');
+      if (founderRoleEl) founderRoleEl.textContent = `👑 ${role}`;
+      const founderBioEl = document.querySelector('.founder-bio');
+      if (founderBioEl) founderBioEl.textContent = bio;
+
+      try {
+        if (window.sbClient && typeof window.sbClient.from === 'function') {
+          const updateData = { name: name, role: role };
+          if (newPass) updateData.password = newPass;
+          if (_pendingAdminProfilePic !== undefined) {
+            updateData.photo_url = _pendingAdminProfilePic || null;
+          }
+          let res = await window.sbClient.from('team_members').update(updateData).eq('id', 'emp000');
+          if (res.error) {
+            delete updateData.photo_url;
+            await window.sbClient.from('team_members').update(updateData).eq('id', 'emp000');
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase admin update note:', err);
+      }
+
+      closeModal('admin-profile-modal');
+      toast('Admin profile updated successfully! 👑', 'success');
+    }
+
+    async function saveAdminEmpFullProfile(empId) {
+      const state = getCRMState();
+      const m = (state.team || []).find(x => x.id === empId);
+      if (!m) {
+        toast('Specialist not found', 'error');
+        return;
+      }
+
+      const nameInput = document.getElementById('admin-detail-emp-name');
+      const shiftInput = document.getElementById('admin-detail-emp-shift');
+      const newName = nameInput ? nameInput.value.trim() : '';
+      const newShift = shiftInput ? shiftInput.value.trim() : '10:00 AM – 07:00 PM';
+
+      if (!newName) {
+        toast('Specialist name cannot be empty', 'error');
+        return;
+      }
+
+      m.name = newName;
+      m.shift = newShift;
+      saveCRMState(state);
+
+      try {
+        if (window.sbClient && typeof window.sbClient.from === 'function') {
+          await window.sbClient.from('team_members').update({
+            name: newName,
+            shift: newShift
+          }).eq('id', String(empId).trim().toLowerCase());
+        }
+      } catch (err) {
+        console.warn('Supabase specialist update note:', err);
+      }
+
+      renderAdminEmployees();
+      openAdminEmpDetail(empId);
+      toast(`Specialist profile updated for ${newName}! ✨`, 'success');
+    }
+
+    function openAdminChangeEmpPasswordModal(empId) {
+      _currentEditingEmpId = empId;
+      const state = getCRMState();
+      const m = (state.team || []).find(x => x.id === empId);
+      if (!m) return;
+
+      const titleEl = document.getElementById('admin-emp-pass-title');
+      if (titleEl) titleEl.textContent = `Update Password for ${m.name} (${m.id})`;
+      const inputEl = document.getElementById('admin-emp-new-pass-input');
+      if (inputEl) inputEl.value = m.password || '';
+
+      openModal('admin-emp-password-modal');
+    }
+
+    async function saveAdminEmpPassword() {
+      if (!_currentEditingEmpId) return;
+      const newPass = document.getElementById('admin-emp-new-pass-input')?.value.trim();
+      if (!newPass) {
+        toast('Please enter a valid password', 'error');
+        return;
+      }
+
+      const state = getCRMState();
+      const m = (state.team || []).find(x => x.id === _currentEditingEmpId);
+      if (!m) return;
+
+      m.password = newPass;
+      saveCRMState(state);
+
+      openAdminEmpDetail(_currentEditingEmpId);
+      renderAdminEmployees();
+
+      closeModal('admin-emp-password-modal');
+      toast(`Password for ${m.name} updated to "${newPass}"! 🔑`, 'success');
+
+      try {
+        if (window.sbClient && typeof window.sbClient.from === 'function') {
+          await window.sbClient.from('team_members').update({ password: newPass }).eq('id', String(_currentEditingEmpId).trim().toLowerCase());
+        }
+      } catch (err) {
+        console.warn('Supabase employee password update note:', err);
+      }
+    }
+
+    function filterPendingAdminProjects() {
+      const searchInput = document.getElementById('admin-timesheet-search');
+      if (searchInput) searchInput.value = '';
+      switchAdminTab('timesheets');
+      toast('Displaying assignments. Overdue pending items highlighted in RED ⚠️', 'info');
     }
 
     function openCalendarUploadModal() {

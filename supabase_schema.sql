@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.attendance_logs (
 
 -- Migration safety for existing tables:
 ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT NULL;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT NULL;
 
 -- ====================================================================
 -- 6. TABLE: CALENDARS (Social Media Monthly Content Schedules)

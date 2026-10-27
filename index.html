@@ -76,7 +76,7 @@
   <!-- Employee profile card -->
   <div class="sidebar-employee-card">
     <div class="emp-avatar-wrapper">
-      <div class="emp-avatar" id="sidebar-avatar">DA</div>
+      <div class="emp-avatar" id="sidebar-avatar" onclick="openEmployeeProfileModal()" style="cursor:pointer" title="Click to edit profile & photo">DA</div>
       <span class="avatar-status-dot" id="avatar-status-dot" title="Active"></span>
     </div>
     <div class="emp-info">
@@ -94,6 +94,9 @@
           <span id="sidebar-role-icon">🎬</span>
           <span id="sidebar-role-label">Video Editor</span>
         </span>
+        <button class="edit-profile-btn" onclick="openEmployeeProfileModal()" title="Edit My Profile" style="color:var(--violet-400);background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);margin-left:auto">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
         <button class="edit-profile-btn" onclick="logoutEmployee()" title="Sign Out / Switch Employee" style="color:#f87171">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         </button>
@@ -147,6 +150,10 @@
         <span class="credit-by-label">Engineered by</span>
         <strong class="credit-author-name">Mohammad Ilhan</strong>
       </div>
+      <div class="credit-author" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+        <span class="credit-by-label">Conceptualised by</span>
+        <strong class="credit-author-name">Salman Sahir</strong>
+      </div>
     </div>
   </div>
 </aside>
@@ -167,6 +174,13 @@
     </div>
 
     <div class="topbar-right">
+      <!-- Employee Specialist Quick Profile Badge -->
+      <button type="button" class="topbar-emp-profile-badge" id="topbar-emp-profile-btn" onclick="openEmployeeProfileModal()" title="Edit My Specialist Profile & Photo" style="display:inline-flex;align-items:center;gap:7px;background:rgba(124,58,237,0.18);border:1px solid rgba(139,92,246,0.4);border-radius:99px;padding:4px 12px;color:#c4b5fd;cursor:pointer;font-size:11.5px;font-weight:600;transition:all 0.2s ease;">
+        <span id="topbar-emp-avatar" style="width:20px;height:20px;border-radius:50%;background:rgba(124,58,237,0.6);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden">👤</span>
+        <span id="topbar-emp-name">My Profile</span>
+        <span style="font-size:11px;opacity:0.8">✏️</span>
+      </button>
+
       <!-- Agency Founder & Owner Elite Showcase -->
       <div class="topbar-owner-showcase" title="Agency Founder &amp; Owner — Amaan Khan">
         <div class="owner-crest-medallion">
@@ -217,12 +231,6 @@
         <span class="live-clock" id="live-clock">18:30:00</span>
       </div>
 
-      <!-- Supabase Cloud Connection Status Badge -->
-      <div class="supabase-status-badge connected" title="Supabase Cloud Database Connected">
-        <span class="sb-dot connected"></span>
-        <span>Cloud Live</span>
-      </div>
-
       <div class="notif-btn" title="System Notifications" onclick="toast('All systems operational. No unread alerts.', 'info')">
         <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
         <span class="notif-dot"></span>
@@ -244,6 +252,10 @@
           
           <div class="welcome-role-row">
             <span class="welcome-role-badge" id="welcome-role-badge">🎬 Video Editor</span>
+            <button type="button" class="btn-compact-profile-edit" style="cursor:pointer;position:relative;z-index:25;" onclick="openEmployeeProfileModal()" title="Edit My Profile & Photo">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              <span>Edit Profile</span>
+            </button>
           </div>
 
           <!-- Live Shift Mini Progress HUD -->
@@ -338,33 +350,31 @@
             <div class="stat-badge blue" id="dash-active-badge">Projects</div>
           </div>
           <div class="stat-body">
-            <span class="stat-label">Active Deliverables</span>
+            <span class="stat-label">Active Assignments</span>
             <div class="stat-val-row">
               <span class="stat-val" id="dash-proj-count">0</span>
               <span class="stat-unit">In Flight</span>
             </div>
-            <span class="stat-subtext">Click to view project board</span>
+            <span class="stat-subtext">Click to view assignment board</span>
           </div>
         </div>
 
-        <!-- 4: My Role & Delegation Rights -->
-        <div class="stat-card stat-role" onclick="openProfileEdit()">
-          <div class="stat-glow"></div>
+        <!-- 4: Pending Assignments (Overdue beyond deadline) -->
+        <div class="stat-card stat-pending-assignments" onclick="showSection('projects', document.querySelector('[data-section=projects]'))" style="border-color:rgba(239,68,68,0.3);background:linear-gradient(135deg,rgba(239,68,68,0.06) 0%,rgba(19,22,33,0.85) 100%)">
+          <div class="stat-glow" style="background:radial-gradient(circle,rgba(239,68,68,0.2) 0%,transparent 70%)"></div>
           <div class="stat-header">
-            <div class="stat-icon-wrapper orange">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+            <div class="stat-icon-wrapper red" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.35)">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
             </div>
-            <div class="stat-badge orange" id="dash-role-badge">Domain</div>
+            <div class="stat-badge red" id="dash-pending-badge" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4)">Pending</div>
           </div>
           <div class="stat-body">
-            <span class="stat-label">Assigned Specialty</span>
+            <span class="stat-label">Pending Assignments</span>
             <div class="stat-val-row">
-              <span class="stat-val" id="dash-role-val">Video Editor</span>
+              <span class="stat-val" id="dash-pending-count" style="color:#ef4444;font-weight:800;text-shadow:0 0 16px rgba(239,68,68,0.5)">0</span>
+              <span class="stat-unit" style="color:#f87171">Overdue</span>
             </div>
-            <div class="role-action-pill">
-              <span>Change Domain</span>
-              <svg viewBox="0 0 24 24" width="12" height="12"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-            </div>
+            <span class="stat-subtext" style="color:#fca5a5">Deadline exceeded • Action required</span>
           </div>
         </div>
 
@@ -594,12 +604,20 @@
       </div>
 
       <!-- Filter & Search Controls -->
-      <div class="filter-bar">
-        <div class="filter-chips" id="cal-filter-chips">
-          <button class="filter-btn active" onclick="filterCalendars('all', this)">All Calendars</button>
-          <button class="filter-btn" onclick="filterCalendars('current', this)">Current Month</button>
+      <div class="filter-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="filter-chips" id="cal-filter-chips">
+            <button class="filter-btn active" onclick="filterCalendars('all', this)">All Calendars</button>
+            <button class="filter-btn" onclick="filterCalendars('current', this)">Current Month</button>
+          </div>
+          <div class="cal-client-select-wrap" style="display:inline-flex;align-items:center;gap:6px">
+            <label for="cal-client-select" style="font-size:12px;color:var(--text-muted);font-weight:600">Client:</label>
+            <select class="form-select" id="cal-client-select" onchange="filterCalendarsByClient(this.value)" style="min-width:180px;padding:6px 12px;font-size:12.5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#fff;cursor:pointer">
+              <option value="all">🏢 All Client Calendars</option>
+            </select>
+          </div>
         </div>
-        <div class="search-input-box">
+        <div class="search-input-box" style="max-width:300px">
           <svg viewBox="0 0 24 24" width="16" height="16"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           <input type="text" class="search-input" id="cal-search" placeholder="Search by client, month, title..." oninput="renderCalendars()" />
         </div>
@@ -610,6 +628,28 @@
         <!-- Rendered by JS -->
       </div>
     </section>
+
+    <!-- Workspace Footer Credits -->
+    <footer class="workspace-footer-credits" style="margin-top:40px;padding:22px 0 28px 0;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;color:var(--text-muted);font-size:12.5px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(14,165,233,0.3));border:1px solid rgba(99,102,241,0.3);color:#818cf8;font-size:12px">⚡</span>
+        <div>
+          <strong style="color:var(--text-primary);font-family:var(--font-display);font-size:13.5px">Digital Amnik OS</strong>
+          <span style="display:block;font-size:11px;color:var(--text-muted)">High-Performance Operations &amp; Agency CRM</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--text-muted)">Engineered by</span>
+          <strong style="color:var(--text-primary);font-weight:700">Mohammad Ilhan</strong>
+        </div>
+        <span style="opacity:0.3">•</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--text-muted)">Conceptualised By</span>
+          <strong style="color:var(--text-primary);font-weight:700">Salman Sahir</strong>
+        </div>
+      </div>
+    </footer>
 
   </main>
 </div>
@@ -771,8 +811,12 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center">
         <a id="pdf-viewer-external-link" href="#" target="_blank" class="btn-small btn-ghost" title="Open in New Tab">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-          <span>Open Fullscreen</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          <span>Open in Browser</span>
+        </a>
+        <a id="pdf-viewer-download-link" href="#" download="calendar.pdf" class="btn-small btn-primary" title="Download PDF to Device" style="gap:6px">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <span>Download PDF</span>
         </a>
         <button class="modal-close" onclick="closeModal('pdf-viewer-modal')">&#10005;</button>
       </div>
@@ -782,6 +826,354 @@
     </div>
   </div>
 </div>
+
+<!-- ============= EMPLOYEE PROFILE EDIT MODAL ============= -->
+<div class="modal-overlay" id="employee-profile-modal" onclick="closeModalOutside(event,'employee-profile-modal')">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="modal-tag" style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3)">MEMBER PROFILE</span>
+        <h3>Edit Specialist Profile</h3>
+      </div>
+      <button class="modal-close" onclick="closeModal('employee-profile-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:16px;padding:14px;background:linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.09);border-radius:14px;margin-bottom:18px">
+        <!-- Interactive Avatar Preview Box -->
+        <div style="position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(99,102,241,0.5),rgba(168,85,247,0.4));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,0.2);box-shadow:0 0 20px rgba(99,102,241,0.35);overflow:hidden;flex-shrink:0" id="emp-profile-avatar-box">
+          <img id="emp-profile-img-preview" src="" alt="Profile Preview" style="display:none;width:100%;height:100%;object-fit:cover" />
+          <span id="emp-profile-avatar-preview">DA</span>
+        </div>
+        <div style="flex:1">
+          <strong style="color:#fff;font-size:15.5px;display:block;margin-bottom:2px" id="emp-profile-preview-name">Team Member</strong>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="color:var(--text-muted);font-size:12px;font-family:var(--font-mono)" id="emp-profile-preview-id">emp001</span>
+            <span style="font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">Agency Specialist</span>
+          </div>
+          <!-- Profile Pic Action Buttons -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="file" id="emp-profile-pic-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleEmployeeAvatarChange(event)" />
+            <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('emp-profile-pic-file').click()" style="padding:4px 10px;font-size:11.5px;display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.35);color:#c7d2fe;cursor:pointer">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+              <span>Upload Photo</span>
+            </button>
+            <button type="button" class="btn-ghost btn-sm" id="btn-remove-emp-avatar" onclick="removeEmployeeAvatar()" style="padding:4px 9px;font-size:11.5px;color:#f87171;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);display:none;cursor:pointer">
+              ✕ Remove
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name <span class="req">*</span></label>
+        <input type="text" class="form-input" id="emp-profile-name-input" placeholder="e.g. Mohammad Ilhan" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Primary Specialty / Domain</label>
+        <select class="form-select" id="emp-profile-role-input">
+          <option value="Video Editor">🎬 Video Editor</option>
+          <option value="Graphic Designer">🎨 Graphic Designer</option>
+          <option value="Social Media Manager">📱 Social Media Manager</option>
+          <option value="Social Media Management">📱 Social Media Management</option>
+          <option value="Paid Ads Specialist">💰 Paid Ads Specialist</option>
+          <option value="Content Creator">✍️ Content Creator</option>
+          <option value="SEO Specialist">🔍 SEO Specialist</option>
+          <option value="Web Developer">💻 Web Developer</option>
+          <option value="Admin">🗂️ Admin / Operations</option>
+        </select>
+      </div>
+
+      <!-- Password Lock Notice (Only Admin can change) -->
+      <div style="margin-top:16px;padding:12px 14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.22);border-radius:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:15px">🔒</span>
+          <strong style="font-size:12.5px;color:#fca5a5">Password Security Policy</strong>
+        </div>
+        <p style="font-size:11.5px;color:#cbd5e1;line-height:1.5;margin:0 0 10px 0">
+          Account passwords can <strong>only be updated or changed by Agency Admin (Amaan Khan)</strong>. Employees cannot alter their assigned security keys directly.
+        </p>
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-size:11px;color:var(--text-muted)">Assigned Password (Locked)</label>
+          <div style="position:relative">
+            <input type="password" class="form-input" value="••••••••••••" disabled style="opacity:0.6;background:rgba(0,0,0,0.3);cursor:not-allowed;padding-right:32px" />
+            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:#94a3b8">🔒</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('employee-profile-modal')">Cancel</button>
+      <button class="btn-primary btn-glow" onclick="saveEmployeeProfile()">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= INLINE EMPLOYEE PROFILE CONTROLLER ============= -->
+<script>
+window._pendingProfilePic = undefined;
+
+window.triggerEmployeeProfileUpload = function() {
+  var fileInput = document.getElementById('emp-profile-pic-file');
+  if (fileInput) fileInput.click();
+};
+
+window.handleEmployeeAvatarChange = function(e) {
+  var file = e && e.target && e.target.files && e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    if (typeof toast === 'function') toast('Please select an image file (PNG, JPG, WebP)', 'error');
+    else alert('Please select an image file');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    var rawData = evt.target.result;
+    var img = new Image();
+    img.onload = function() {
+      var maxDim = 220;
+      var w = img.width, h = img.height;
+      if (w > h) {
+        if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      } else {
+        if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      var compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      window._pendingProfilePic = compressedDataUrl;
+
+      var imgPreview = document.getElementById('emp-profile-img-preview');
+      var textPreview = document.getElementById('emp-profile-avatar-preview');
+      var removeBtn = document.getElementById('btn-remove-emp-avatar');
+      if (imgPreview) { imgPreview.src = compressedDataUrl; imgPreview.style.display = 'block'; }
+      if (textPreview) textPreview.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+    };
+    img.src = rawData;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeEmployeeAvatar = function() {
+  window._pendingProfilePic = '';
+  var imgPreview = document.getElementById('emp-profile-img-preview');
+  var textPreview = document.getElementById('emp-profile-avatar-preview');
+  var removeBtn = document.getElementById('btn-remove-emp-avatar');
+  var fileInput = document.getElementById('emp-profile-pic-file');
+  if (fileInput) fileInput.value = '';
+  if (imgPreview) { imgPreview.src = ''; imgPreview.style.display = 'none'; }
+  var empName = 'DA';
+  if (window.STATE && window.STATE.employee && window.STATE.employee.name) empName = window.STATE.employee.name;
+  var initials = empName.split(' ').map(function(s){ return s[0] || ''; }).join('').toUpperCase().slice(0,2) || 'DA';
+  if (textPreview) { textPreview.textContent = initials; textPreview.style.display = 'inline-block'; }
+  if (removeBtn) removeBtn.style.display = 'none';
+};
+
+window.openEmployeeProfileModal = function() {
+  var state = window.STATE || (typeof STATE !== 'undefined' ? STATE : null);
+  var emp = (state && state.employee) ? state.employee : { id: 'emp001', name: 'Team Member', role: 'Social Media Management' };
+  
+  var nameInput = document.getElementById('emp-profile-name-input');
+  var roleInput = document.getElementById('emp-profile-role-input');
+  var previewName = document.getElementById('emp-profile-preview-name');
+  var previewId = document.getElementById('emp-profile-preview-id');
+  var imgPreview = document.getElementById('emp-profile-img-preview');
+  var textPreview = document.getElementById('emp-profile-avatar-preview');
+  var removeBtn = document.getElementById('btn-remove-emp-avatar');
+  var fileInput = document.getElementById('emp-profile-pic-file');
+
+  if (fileInput) fileInput.value = '';
+  window._pendingProfilePic = undefined;
+
+  var rawId = String(emp.id || 'emp001').trim();
+  var cleanId = rawId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  var currentAvatar = emp.avatar || emp.photoUrl || localStorage.getItem('da_emp_avatar_' + cleanId) || localStorage.getItem('da_emp_avatar_' + rawId.toLowerCase());
+
+  if (nameInput) nameInput.value = emp.name || '';
+  if (roleInput) {
+    roleInput.value = emp.role || 'Social Media Management';
+    if (!roleInput.value && roleInput.options) {
+      for (var i = 0; i < roleInput.options.length; i++) {
+        if (roleInput.options[i].value.toLowerCase().includes(String(emp.role || '').toLowerCase())) {
+          roleInput.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
+  if (previewName) previewName.textContent = emp.name || 'Team Member';
+  if (previewId) previewId.textContent = emp.id || 'emp001';
+
+  var initials = (emp.name || 'DA').split(' ').map(function(s){ return s[0] || ''; }).join('').toUpperCase().slice(0,2) || 'DA';
+
+  if (currentAvatar) {
+    if (imgPreview) { imgPreview.src = currentAvatar; imgPreview.style.display = 'block'; }
+    if (textPreview) textPreview.style.display = 'none';
+    if (removeBtn) removeBtn.style.display = 'inline-flex';
+  } else {
+    if (imgPreview) { imgPreview.src = ''; imgPreview.style.display = 'none'; }
+    if (textPreview) { textPreview.textContent = initials; textPreview.style.display = 'inline-block'; }
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+
+  var modal = document.getElementById('employee-profile-modal');
+  if (modal) {
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+window.saveEmployeeProfile = async function() {
+  var nameInput = document.getElementById('emp-profile-name-input');
+  var roleInput = document.getElementById('emp-profile-role-input');
+  var newName = nameInput ? nameInput.value.trim() : '';
+  var newRole = roleInput ? roleInput.value.trim() : '';
+
+  if (!newName) {
+    if (typeof toast === 'function') toast('Please enter your full name', 'error');
+    else alert('Please enter your full name');
+    return;
+  }
+
+  var state = window.STATE || (typeof STATE !== 'undefined' ? STATE : null);
+  if (!state) {
+    try {
+      var raw = localStorage.getItem('da_crm_state_v3');
+      state = raw ? JSON.parse(raw) : { employee: { id: 'emp001', name: newName, role: newRole } };
+    } catch(e) {
+      state = { employee: { id: 'emp001', name: newName, role: newRole } };
+    }
+    window.STATE = state;
+  }
+  if (!state.employee) {
+    state.employee = { id: 'emp001', name: newName, role: newRole || 'Social Media Management' };
+  }
+
+  var rawId = String(state.employee.id || 'emp001').trim();
+  var cleanId = rawId.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  state.employee.name = newName;
+  if (newRole) {
+    state.employee.role = newRole;
+    state.employee.domains = [newRole];
+  }
+  var initials = newName.split(' ').map(function(s){ return s[0] || ''; }).join('').toUpperCase().slice(0,2) || 'DA';
+  state.employee.initials = initials;
+
+  if (window._pendingProfilePic !== undefined) {
+    if (window._pendingProfilePic) {
+      state.employee.avatar = window._pendingProfilePic;
+      state.employee.photoUrl = window._pendingProfilePic;
+      try {
+        localStorage.setItem('da_emp_avatar_' + cleanId, window._pendingProfilePic);
+        localStorage.setItem('da_emp_avatar_' + rawId.toLowerCase(), window._pendingProfilePic);
+      } catch(e) {}
+    } else {
+      delete state.employee.avatar;
+      delete state.employee.photoUrl;
+      try {
+        localStorage.removeItem('da_emp_avatar_' + cleanId);
+        localStorage.removeItem('da_emp_avatar_' + rawId.toLowerCase());
+      } catch(e) {}
+    }
+  }
+
+  if (Array.isArray(state.team)) {
+    var member = state.team.find(function(m) {
+      var mClean = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return mClean === cleanId || String(m.id || '').toLowerCase() === rawId.toLowerCase() || m.isCurrent;
+    });
+    if (!member && state.team.length > 0) member = state.team[0];
+    if (member) {
+      member.name = newName;
+      if (newRole) {
+        member.role = newRole;
+        member.domains = [newRole];
+      }
+      if (state.employee.avatar) member.avatar = state.employee.avatar;
+      else delete member.avatar;
+    }
+  }
+
+  try {
+    localStorage.setItem('da_crm_emp_name', newName);
+    localStorage.setItem('da_crm_emp_role', newRole);
+    localStorage.setItem('da_crm_state_v3', JSON.stringify(state));
+  } catch(e) {}
+
+  if (typeof save === 'function') { try { save(); } catch(e){} }
+  if (typeof saveCRMState === 'function') { try { saveCRMState(state); } catch(e){} }
+
+  // Direct DOM updates for instant responsiveness
+  var welcomeName = document.getElementById('welcome-name');
+  if (welcomeName) welcomeName.textContent = newName;
+  var welcomeBadge = document.getElementById('welcome-role-badge');
+  if (welcomeBadge) welcomeBadge.textContent = (state.employee.icon || '🎬') + ' ' + (newRole || state.employee.role);
+  var sidebarName = document.getElementById('sidebar-name');
+  if (sidebarName) sidebarName.textContent = newName;
+  var sidebarRole = document.getElementById('sidebar-role-label');
+  if (sidebarRole) sidebarRole.textContent = newRole;
+  var topbarName = document.getElementById('topbar-emp-name');
+  if (topbarName) topbarName.textContent = newName;
+
+  var currentAvatar = state.employee.avatar || state.employee.photoUrl || localStorage.getItem('da_emp_avatar_' + cleanId);
+  var sidebarAvatar = document.getElementById('sidebar-avatar');
+  if (sidebarAvatar) {
+    if (currentAvatar) {
+      sidebarAvatar.innerHTML = '<img src="' + currentAvatar + '" alt="' + newName + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />';
+    } else {
+      sidebarAvatar.textContent = initials;
+    }
+  }
+  var topbarAvatar = document.getElementById('topbar-emp-avatar');
+  if (topbarAvatar) {
+    if (currentAvatar) {
+      topbarAvatar.innerHTML = '<img src="' + currentAvatar + '" alt="' + newName + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />';
+    } else {
+      topbarAvatar.textContent = initials;
+    }
+  }
+
+  if (typeof syncProfileUI === 'function') { try { syncProfileUI(); } catch(e){} }
+  if (typeof updateDashCounts === 'function') { try { updateDashCounts(); } catch(e){} }
+
+  var modal = document.getElementById('employee-profile-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  if (typeof toast === 'function') toast('Specialist profile updated! ✨', 'success');
+  else alert('Specialist profile updated!');
+
+  if (typeof addActivity === 'function') {
+    addActivity('Updated profile details for ' + newName, 'purple');
+  }
+
+  // Supabase Cloud Sync
+  try {
+    if (window.sbClient && typeof window.sbClient.from === 'function') {
+      var updateData = { name: newName, role: newRole };
+      await window.sbClient
+        .from('team_members')
+        .update(updateData)
+        .eq('id', cleanId);
+      if (rawId.toLowerCase() !== cleanId) {
+        await window.sbClient
+          .from('team_members')
+          .update(updateData)
+          .eq('id', rawId);
+      }
+    }
+  } catch(err) {
+    console.warn('Supabase profile update note:', err);
+  }
+};
+</script>
+
 <!-- ============= LATE LUNCH REASON MODAL (POST 3:00 PM) ============= -->
 <div class="modal-overlay" id="late-lunch-modal" onclick="closeModalOutside(event,'late-lunch-modal')">
   <div class="modal modal-md">
@@ -972,6 +1364,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script src="quotes-data.js?v=1.0.6"></script>
-<script src="app.js?v=3.0.0"></script>
+<script src="app.js?v=3.5.0"></script>
 </body>
 </html>

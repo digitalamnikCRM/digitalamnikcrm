@@ -41,15 +41,7 @@ const SupabaseConfig = {
   updateStatusBadge(connected, note) {
     const badges = document.querySelectorAll('.supabase-status-badge');
     badges.forEach(b => {
-      if (connected) {
-        b.innerHTML = '<span class="sb-dot connected"></span> <span>Cloud Live</span>';
-        b.className = 'supabase-status-badge connected';
-        b.title = 'Supabase Cloud Database Connected & Realtime Active';
-      } else {
-        b.innerHTML = `<span class="sb-dot disconnected"></span> <span>Connect DB</span>`;
-        b.className = 'supabase-status-badge disconnected';
-        b.title = 'Click to connect your Supabase database';
-      }
+      b.style.display = 'none';
     });
   },
   setupRealtimeSubscriptions() {
@@ -139,6 +131,7 @@ function persistActiveCRMState(st) {
 }
 
 function triggerAllUIRenders() {
+  if (typeof syncProfileUI === 'function') syncProfileUI();
   if (typeof renderProjects === 'function') renderProjects();
   if (typeof renderCalendars === 'function') renderCalendars();
   if (typeof updateDashCounts === 'function') updateDashCounts();
@@ -197,6 +190,7 @@ const SupabaseData = {
           isFounder: m.is_founder,
           email: m.email,
           phone: m.phone,
+          photoUrl: m.photo_url || null,
           lateLunchReason: m.late_lunch_reason,
           lateLunchTime: m.late_lunch_time,
           domains: m.role ? String(m.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor'],
@@ -286,6 +280,19 @@ const SupabaseData = {
       // Background Maintenance: Auto-purge check-in photos older than 7 days
       this.purgeOldPhotos();
 
+      // Keep active logged-in employee in sync with database record
+      if (st && st.employee && Array.isArray(st.team)) {
+        const empNorm = String(st.employee.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const matched = st.team.find(m => String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === empNorm || (m.name && m.name.toLowerCase() === (st.employee.name || '').toLowerCase()));
+        if (matched) {
+          st.employee.name = matched.name;
+          st.employee.role = matched.role;
+          if (matched.photoUrl) {
+            st.employee.avatar = matched.photoUrl;
+            st.employee.photoUrl = matched.photoUrl;
+          }
+        }
+      }
       console.log('📦 Data successfully hydrated from Supabase Cloud!');
       persistActiveCRMState(st);
       triggerAllUIRenders();
@@ -379,8 +386,17 @@ const SupabaseData = {
         late_lunch_time: m.lateLunchTime || null,
         created_at: new Date(m.addedAt || Date.now()).toISOString(),
       };
-      const { error } = await window.sbClient.from('team_members').upsert(row, { onConflict: 'id' });
-      if (error) console.error('Supabase upsertTeamMember error:', error);
+      if (m.photoUrl || m.avatar) {
+        row.photo_url = m.photoUrl || m.avatar;
+      }
+      let { error } = await window.sbClient.from('team_members').upsert(row, { onConflict: 'id' });
+      if (error && row.photo_url) {
+        delete row.photo_url;
+        const res2 = await window.sbClient.from('team_members').upsert(row, { onConflict: 'id' });
+        if (res2.error) console.error('Supabase upsertTeamMember error:', res2.error);
+      } else if (error) {
+        console.error('Supabase upsertTeamMember error:', error);
+      }
     } catch (e) {
       console.error(e);
     }

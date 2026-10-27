@@ -45,7 +45,7 @@ const DEFAULT_TEAM = [
 // ========================
 // STATE MANAGEMENT
 // ========================
-const STATE = {
+const STATE = window.STATE = {
   employee: {
     name: 'Amaan Khan',
     id: 'EMP-000',
@@ -231,6 +231,8 @@ function load() {
     let member = STATE.team.find(m => m.id.toLowerCase() === loggedInId.toLowerCase());
     if (!member) member = STATE.team[0];
     if (member) {
+      const empIdNorm = String(member.id || '').trim().toLowerCase();
+      const savedAvatar = member.avatar || member.photoUrl || localStorage.getItem('da_emp_avatar_' + empIdNorm);
       const roleObj = DOMAIN_ROLES.find(r => r.label === member.role);
       STATE.employee = {
         name: member.name,
@@ -238,6 +240,8 @@ function load() {
         role: member.role,
         icon: roleObj ? roleObj.icon : '🗂️',
         initials: computeInitials(member.name),
+        avatar: savedAvatar || null,
+        photoUrl: savedAvatar || null,
       };
       STATE.team.forEach(m => {
         m.isCurrent = (m.id.toLowerCase() === member.id.toLowerCase());
@@ -317,11 +321,31 @@ function syncProfileUI() {
   emp.icon = roleObj.icon;
 
   // Sidebar
+  const empIdNorm = String(emp.id || '').trim().toLowerCase();
+  const avatarSrc = emp.avatar || emp.photoUrl || localStorage.getItem('da_emp_avatar_' + empIdNorm);
   const avatarEl = document.getElementById('sidebar-avatar');
-  if (avatarEl) avatarEl.textContent = emp.initials;
+  if (avatarEl) {
+    if (avatarSrc) {
+      avatarEl.innerHTML = `<img src="${avatarSrc}" alt="${emp.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`;
+    } else {
+      avatarEl.textContent = emp.initials || computeInitials(emp.name || 'DA');
+    }
+  }
 
   const nameEl = document.getElementById('sidebar-name');
   if (nameEl) nameEl.textContent = emp.name;
+
+  const topbarEmpName = document.getElementById('topbar-emp-name');
+  if (topbarEmpName) topbarEmpName.textContent = emp.name || 'My Profile';
+
+  const topbarEmpAvatar = document.getElementById('topbar-emp-avatar');
+  if (topbarEmpAvatar) {
+    if (avatarSrc) {
+      topbarEmpAvatar.innerHTML = `<img src="${avatarSrc}" alt="${emp.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`;
+    } else {
+      topbarEmpAvatar.textContent = emp.initials || computeInitials(emp.name || 'DA');
+    }
+  }
 
   const idEl = document.getElementById('sidebar-id');
   if (idEl) idEl.textContent = emp.id;
@@ -406,6 +430,272 @@ function syncProfileUI() {
   }
 }
 
+// ========================
+// EMPLOYEE PROFILE CONTROLLER
+// ========================
+let _pendingProfilePic = undefined;
+
+function triggerEmployeeProfileUpload() {
+  const fileInput = document.getElementById('emp-profile-pic-file');
+  if (fileInput) fileInput.click();
+}
+
+function handleEmployeeAvatarChange(e) {
+  const file = e && e.target && e.target.files && e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    toast('Please select an image file (PNG, JPG, WebP)', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const rawData = evt.target.result;
+    const img = new Image();
+    img.onload = function() {
+      const maxDim = 220;
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+        if (w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        }
+      } else {
+        if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+      _pendingProfilePic = compressedDataUrl;
+
+      // Update modal preview immediately
+      const imgPreview = document.getElementById('emp-profile-img-preview');
+      const textPreview = document.getElementById('emp-profile-avatar-preview');
+      const removeBtn = document.getElementById('btn-remove-emp-avatar');
+      if (imgPreview) {
+        imgPreview.src = compressedDataUrl;
+        imgPreview.style.display = 'block';
+      }
+      if (textPreview) textPreview.style.display = 'none';
+      if (removeBtn) removeBtn.style.display = 'inline-flex';
+    };
+    img.src = rawData;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeEmployeeAvatar() {
+  _pendingProfilePic = '';
+  const imgPreview = document.getElementById('emp-profile-img-preview');
+  const textPreview = document.getElementById('emp-profile-avatar-preview');
+  const removeBtn = document.getElementById('btn-remove-emp-avatar');
+  const fileInput = document.getElementById('emp-profile-pic-file');
+
+  if (fileInput) fileInput.value = '';
+  if (imgPreview) {
+    imgPreview.src = '';
+    imgPreview.style.display = 'none';
+  }
+  if (textPreview) {
+    textPreview.textContent = computeInitials(STATE.employee.name || 'DA');
+    textPreview.style.display = 'inline-block';
+  }
+  if (removeBtn) removeBtn.style.display = 'none';
+}
+
+function openEmployeeProfileModal() {
+  const emp = (typeof STATE !== 'undefined' && STATE && STATE.employee) 
+    ? STATE.employee 
+    : { id: 'emp001', name: 'Team Member', role: 'Video Editor' };
+  const nameInput = document.getElementById('emp-profile-name-input');
+  const roleInput = document.getElementById('emp-profile-role-input');
+  const previewName = document.getElementById('emp-profile-preview-name');
+  const previewId = document.getElementById('emp-profile-preview-id');
+  const imgPreview = document.getElementById('emp-profile-img-preview');
+  const textPreview = document.getElementById('emp-profile-avatar-preview');
+  const removeBtn = document.getElementById('btn-remove-emp-avatar');
+  const fileInput = document.getElementById('emp-profile-pic-file');
+
+  if (fileInput) fileInput.value = '';
+  _pendingProfilePic = undefined;
+
+  const rawId = String(emp.id || 'emp001').trim();
+  const cleanId = rawId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const currentAvatar = emp.avatar || emp.photoUrl || localStorage.getItem('da_emp_avatar_' + cleanId) || localStorage.getItem('da_emp_avatar_' + rawId.toLowerCase());
+
+  if (nameInput) nameInput.value = emp.name || '';
+  if (roleInput) {
+    roleInput.value = emp.role || 'Video Editor';
+    if (!roleInput.value) {
+      for (let i = 0; i < roleInput.options.length; i++) {
+        if (roleInput.options[i].value.toLowerCase().includes(String(emp.role || '').toLowerCase())) {
+          roleInput.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
+  if (previewName) previewName.textContent = emp.name || 'Team Member';
+  if (previewId) previewId.textContent = emp.id || 'emp001';
+
+  if (currentAvatar) {
+    if (imgPreview) {
+      imgPreview.src = currentAvatar;
+      imgPreview.style.display = 'block';
+    }
+    if (textPreview) textPreview.style.display = 'none';
+    if (removeBtn) removeBtn.style.display = 'inline-flex';
+  } else {
+    if (imgPreview) {
+      imgPreview.src = '';
+      imgPreview.style.display = 'none';
+    }
+    if (textPreview) {
+      textPreview.textContent = computeInitials(emp.name || 'DA');
+      textPreview.style.display = 'inline-block';
+    }
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+
+  openModal('employee-profile-modal');
+}
+
+async function saveEmployeeProfile() {
+  const nameInput = document.getElementById('emp-profile-name-input');
+  const roleInput = document.getElementById('emp-profile-role-input');
+  const newName = nameInput ? nameInput.value.trim() : '';
+  const newRole = roleInput ? roleInput.value.trim() : '';
+
+  if (!newName) {
+    toast('Please enter your full name', 'error');
+    return;
+  }
+
+  if (!STATE.employee) {
+    STATE.employee = { id: 'emp001', name: newName, role: newRole || 'Video Editor' };
+  }
+
+  const rawId = String(STATE.employee.id || 'emp001').trim();
+  const cleanId = rawId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  STATE.employee.name = newName;
+  if (newRole) {
+    STATE.employee.role = newRole;
+    STATE.employee.domains = [newRole];
+  }
+  STATE.employee.initials = computeInitials(newName);
+
+  // Handle avatar update
+  if (_pendingProfilePic !== undefined) {
+    if (_pendingProfilePic) {
+      STATE.employee.avatar = _pendingProfilePic;
+      STATE.employee.photoUrl = _pendingProfilePic;
+      try {
+        localStorage.setItem('da_emp_avatar_' + cleanId, _pendingProfilePic);
+        localStorage.setItem('da_emp_avatar_' + rawId.toLowerCase(), _pendingProfilePic);
+      } catch (e) {
+        console.warn('localStorage avatar save note:', e);
+      }
+    } else {
+      delete STATE.employee.avatar;
+      delete STATE.employee.photoUrl;
+      try {
+        localStorage.removeItem('da_emp_avatar_' + cleanId);
+        localStorage.removeItem('da_emp_avatar_' + rawId.toLowerCase());
+      } catch (e) {}
+    }
+  }
+
+  // Update in STATE.team
+  let memberObj = null;
+  if (Array.isArray(STATE.team)) {
+    let member = STATE.team.find(m => {
+      const mClean = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return mClean === cleanId || m.name === newName || m.isCurrent;
+    });
+    if (!member && STATE.team.length > 0) member = STATE.team[0];
+    if (member) {
+      member.name = newName;
+      if (newRole) {
+        member.role = newRole;
+        member.domains = [newRole];
+      }
+      if (STATE.employee.avatar) member.avatar = STATE.employee.avatar;
+      else delete member.avatar;
+      memberObj = member;
+    }
+  }
+
+  save();
+  try {
+    localStorage.setItem('da_crm_emp_name', newName);
+    localStorage.setItem('da_crm_emp_role', newRole);
+  } catch (e) {}
+
+  if (typeof saveCRMState === 'function') {
+    try { saveCRMState(STATE); } catch (e) {}
+  }
+  syncProfileUI();
+  updateDashCounts();
+  closeModal('employee-profile-modal');
+  toast('Specialist profile updated! ✨', 'success');
+  addActivity(`Updated profile details for ${newName}`, 'purple');
+
+  // Sync to Supabase team_members table using both cleanId (e.g. emp001) and rawId (e.g. EMP-001)
+  try {
+    if (window.sbClient && typeof window.sbClient.from === 'function') {
+      const updateData = { name: newName, role: newRole };
+      if (_pendingProfilePic !== undefined) {
+        updateData.photo_url = _pendingProfilePic || null;
+      }
+      
+      // Update by cleanId
+      let res = await window.sbClient
+        .from('team_members')
+        .update(updateData)
+        .eq('id', cleanId);
+
+      // If cleanId differed from rawId, also update rawId
+      if (rawId.toLowerCase() !== cleanId) {
+        await window.sbClient
+          .from('team_members')
+          .update(updateData)
+          .eq('id', rawId);
+      }
+
+      // If error (e.g. photo_url column doesn't exist), retry without photo_url
+      if (res && res.error) {
+        console.warn('Supabase profile update fallback (without photo_url):', res.error);
+        delete updateData.photo_url;
+        await window.sbClient
+          .from('team_members')
+          .update(updateData)
+          .eq('id', cleanId);
+      }
+
+      if (memberObj && typeof SupabaseData !== 'undefined' && SupabaseData.upsertTeamMember) {
+        await SupabaseData.upsertTeamMember(memberObj);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase profile sync note:', err);
+  }
+}
+
+function saveState() {
+  save();
+}
+
 function renderRoleNotice() {
   const noticeEl = document.getElementById('role-notice');
   const noticeText = document.getElementById('role-notice-text');
@@ -436,14 +726,17 @@ function checkEmployeeLogin() {
         : (member.role ? String(member.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
       const primaryDomain = empDomains[0] || 'Video Editor';
       const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
+      const empAvatar = member.avatar || member.photoUrl || localStorage.getItem('da_emp_avatar_' + String(member.id).toLowerCase().replace(/[^a-z0-9]/g, ''));
       STATE.employee = {
         name: member.name,
         id: member.id,
         role: member.role || empDomains.join(', '),
         domains: empDomains,
-        isFounder: Boolean(member.isFounder || member.id === 'EMP-000'),
+        isFounder: Boolean(member.isFounder || (member.id && member.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')),
         icon: roleObj ? roleObj.icon : '🎬',
         initials: computeInitials(member.name),
+        avatar: empAvatar || null,
+        photoUrl: empAvatar || null,
       };
       if (overlay) {
         overlay.classList.remove('show');
@@ -551,14 +844,17 @@ async function handleEmployeeLogin(e) {
     : (member.role ? String(member.role).split(',').map(s => s.trim()).filter(Boolean) : ['Video Editor']);
   const primaryDomain = empDomains[0] || 'Video Editor';
   const roleObj = DOMAIN_ROLES.find(r => r.label.toLowerCase() === primaryDomain.toLowerCase()) || { icon: '🎬' };
+  const postAvatar = member.avatar || member.photoUrl || localStorage.getItem('da_emp_avatar_' + String(member.id).toLowerCase().replace(/[^a-z0-9]/g, ''));
   STATE.employee = {
     name: member.name,
     id: member.id,
     role: member.role || empDomains.join(', '),
     domains: empDomains,
-    isFounder: Boolean(member.isFounder || member.id === 'EMP-000'),
+    isFounder: Boolean(member.isFounder || (member.id && member.id.toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000')),
     icon: roleObj ? roleObj.icon : '🎬',
     initials: computeInitials(member.name),
+    avatar: postAvatar || null,
+    photoUrl: postAvatar || null,
   };
 
   (STATE.team || []).forEach(m => {
@@ -1729,8 +2025,13 @@ function renderProjects() {
     return;
   }
 
-  const deadlineWarning = (dl) => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const deadlineWarning = (dl, status) => {
     if (!dl) return '<span class="proj-deadline">📅 Ongoing</span>';
+    const isCompleted = status === 'Completed' || status === 'Cancelled';
+    if (!isCompleted && dl < todayStr) {
+      return `<span class="proj-deadline overdue" style="background:rgba(239,68,68,0.22);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-weight:700">⚠️ Pending (Due: ${dl})</span>`;
+    }
     const d = new Date(dl);
     const diff = d - Date.now();
     const near = diff < 3 * 24 * 3600000 && diff > 0;
@@ -1744,14 +2045,18 @@ function renderProjects() {
     const isActive = STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === p.id;
     const liveElapsed = isActive ? (Date.now() - STATE.activeProjectTimer.startTime) : 0;
     const timeDisplay = isActive ? fmtHHMMSS(liveElapsed) : (p.totalTimeSpent ? fmtDuration(p.totalTimeSpent) : '0h 0m');
+    const isPending = p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled';
 
     return `
-      <div class="proj-list-row ${p.priority} ${isActive ? 'is-active' : ''}" onclick="openProjectDetail('${p.id}')" title="Click to open deliverable details and logs">
+      <div class="proj-list-row ${p.priority} ${isActive ? 'is-active' : ''} ${isPending ? 'is-pending-overdue' : ''}" 
+           style="${isPending ? 'border:1px solid rgba(239,68,68,0.55);box-shadow:0 0 16px rgba(239,68,68,0.18);background:linear-gradient(90deg,rgba(239,68,68,0.06),transparent);' : ''}"
+           onclick="openProjectDetail('${p.id}')" title="Click to open assignment details and logs">
         <div class="proj-row-left">
           <span class="proj-priority-dot ${p.priority}" title="${p.priority} Priority"></span>
           <div class="proj-row-title-box">
             <span class="proj-row-name">${p.name}</span>
             <span class="proj-row-client">🏢 ${p.client || 'Client'}</span>
+            ${isPending ? `<span style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);border-radius:4px;font-size:10px;font-weight:800;padding:2px 6px;margin-top:3px;display:inline-block;width:fit-content;letter-spacing:0.5px">⚠️ PENDING ASSIGNMENT</span>` : ''}
           </div>
         </div>
 
@@ -1763,7 +2068,7 @@ function renderProjects() {
         </div>
 
         <div class="proj-row-right">
-          ${deadlineWarning(p.deadline)}
+          ${deadlineWarning(p.deadline, p.status)}
           <span class="proj-status-pill ${statusClass(p.status)}">${p.status || 'Assigned'}</span>
 
           ${(p.status === 'Assigned') ? `
@@ -2285,18 +2590,48 @@ function deleteCalendar(id) {
   }
 }
 
+let _calSelectedClient = 'all';
+
+function filterCalendarsByClient(client) {
+  _calSelectedClient = client;
+  renderCalendars();
+}
+
+function populateCalendarClientDropdown() {
+  const select = document.getElementById('cal-client-select');
+  if (!select) return;
+
+  const currentVal = _calSelectedClient || 'all';
+  const clientNames = new Set();
+  (STATE.clients || []).forEach(c => c && c.name && clientNames.add(c.name.trim()));
+  (STATE.calendars || []).forEach(c => c && c.client && clientNames.add(c.client.trim()));
+
+  const sortedClients = Array.from(clientNames).sort();
+  let html = `<option value="all" ${currentVal === 'all' ? 'selected' : ''}>🏢 All Client Calendars (${(STATE.calendars || []).length})</option>`;
+  sortedClients.forEach(name => {
+    const count = (STATE.calendars || []).filter(c => (c.client || '').toLowerCase() === name.toLowerCase()).length;
+    html += `<option value="${name}" ${currentVal.toLowerCase() === name.toLowerCase() ? 'selected' : ''}>🏢 ${name} (${count})</option>`;
+  });
+  select.innerHTML = html;
+}
+
 function viewCalendarPDF(id) {
   const cal = (STATE.calendars || []).find(c => c.id === id);
   if (!cal) return;
 
   const modalTitle = document.getElementById('pdf-viewer-title');
-  if (modalTitle) modalTitle.textContent = `${cal.client} — ${cal.title} (${cal.monthLabel})`;
+  if (modalTitle) modalTitle.textContent = `${cal.client} — ${cal.title} (${cal.monthLabel || ''})`;
 
   const frame = document.getElementById('pdf-viewer-frame');
   const extLink = document.getElementById('pdf-viewer-external-link');
+  const dloadLink = document.getElementById('pdf-viewer-download-link');
 
   if (frame) frame.src = cal.fileUrl;
   if (extLink) extLink.href = cal.fileUrl;
+  if (dloadLink) {
+    dloadLink.href = cal.fileUrl;
+    dloadLink.download = cal.fileName || `${cal.client}-calendar.pdf`;
+  }
 
   openModal('pdf-viewer-modal');
 }
@@ -2318,6 +2653,8 @@ function renderCalendars() {
   const grid = document.getElementById('calendars-grid');
   if (!grid) return;
 
+  populateCalendarClientDropdown();
+
   const search = (document.getElementById('cal-search')?.value || '').toLowerCase();
   let list = STATE.calendars || [];
 
@@ -2326,6 +2663,10 @@ function renderCalendars() {
 
   if (_calActiveFilter === 'current') {
     list = list.filter(c => c.month === currentYM || (c.monthLabel && c.monthLabel.toLowerCase().includes('october 2026')));
+  }
+
+  if (_calSelectedClient && _calSelectedClient !== 'all') {
+    list = list.filter(c => (c.client || '').toLowerCase() === _calSelectedClient.toLowerCase());
   }
 
   if (search) {
@@ -2341,10 +2682,10 @@ function renderCalendars() {
     grid.innerHTML = `
       <div class="projects-empty" style="grid-column: 1 / -1; padding: 50px 20px;">
         <svg viewBox="0 0 24 24" style="width:48px;height:48px;margin:0 auto 12px;opacity:0.35;"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg>
-        <h4 style="color:#fff;margin-bottom:6px;font-size:16px;">No Social Media Calendars Found</h4>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:18px;">Upload monthly client content calendar PDFs to keep the entire agency aligned.</p>
+        <h4 style="color:#fff;margin-bottom:6px;font-size:16px;">No Content Calendars Found</h4>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:18px;">${_calSelectedClient !== 'all' ? `No calendar uploaded yet for "${_calSelectedClient}".` : 'Upload monthly client content calendar PDFs to keep the entire agency aligned.'}</p>
         <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()" style="display:inline-flex;margin:0 auto;">
-          <span>+ Upload First Client Calendar</span>
+          <span>+ Upload Client Calendar</span>
         </button>
       </div>
     `;
@@ -2381,12 +2722,16 @@ function renderCalendars() {
       </div>
 
       <div class="cal-card-footer">
-        <div class="cal-actions">
-          <button class="btn-cal-action view" onclick="viewCalendarPDF('${c.id}')" title="Preview PDF Calendar">
+        <div class="cal-actions" style="flex-wrap:wrap;gap:6px">
+          <button class="btn-cal-action view" onclick="viewCalendarPDF('${c.id}')" title="Preview PDF Inside Website">
             <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-            <span>View PDF</span>
+            <span>Website View</span>
           </button>
-          <a class="btn-cal-action download" href="${c.fileUrl}" download="${c.fileName}" title="Download PDF">
+          <a class="btn-cal-action" href="${c.fileUrl}" target="_blank" title="Open PDF in New Browser Tab" style="display:inline-flex;align-items:center;gap:4px">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+            <span>New Tab</span>
+          </a>
+          <a class="btn-cal-action download" href="${c.fileUrl}" download="${c.fileName}" title="Download PDF to Device">
             <svg viewBox="0 0 24 24" width="13" height="13"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             <span>Download</span>
           </a>
@@ -3522,8 +3867,32 @@ function updateDashCounts() {
     return isAssignedByName || isAssignedById || isAssignedByRole || isMatchingService;
   });
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const pendingProjects = myProjects.filter(p => p.deadline && p.deadline < todayStr);
+
   const countEl = document.getElementById('dash-proj-count');
   if (countEl) countEl.textContent = myProjects.length;
+
+  const pendingCountEl = document.getElementById('dash-pending-count');
+  if (pendingCountEl) {
+    pendingCountEl.textContent = pendingProjects.length;
+    pendingCountEl.style.color = pendingProjects.length > 0 ? '#ef4444' : '#10b981';
+  }
+
+  const pendingBadgeEl = document.getElementById('dash-pending-badge');
+  if (pendingBadgeEl) {
+    if (pendingProjects.length > 0) {
+      pendingBadgeEl.textContent = `⚠️ ${pendingProjects.length} Overdue`;
+      pendingBadgeEl.style.background = 'rgba(239,68,68,0.2)';
+      pendingBadgeEl.style.color = '#ef4444';
+      pendingBadgeEl.style.borderColor = 'rgba(239,68,68,0.4)';
+    } else {
+      pendingBadgeEl.textContent = '✓ On Track';
+      pendingBadgeEl.style.background = 'rgba(16,185,129,0.15)';
+      pendingBadgeEl.style.color = '#34d399';
+      pendingBadgeEl.style.borderColor = 'rgba(16,185,129,0.3)';
+    }
+  }
 
   const navBadge = document.getElementById('nav-proj-badge');
   if (navBadge) navBadge.textContent = myProjects.length;
