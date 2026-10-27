@@ -148,10 +148,36 @@ function toast(msg, type = 'info') {
 
 function addActivity(text, color = 'purple') {
   const now = Date.now();
-  STATE.activityLog.unshift({ text, color, time: now });
-  if (STATE.activityLog.length > 20) STATE.activityLog.pop();
+  const todayDateStr = fmtDate(now);
+  const empName = (STATE.employee && STATE.employee.name) ? STATE.employee.name : 'Specialist';
+
+  // Format text with user name for agency-wide clarity if needed
+  let fullText = text;
+  if (!fullText.toLowerCase().includes(empName.toLowerCase()) && !fullText.startsWith('System') && !fullText.startsWith('Team member')) {
+    fullText = `[${empName}] ${text}`;
+  }
+
+  const actItem = {
+    id: 'act_' + now + '_' + Math.random().toString(36).substr(2, 5),
+    text: fullText,
+    color: color,
+    time: now,
+    date: todayDateStr,
+    employeeId: STATE.employee?.id || 'emp',
+    employeeName: empName
+  };
+
+  if (!STATE.activityLog) STATE.activityLog = [];
+  STATE.activityLog.unshift(actItem);
+  if (STATE.activityLog.length > 50) STATE.activityLog.pop();
+
   renderActivity();
   save();
+
+  // Sync to Supabase Cloud Backend!
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.logActivity(actItem);
+  }
 }
 
 // ========================
@@ -4074,19 +4100,30 @@ function updateDashCounts() {
 function renderActivity() {
   const tl = document.getElementById('activity-timeline');
   if (!tl) return;
-  if (!STATE.activityLog || STATE.activityLog.length === 0) {
+
+  const todayDateStr = fmtDate(Date.now());
+
+  // DAILY REFRESH: Only display activities that occurred TODAY
+  const todayActivities = (STATE.activityLog || []).filter(a => {
+    if (!a.time && !a.date) return false;
+    const aDateStr = a.date || fmtDate(a.time);
+    return aDateStr === todayDateStr;
+  });
+
+  if (todayActivities.length === 0) {
     tl.innerHTML = `<div class="timeline-empty">
       <svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-      <p>No activity recorded yet. Check in or add a project!</p>
+      <p>No activity yet today. Check in to initiate your session!</p>
     </div>`;
     return;
   }
-  tl.innerHTML = STATE.activityLog.slice(0, 8).map(a => `
+
+  tl.innerHTML = todayActivities.slice(0, 10).map(a => `
     <div class="timeline-item">
       <div class="timeline-dot ${a.color || 'purple'}"></div>
       <div class="timeline-body">
         <strong>${a.text}</strong>
-        <span>${fmtDate(a.time)} · ${fmt(a.time)}</span>
+        <span>Today · ${fmt(a.time)}</span>
       </div>
     </div>
   `).join('');

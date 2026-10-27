@@ -1504,6 +1504,28 @@
         </div>
       </div>
 
+      <!-- LIVE AGENCY ACTIVITY STREAM (REAL-TIME BACKEND CLOUD FEED) -->
+      <div style="margin-top:18px;margin-bottom:24px;background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px 20px;backdrop-filter:blur(16px)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:16px">
+              ⚡
+            </div>
+            <div>
+              <h4 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Live Agency Activity Stream</h4>
+              <span style="font-size:11.5px;color:#94a3b8">Real-time cloud audit stream of agency actions, check-ins, lunch breaks &amp; deliverables today</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="stat-badge green" style="font-size:11px;padding:3px 8px"><span class="timer-pulse-circle"></span> Cloud Synced</span>
+            <button type="button" class="btn-small btn-secondary" onclick="loadAdminActivities()" style="font-size:11px;padding:3px 10px">🔄 Refresh Stream</button>
+          </div>
+        </div>
+        <div id="admin-activity-timeline" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;padding-right:4px">
+          <!-- Rendered live from Supabase activity_logs -->
+        </div>
+      </div>
+
       <div class="section-header"
         style="margin-bottom:14px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
@@ -2579,6 +2601,7 @@
         renderAdminAttendanceTable();
         renderLiveWorkAndCompletions();
         loadAdminCalendars();
+        loadAdminActivities();
       } catch (err) {
         console.warn('loadAdminAll warning:', err);
       }
@@ -3019,6 +3042,68 @@
         console.error('Error clearing attendance logs:', e);
         toast('Failed to clear logs: ' + e.message, 'error');
       }
+    }
+
+        // ====================================================================
+    // ADMIN LIVE AGENCY ACTIVITY STREAM (CLOUD SYNCED & DAILY REFRESH)
+    // ====================================================================
+    let _adminActivities = [];
+
+    async function loadAdminActivities() {
+      if (typeof SupabaseData !== 'undefined' && SupabaseConfig.isConfigured() && window.sbClient) {
+        const list = await SupabaseData.fetchActivities();
+        if (Array.isArray(list) && list.length > 0) {
+          _adminActivities = list;
+        }
+      }
+      renderAdminActivities();
+    }
+
+    function renderAdminActivities() {
+      const container = document.getElementById('admin-activity-timeline');
+      if (!container) return;
+
+      const todayDateStr = fmtDate(Date.now());
+
+      let source = _adminActivities;
+      if (!source || source.length === 0) {
+        const state = getCRMState();
+        source = (state.activityLog || []).map(a => ({
+          id: a.id,
+          text: a.text,
+          color: a.color || 'purple',
+          created_at: new Date(a.time || Date.now()).toISOString()
+        }));
+      }
+
+      // DAILY REFRESH: Filter to strictly show actions logged TODAY
+      const todayList = source.filter(a => {
+        const dStr = fmtDate(new Date(a.created_at).getTime());
+        return dStr === todayDateStr;
+      });
+
+      if (todayList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:16px;color:#94a3b8;font-size:12.5px">
+            <span>No agency activities logged yet today. Real-time check-ins, lunch breaks & deliverable actions will stream here live.</span>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = todayList.slice(0, 15).map(a => {
+        const timeStr = fmt(new Date(a.created_at).getTime());
+        const dotColor = a.color === 'green' ? '#10b981' : (a.color === 'orange' ? '#f59e0b' : (a.color === 'blue' ? '#3b82f6' : '#a855f7'));
+        return `
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};box-shadow:0 0 8px ${dotColor};flex-shrink:0"></div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:12.5px;color:#e2e8f0;font-weight:500">${a.text}</span>
+              <span style="font-size:11px;color:#94a3b8;font-family:monospace;white-space:nowrap">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     function renderAdminAttendanceTable() {

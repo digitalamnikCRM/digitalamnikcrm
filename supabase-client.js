@@ -89,6 +89,14 @@ const SupabaseConfig = {
         }
       });
 
+      // Listen for activity logs changes
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, (payload) => {
+        console.log('⚡ Realtime Activity Change:', payload);
+        if (typeof SupabaseData !== 'undefined') {
+          SupabaseData.syncActivityRealtime(payload);
+        }
+      });
+
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('⚡ Supabase Realtime Stream Connected!');
@@ -277,6 +285,30 @@ const SupabaseData = {
             createdAt: a.created_at,
           };
         });
+      }
+
+      // 6. Fetch Activity Logs (Cloud Audit Trail)
+      try {
+        const { data: actData, error: actErr } = await window.sbClient
+          .from('activity_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (!actErr && Array.isArray(actData)) {
+          window._adminActivities = actData;
+          st.activityLog = actData.map(a => ({
+            id: a.id,
+            text: a.text,
+            color: a.color || 'purple',
+            time: new Date(a.created_at).getTime(),
+            date: typeof fmtDate === 'function' ? fmtDate(new Date(a.created_at).getTime()) : ''
+          }));
+          if (typeof renderActivity === 'function') renderActivity();
+          if (typeof renderAdminActivities === 'function') renderAdminActivities();
+        }
+      } catch (actE) {
+        console.warn('Activity fetch warning:', actE);
       }
 
       // Background Maintenance: Auto-purge check-in photos older than 7 days
@@ -509,6 +541,81 @@ const SupabaseData = {
       }
     } catch (e) {
       console.error('logAttendance exception:', e);
+    }
+  },
+
+  // 8. ACTIVITY LOG OPERATIONS (CLOUD AUDIT STREAM)
+  async logActivity(entry) {
+    if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
+    try {
+      const actId = 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+      const text = typeof entry === 'string' ? entry : (entry.text || '');
+      const color = (typeof entry === 'object' && entry.color) ? entry.color : 'purple';
+      const row = {
+        id: actId,
+        text: text,
+        color: color,
+        created_at: new Date().toISOString()
+      };
+      const { data, error } = await window.sbClient.from('activity_logs').insert([row]).select();
+      if (error) {
+        console.warn('Supabase logActivity warning:', error.message);
+      } else {
+        console.log('✅ Activity logged to Supabase backend:', text);
+        if (Array.isArray(window._adminActivities)) {
+          window._adminActivities.unshift(row);
+        }
+      }
+    } catch (e) {
+      console.warn('logActivity exception:', e);
+    }
+  },
+
+  async fetchActivities() {
+    if (!SupabaseConfig.isConfigured() || !window.sbClient) return [];
+    try {
+      const { data, error } = await window.sbClient
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) {
+        console.warn('fetchActivities warning:', error.message);
+        return [];
+      }
+      window._adminActivities = data || [];
+      return data || [];
+    } catch (e) {
+      console.warn('fetchActivities exception:', e);
+      return [];
+    }
+  },
+
+  syncActivityRealtime(payload) {
+    const { eventType, new: newRow } = payload;
+    if (eventType === 'INSERT' && newRow) {
+      if (!window._adminActivities) window._adminActivities = [];
+      if (!window._adminActivities.some(a => a.id === newRow.id)) {
+        window._adminActivities.unshift(newRow);
+      }
+
+      if (typeof STATE !== 'undefined' && Array.isArray(STATE.activityLog)) {
+        const item = {
+          id: newRow.id,
+          text: newRow.text,
+          color: newRow.color || 'purple',
+          time: new Date(newRow.created_at).getTime(),
+          date: typeof fmtDate === 'function' ? fmtDate(new Date(newRow.created_at).getTime()) : ''
+        };
+        const exists = STATE.activityLog.some(a => a.id === item.id || (a.text === item.text && Math.abs(a.time - item.time) < 3000));
+        if (!exists) {
+          STATE.activityLog.unshift(item);
+          if (typeof renderActivity === 'function') renderActivity();
+        }
+      }
+      if (typeof renderAdminActivities === 'function') {
+        renderAdminActivities();
+      }
     }
   },
 
