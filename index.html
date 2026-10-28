@@ -875,14 +875,16 @@
         <select class="form-select" id="emp-profile-role-input">
           <option value="Video Editor">🎬 Video Editor</option>
           <option value="Graphic Designer">🎨 Graphic Designer</option>
-          <option value="Social Media Manager">📱 Social Media Manager</option>
           <option value="Social Media Management">📱 Social Media Management</option>
           <option value="Paid Ads Specialist">💰 Paid Ads Specialist</option>
           <option value="Content Creator">✍️ Content Creator</option>
           <option value="SEO Specialist">🔍 SEO Specialist</option>
           <option value="Web Developer">💻 Web Developer</option>
-          <option value="Admin">🗂️ Admin / Operations</option>
         </select>
+        <div style="font-size:11px;color:#94a3b8;margin-top:5px;display:flex;align-items:center;gap:5px">
+          <span>🔒</span>
+          <span>Admin privileges cannot be self-assigned. Executive access is restricted to Founder (Amaan Khan).</span>
+        </div>
       </div>
 
       <!-- ASSIGNED DELIVERABLES & PROJECTS FOR THIS SPECIALIST -->
@@ -1009,6 +1011,11 @@ window.openEmployeeProfileModal = function() {
 
   if (nameInput) nameInput.value = emp.name || '';
   if (roleInput) {
+    var isFounderUser = Boolean(emp.isFounder || String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000');
+    var adminOpt = roleInput.querySelector('option[value="Admin"]');
+    if (adminOpt && !isFounderUser) {
+      adminOpt.remove();
+    }
     roleInput.value = emp.role || 'Social Media Management';
     if (!roleInput.value && roleInput.options) {
       for (var i = 0; i < roleInput.options.length; i++) {
@@ -1084,6 +1091,14 @@ window.saveEmployeeProfile = async function() {
   var roleInput = document.getElementById('emp-profile-role-input');
   var newName = nameInput ? nameInput.value.trim() : '';
   var newRole = roleInput ? roleInput.value.trim() : '';
+
+  var checkState = window.STATE || (typeof STATE !== 'undefined' ? STATE : null);
+  var isFounderSave = Boolean(checkState && checkState.employee && (checkState.employee.isFounder || String(checkState.employee.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000'));
+  if (newRole && newRole.toLowerCase().includes('admin') && !isFounderSave) {
+    if (typeof toast === 'function') toast('⛔ Security Alert: Staff members cannot self-assign Admin privileges! Only Founder Amaan Khan has Admin rights.', 'error');
+    else alert('Unauthorized: Staff members cannot self-assign Admin privileges.');
+    return;
+  }
 
   if (!newName) {
     if (typeof toast === 'function') toast('Please enter your full name', 'error');
@@ -1412,6 +1427,6 @@ window.saveEmployeeProfile = async function() {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js?v=7.0.0"></script>
 <script src="quotes-data.js?v=1.0.6"></script>
-<script src="app.js?v=7.0.0"></script>
+<script src="app.js?v=7.0.1"></script>
 </body>
 </html>

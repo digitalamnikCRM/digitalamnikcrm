@@ -633,6 +633,11 @@ function openEmployeeProfileModal() {
 
   if (nameInput) nameInput.value = emp.name || '';
   if (roleInput) {
+    const isFounderEmp = Boolean(emp.isFounder || String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000');
+    const adminOpt = roleInput.querySelector('option[value="Admin"]');
+    if (adminOpt && !isFounderEmp) {
+      adminOpt.remove();
+    }
     roleInput.value = emp.role || 'Video Editor';
     if (!roleInput.value) {
       for (let i = 0; i < roleInput.options.length; i++) {
@@ -673,6 +678,12 @@ async function saveEmployeeProfile() {
   const roleInput = document.getElementById('emp-profile-role-input');
   const newName = nameInput ? nameInput.value.trim() : '';
   const newRole = roleInput ? roleInput.value.trim() : '';
+
+  const isFounderEmpSave = Boolean(STATE.employee && (STATE.employee.isFounder || String(STATE.employee.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === 'emp000'));
+  if (newRole && newRole.toLowerCase().includes('admin') && !isFounderEmpSave) {
+    toast('⛔ Security Alert: Staff members cannot self-assign Admin privileges! Only Founder Amaan Khan has Admin rights.', 'error');
+    return;
+  }
 
   if (!newName) {
     toast('Please enter your full name', 'error');
