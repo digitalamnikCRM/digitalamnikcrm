@@ -265,10 +265,13 @@ function load() {
       STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
     }
 
-    // Ensure all team members have a password
+    // Ensure all team members have password & updated shift timing (10:30 AM - 07:00 PM)
     STATE.team.forEach(m => {
       if (!m.password) {
         m.password = m.isFounder ? 'amnik2026' : '123';
+      }
+      if (!m.shift || m.shift === '10:00 AM – 07:00 PM') {
+        m.shift = m.isFounder ? '09:30 AM – 07:30 PM' : '10:30 AM – 07:00 PM';
       }
     });
 
@@ -1355,9 +1358,9 @@ function updateClock() {
   const greetEl = document.getElementById('greet-text');
   if (greetEl) greetEl.textContent = greet;
 
-  // Calculate Shift Progress (10:00 AM to 07:00 PM)
-  const shiftStart = 10;
-  const shiftEnd = 19;
+  // Calculate Shift Progress (10:30 AM to 07:00 PM - 8.5 hr window)
+  const shiftStart = 10.5; // 10:30 AM
+  const shiftEnd = 19;     // 07:00 PM
   const curHours = h + now.getMinutes() / 60;
   let pct = 0;
   if (curHours >= shiftEnd) pct = 100;
@@ -1942,7 +1945,13 @@ function doCheckIn(photoUrl) {
 
   syncAttendanceUI();
   startAttElapsed();
-  addActivity(`Checked In with verified photo at ${fmt(now)}`, 'green');
+  const dNow = new Date(now);
+  const isLateCheckIn = (dNow.getHours() + dNow.getMinutes() / 60) > 10.5;
+  if (isLateCheckIn) {
+    addActivity(`Checked In (Late: after 10:30 AM) with verified photo at ${fmt(now)}`, 'orange');
+  } else {
+    addActivity(`Checked In on-time with verified photo at ${fmt(now)}`, 'green');
+  }
   triggerConfetti();
   toast('📸 Check-In Verified with Photo! Have a powerhouse session.', 'success');
   save();
@@ -2074,7 +2083,14 @@ function renderAttLog() {
     return;
   }
   tbody.innerHTML = STATE.attendance.log.map(r => {
-    const checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
+    let checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
+    let lateCheckInBadge = '';
+    if (typeof r.checkIn === 'number') {
+      const ciD = new Date(r.checkIn);
+      if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
+        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:600;margin-left:4px" title="Check-in after 10:30 AM official shift start">⚠️ Late</span>';
+      }
+    }
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
     
     // Format lunch duration in hours and minutes
@@ -2095,7 +2111,7 @@ function renderAttLog() {
         <td data-label="Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
         <td data-label="Check In">
           <div style="display:flex;align-items:center;gap:6px">
-            <strong>${checkInStr}</strong>
+            <strong>${checkInStr}</strong>${lateCheckInBadge}
             ${r.photoUrl ? `<span title="Selfie photo verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
           </div>
         </td>
@@ -3454,7 +3470,7 @@ function renderAdminEmployees() {
           </div>
           <div class="proj-row-title-box">
             <span class="proj-row-name">${m.name} ${m.isFounder ? '👑 Founder' : (isCurrent ? '✨ You' : '')}</span>
-            <span class="proj-row-client">${m.id} • ${m.shift || '10:00 AM – 07:00 PM'}</span>
+            <span class="proj-row-client">${m.id} • ${m.shift === '10:00 AM – 07:00 PM' ? '10:30 AM – 07:00 PM' : (m.shift || '10:30 AM – 07:00 PM')}</span>
           </div>
         </div>
 
@@ -3486,7 +3502,7 @@ function openAddEmployeeModal() {
   const formattedNum = nextNum < 10 ? `00${nextNum}` : (nextNum < 100 ? `0${nextNum}` : nextNum);
   document.getElementById('new-emp-id').value = `EMP-${formattedNum}`;
   document.getElementById('new-emp-role').value = 'Video Editor';
-  document.getElementById('new-emp-shift').value = '10:00 AM – 07:00 PM';
+  document.getElementById('new-emp-shift').value = '10:30 AM – 07:00 PM';
   const passInput = document.getElementById('new-emp-pass');
   if (passInput) passInput.value = '123';
   openModal('employee-add-modal');
@@ -3496,7 +3512,7 @@ function saveNewEmployee() {
   const name = (document.getElementById('new-emp-name')?.value || '').trim();
   const id = (document.getElementById('new-emp-id')?.value || '').trim();
   const role = document.getElementById('new-emp-role')?.value || 'Video Editor';
-  const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:00 AM – 07:00 PM';
+  const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:30 AM – 07:00 PM';
   const password = (document.getElementById('new-emp-pass')?.value || '').trim() || '123';
 
   if (!name) {

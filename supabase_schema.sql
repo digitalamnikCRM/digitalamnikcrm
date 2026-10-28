@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.team_members (
     id TEXT PRIMARY KEY, -- e.g. 'EMP-000', 'EMP-001'
     name TEXT NOT NULL,
     role TEXT NOT NULL, -- 'Admin', 'Video Editor', 'Social Media Management', 'Graphic Design', etc.
-    shift TEXT DEFAULT '10:00 AM – 07:00 PM',
+    shift TEXT DEFAULT '10:30 AM – 07:00 PM',
     password TEXT NOT NULL DEFAULT '123',
     is_founder BOOLEAN DEFAULT FALSE,
     email TEXT DEFAULT '',

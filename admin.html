@@ -1760,7 +1760,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Working Shift</label>
-            <input type="text" class="form-input" id="new-emp-shift" value="10:00 AM – 07:00 PM" />
+            <input type="text" class="form-input" id="new-emp-shift" value="10:30 AM – 07:00 PM" />
           </div>
           <div class="form-group">
             <label class="form-label">Assigned Studio Password <span class="req">*</span></label>
@@ -2577,7 +2577,7 @@
               id: String(m.id || '').trim().toLowerCase(),
               name: m.name,
               role: m.role || 'Video Editor',
-              shift: m.shift || '10:00 AM – 07:00 PM',
+              shift: m.shift === '10:00 AM – 07:00 PM' ? '10:30 AM – 07:00 PM' : (m.shift || '10:30 AM – 07:00 PM'),
               password: m.password || '123',
               isFounder: false,
               email: m.email || '',
@@ -3101,7 +3101,13 @@
       }
 
       tbody.innerHTML = displayList.map(({ member: m, todayAtt, isPresent, isLunch, activeProj }) => {
-        const checkInStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
+        let checkInStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
+        if (todayAtt && todayAtt.check_in) {
+          const ciD = new Date(todayAtt.check_in);
+          if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
+            checkInStr += ' <span style="font-size:10px;color:#f59e0b;font-weight:600" title="Checked in after 10:30 AM official shift start">⚠️ Late</span>';
+          }
+        }
         
         let lunchDurHtml = '<span style="color:#64748b">—</span>';
         if (todayAtt && (todayAtt.lunch_start || todayAtt.lunchStart || todayAtt.lunch)) {
@@ -3623,7 +3629,7 @@
             </div>
           </td>
           <td data-label="Shift Hours">
-            <span style="font-size:12px;color:#cbd5e1">🕒 ${m.shift || '10:00 AM – 07:00 PM'}</span>
+            <span style="font-size:12px;color:#cbd5e1">🕒 ${m.shift === '10:00 AM – 07:00 PM' ? '10:30 AM – 07:00 PM' : (m.shift || '10:30 AM – 07:00 PM')}</span>
           </td>
           <td data-label="Attendance">
             <div style="display:flex;align-items:center;gap:6px">
@@ -3677,7 +3683,7 @@
         }
       });
 
-      document.getElementById('new-emp-shift').value = '10:00 AM – 07:00 PM';
+      document.getElementById('new-emp-shift').value = '10:30 AM – 07:00 PM';
       const passInput = document.getElementById('new-emp-pass');
       if (passInput) passInput.value = '123';
       openModal('employee-add-modal');
@@ -3686,7 +3692,7 @@
     function saveNewEmployee() {
       const name = (document.getElementById('new-emp-name')?.value || '').trim();
       let id = (document.getElementById('new-emp-id')?.value || '').trim();
-      const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:00 AM – 07:00 PM';
+      const shift = (document.getElementById('new-emp-shift')?.value || '').trim() || '10:30 AM – 07:00 PM';
       const password = (document.getElementById('new-emp-pass')?.value || '').trim() || '123';
 
       // Normalize employee ID: lowercase, prefix emp if user just typed a number
@@ -3813,7 +3819,7 @@
             <h4 style="margin:0;font-size:16.5px;color:#fff">${m.name}</h4>
             <span style="font-family:monospace;font-size:11.5px;color:#38bdf8;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px">${m.id}</span>
           </div>
-          <span style="color:#94a3b8;font-size:12px;display:block;margin-top:2px">Shift Window: ${m.shift || '10:00 AM – 07:00 PM'}</span>
+          <span style="color:#94a3b8;font-size:12px;display:block;margin-top:2px">Shift Window: ${m.shift === '10:00 AM – 07:00 PM' ? '10:30 AM – 07:00 PM' : (m.shift || '10:30 AM – 07:00 PM')}</span>
         </div>
       </div>
 
@@ -3826,7 +3832,7 @@
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Shift Window</label>
-            <input type="text" class="form-input" id="admin-detail-emp-shift" value="${(m.shift || '10:00 AM – 07:00 PM').replace(/"/g, '&quot;')}" placeholder="10:00 AM – 07:00 PM" />
+            <input type="text" class="form-input" id="admin-detail-emp-shift" value="${(m.shift === '10:00 AM – 07:00 PM' ? '10:30 AM – 07:00 PM' : (m.shift || '10:30 AM – 07:00 PM')).replace(/"/g, '&quot;')}" placeholder="10:30 AM – 07:00 PM" />
           </div>
         </div>
         <button type="button" class="btn-primary btn-small btn-glow" onclick="saveAdminEmpFullProfile('${m.id}')" style="margin-top:4px">
@@ -4743,7 +4749,7 @@
       const nameInput = document.getElementById('admin-detail-emp-name');
       const shiftInput = document.getElementById('admin-detail-emp-shift');
       const newName = nameInput ? nameInput.value.trim() : '';
-      const newShift = shiftInput ? shiftInput.value.trim() : '10:00 AM – 07:00 PM';
+      const newShift = shiftInput ? shiftInput.value.trim() : '10:30 AM – 07:00 PM';
 
       if (!newName) {
         toast('Specialist name cannot be empty', 'error');
@@ -5025,7 +5031,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=7.0.0"></script>
+  <script src="supabase-client.js?v=7.1.0"></script>
 
 </body>
 
