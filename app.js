@@ -2162,7 +2162,7 @@ function renderProjectAssignOptions(existingAssigned = []) {
     return;
   }
 
-  // Manager or Agency Owner: Full delegation picker across all specialists & domain disciplines
+  // Manager or Agency Owner: Full delegation picker across registered staff specialists only
   const staff = (STATE.team || []);
   const options = [
     // 1. Current user
@@ -2174,21 +2174,13 @@ function renderProjectAssignOptions(existingAssigned = []) {
         label: `👤 ${t.name} (${t.id} • ${roleText})`,
         value: t.name
       };
-    }),
-    // 3. Domain Roles
-    { label: '🎬 Video Editor', value: 'Video Editor' },
-    { label: '📱 Social Media Management', value: 'Social Media Management' },
-    { label: '🎨 Graphic Designer', value: 'Graphic Design' },
-    { label: '✍️ Content Creator', value: 'Content Creator / Writer' },
-    { label: '💰 Paid Ads Specialist', value: 'Paid Ads Specialist' },
-    { label: '🔍 SEO Specialist', value: 'SEO Specialist' },
-    { label: '💻 Web Developer', value: 'Web Developer' },
+    })
   ];
 
   container.innerHTML = `
     <div style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
       <span class="assign-manager-badge" style="background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3)">
-        ⚡ Select Specialist(s) or Domain(s) to Assign (Manager Delegation)
+        ⚡ Select Specialist(s) to Assign
       </span>
       <div style="display:flex;gap:6px">
         <button type="button" class="btn-small btn-secondary" onclick="assignSelectMyself()" style="font-size:10.5px;padding:2px 8px">Only Me</button>
