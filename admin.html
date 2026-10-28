@@ -3,6 +3,9 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agency Executive Admin Command Center | Digital Amnik</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1217,13 +1220,13 @@
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
           </svg>
-          <span>+ Add Assignment</span>
+          <span>Add Assignment</span>
         </button>
         <button class="btn-primary btn-glow" onclick="openAddClientModal()">
           <svg viewBox="0 0 24 24" width="16" height="16">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
           </svg>
-          <span>+ Add Client</span>
+          <span>Add Client</span>
         </button>
         <button class="btn-secondary" onclick="openAddEmployeeModal()"
           style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd">
@@ -1231,7 +1234,7 @@
             <path
               d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
           </svg>
-          <span>+ Add Team Member</span>
+          <span>Add Team Member</span>
         </button>
       </div>
     </div>
@@ -2378,6 +2381,33 @@
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
+        function isSameCalendarDay(t1, t2) {
+      if (!t1) return false;
+      const d1 = new Date(t1);
+      const d2 = new Date(t2 || Date.now());
+      if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+      return d1.getFullYear() === d2.getFullYear() &&
+             d1.getMonth() === d2.getMonth() &&
+             d1.getDate() === d2.getDate();
+    }
+
+    function isTodayDateMatch(dateVal, tsVal) {
+      const todayStr = fmtDate(Date.now());
+      if (dateVal && typeof dateVal === 'string') {
+        const s = dateVal.trim();
+        if (s === todayStr) return true;
+        const d = new Date(s);
+        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
+      }
+      if (tsVal) {
+        const num = typeof tsVal === 'number' ? tsVal : Number(tsVal);
+        if (!isNaN(num) && num > 0 && isSameCalendarDay(num)) return true;
+        const d = new Date(tsVal);
+        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
+      }
+      return false;
+    }
+
     function fmtDate(ts) {
       if (!ts) return '';
       return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -2878,16 +2908,103 @@
     // 📸 TODAY'S ATTENDANCE STATION (PRESENT VS ABSENT BREAKDOWN)
     // ====================================================================
     function getMemberTodayAttendance(m, state, attLogs) {
-      if (!m) return null;
-      const normEmpId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const normEmpName = (m.name || '').toLowerCase().trim();
+      if (!m || !m.id) return null;
+      const normEmpId = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normEmpName = String(m.name || '').toLowerCase().trim();
       const todayDateStr = fmtDate(Date.now());
-      const curId = (state?.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const curName = (state?.employee?.name || '').toLowerCase().trim();
-      const isCurrentStaff = (curId && curId === normEmpId) || (curName && curName === normEmpName) || m.isCurrent;
 
-      // 1. Check active live session in state.attendance (Real-time studio state)
-      if (isCurrentStaff && state?.attendance && state.attendance.checkInTime) {
+      // 1. PRIMARY SOURCE: Supabase Cloud Database (Verified attendance logs for this specific employee TODAY)
+      if (Array.isArray(attLogs) && attLogs.length > 0) {
+        const cloudMatch = attLogs.find(a => {
+          const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+          const matchEmployee = (aId && aId === normEmpId) || (aName && aName === normEmpName);
+          if (!matchEmployee) return false;
+          return isTodayDateMatch(a.date, a.check_in || a.created_at);
+        });
+
+        if (cloudMatch) {
+          let photo = cloudMatch.photo_url || cloudMatch.photoUrl || null;
+          if (!photo && cloudMatch.late_lunch_reason && String(cloudMatch.late_lunch_reason).startsWith('photo:')) {
+            photo = String(cloudMatch.late_lunch_reason).slice(6);
+          }
+          let status = (cloudMatch.status || 'in').toLowerCase();
+          if (cloudMatch.lunch_start && !cloudMatch.lunch_end) {
+            status = 'lunch';
+          }
+          let reason = cloudMatch.late_lunch_reason || cloudMatch.lateLunchReason || null;
+          if (reason && String(reason).startsWith('photo:')) reason = null;
+
+          return {
+            status: status,
+            check_in: cloudMatch.check_in || cloudMatch.checkIn,
+            check_out: cloudMatch.check_out || cloudMatch.checkOut,
+            lunch_start: cloudMatch.lunch_start || cloudMatch.lunchStartTime,
+            lunch_end: cloudMatch.lunch_end || cloudMatch.lunchEndTime,
+            late_lunch_reason: reason,
+            photo_url: photo,
+            effective_hours: cloudMatch.effective_hours || cloudMatch.effectiveHours || cloudMatch.workHrs || 'In Progress',
+            date: cloudMatch.date || todayDateStr
+          };
+        }
+      }
+
+      // 2. SECONDARY SOURCE: Dedicated per-employee local storage key for today (da_att_{empId}_{today})
+      try {
+        const dedicatedKey = `da_att_${normEmpId}_${todayDateStr}`;
+        const dedicatedRaw = localStorage.getItem(dedicatedKey);
+        if (dedicatedRaw) {
+          const dAtt = JSON.parse(dedicatedRaw);
+          if (dAtt && (dAtt.checkInTime || dAtt.check_in) && isSameCalendarDay(dAtt.checkInTime || dAtt.check_in)) {
+            let status = (dAtt.status || 'in').toLowerCase();
+            if (dAtt.lunchStartTime && !dAtt.lunchEndTime) status = 'lunch';
+            return {
+              status: status,
+              check_in: dAtt.checkInTime || dAtt.check_in,
+              check_out: dAtt.checkOutTime || dAtt.check_out,
+              lunch_start: dAtt.lunchStartTime || dAtt.lunch_start,
+              lunch_end: dAtt.lunchEndTime || dAtt.lunch_end,
+              late_lunch_reason: dAtt.lateLunchReason || dAtt.late_lunch_reason || null,
+              photo_url: dAtt.photoUrl || dAtt.photo_url || null,
+              effective_hours: dAtt.effectiveHours || dAtt.effective_hours || (status === 'in' ? 'In Progress' : '0h 0m'),
+              date: todayDateStr
+            };
+          }
+        }
+      } catch (e) {}
+
+      // 3. TERTIARY SOURCE: state.attendance.log (strictly matching this employee ID and TODAY)
+      if (Array.isArray(state?.attendance?.log)) {
+        const localLog = state.attendance.log.find(l => {
+          const lId = String(l.employee_id || l.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const lName = String(l.employee_name || l.employeeName || '').toLowerCase().trim();
+          const matchEmployee = (lId && lId === normEmpId) || (lName && lName === normEmpName);
+          if (!matchEmployee) return false;
+          return isTodayDateMatch(l.date, l.checkIn || l.check_in);
+        });
+
+        if (localLog) {
+          let status = (localLog.status || 'in').toLowerCase();
+          if ((localLog.lunchStart || localLog.lunchStartTime) && !(localLog.lunchEnd || localLog.lunchEndTime)) {
+            status = 'lunch';
+          }
+          return {
+            status: status,
+            check_in: localLog.checkIn || localLog.check_in,
+            check_out: localLog.checkOut || localLog.check_out,
+            lunch_start: localLog.lunchStartTime || localLog.lunch_start || localLog.lunchStart,
+            lunch_end: localLog.lunchEndTime || localLog.lunch_end || localLog.lunchEnd,
+            late_lunch_reason: localLog.lateLunchReason || localLog.late_lunch_reason || null,
+            photo_url: localLog.photoUrl || localLog.photo_url,
+            effective_hours: localLog.effectiveHours || localLog.workHrs || 'In Progress',
+            date: localLog.date || todayDateStr
+          };
+        }
+      }
+
+      // 4. ACTIVE WORKSPACE MATCH (Only if the currently active logged-in employee explicitly matches this ID)
+      const curId = String(state?.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (curId && curId === normEmpId && state?.attendance && state.attendance.checkInTime && isSameCalendarDay(state.attendance.checkInTime)) {
         let liveStatus = (state.attendance.status || 'in').toLowerCase();
         if (state.attendance.lunchStartTime && !state.attendance.lunchEndTime) {
           liveStatus = 'lunch';
@@ -2905,81 +3022,7 @@
         };
       }
 
-      // 2. Check in window._adminAttLogs (cloud logs)
-      let found = (attLogs || []).find(a => {
-        const aId = (a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const aName = (a.employee_name || a.employeeName || '').toLowerCase().trim();
-        const idMatch = aId && normEmpId && aId === normEmpId;
-        const nameMatch = aName && normEmpName && aName === normEmpName;
-        if (!idMatch && !nameMatch) return false;
-
-        const dateMatch = a.date === todayDateStr || fmtDate(a.created_at) === todayDateStr;
-        const recentCheckIn = a.check_in && (Math.abs(Date.now() - Number(a.check_in)) < 24 * 3600 * 1000);
-        return dateMatch || recentCheckIn;
-      });
-
-      if (found) {
-        let photo = found.photo_url || found.photoUrl || null;
-        if (!photo && found.late_lunch_reason && String(found.late_lunch_reason).startsWith('photo:')) {
-          photo = String(found.late_lunch_reason).slice(6);
-        }
-        let status = (found.status || 'in').toLowerCase();
-        if (found.lunch_start && !found.lunch_end) {
-          status = 'lunch';
-        }
-        if (isCurrentStaff && state?.attendance?.status) {
-          status = state.attendance.status.toLowerCase();
-        }
-        let reason = found.late_lunch_reason || found.lateLunchReason || null;
-        if (reason && String(reason).startsWith('photo:')) reason = null;
-        return {
-          status: status,
-          check_in: found.check_in || found.checkIn,
-          check_out: found.check_out || found.checkOut,
-          lunch_start: found.lunch_start || found.lunchStartTime,
-          lunch_end: found.lunch_end || found.lunchEndTime,
-          late_lunch_reason: reason,
-          photo_url: photo,
-          effective_hours: found.effective_hours || found.effectiveHours || found.workHrs || 'In Progress',
-          date: found.date
-        };
-      }
-
-      // 3. Check in state.attendance.log (locally stored log array)
-      if (Array.isArray(state?.attendance?.log)) {
-        const localLog = state.attendance.log.find(l => {
-          const lId = (l.employee_id || l.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          const lName = (l.employee_name || l.employeeName || '').toLowerCase().trim();
-          const idMatch = lId && normEmpId && lId === normEmpId;
-          const nameMatch = lName && normEmpName && lName === normEmpName;
-          if (!idMatch && !nameMatch) return false;
-          const dateMatch = l.date === todayDateStr || (l.checkIn && Math.abs(Date.now() - Number(l.checkIn)) < 24 * 3600 * 1000);
-          return dateMatch;
-        });
-
-        if (localLog) {
-          let status = (localLog.status || 'in').toLowerCase();
-          if ((localLog.lunchStart || localLog.lunchStartTime) && !(localLog.lunchEnd || localLog.lunchEndTime)) {
-            status = 'lunch';
-          }
-          if (isCurrentStaff && state?.attendance?.status) {
-            status = state.attendance.status.toLowerCase();
-          }
-          return {
-            status: status,
-            check_in: localLog.checkIn || localLog.check_in,
-            check_out: localLog.checkOut || localLog.check_out,
-            lunch_start: localLog.lunchStartTime || localLog.lunch_start || localLog.lunchStart,
-            lunch_end: localLog.lunchEndTime || localLog.lunch_end || localLog.lunchEnd,
-            late_lunch_reason: localLog.lateLunchReason || localLog.late_lunch_reason || null,
-            photo_url: localLog.photoUrl || localLog.photo_url,
-            effective_hours: localLog.effectiveHours || localLog.workHrs || 'In Progress',
-            date: localLog.date
-          };
-        }
-      }
-
-      // 4. Auto-Absent Rule (Post 7:00 PM): If current time is 7:00 PM (19:00) or later and employee has neither check-in nor marked status, auto-mark Absent
+      // 5. AUTO-ABSENT RULE (Post 7:00 PM): If after 19:00 and still no punch-in, return absent status
       if (new Date().getHours() >= 19) {
         return {
           status: 'absent',
@@ -2989,151 +3032,8 @@
         };
       }
 
+      // Default: Employee has NOT punched in today -> ABSENT
       return null;
-    }
-
-        // Helper to format lunch duration
-    function formatLunchDurationDisplay(lunchVal, lunchStart, lunchEnd, status) {
-      if (lunchStart && lunchEnd) {
-        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
-        const e = typeof lunchEnd === 'number' ? lunchEnd : new Date(lunchEnd).getTime();
-        if (!isNaN(s) && !isNaN(e) && e >= s) {
-          const totalMins = Math.round((e - s) / 60000);
-          const hrs = Math.floor(totalMins / 60);
-          const mins = totalMins % 60;
-          return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-        }
-      }
-      if (status === 'lunch' && lunchStart) {
-        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
-        if (!isNaN(s)) {
-          const elapsedMins = Math.max(0, Math.round((Date.now() - s) / 60000));
-          const hrs = Math.floor(elapsedMins / 60);
-          const mins = elapsedMins % 60;
-          return hrs > 0 ? `${hrs}h ${mins}m (Live)` : `${mins}m (Live)`;
-        }
-      }
-      if (typeof lunchVal === 'string' && lunchVal.trim()) {
-        const cleaned = lunchVal.trim();
-        if (cleaned.toLowerCase() === 'none' || cleaned === '--:--' || cleaned === '0m') return 'None';
-        if (cleaned.includes('h')) return cleaned;
-        const mMatch = cleaned.match(/^(\d+)\s*m$/i);
-        if (mMatch) {
-          const totalMins = parseInt(mMatch[1], 10);
-          const hrs = Math.floor(totalMins / 60);
-          const mins = totalMins % 60;
-          return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-        }
-        return cleaned;
-      }
-      return 'None';
-    }
-
-    async function adminClearAttendanceLogs() {
-      const pwd = prompt('Enter Admin Master Password to clear all agency attendance logs:');
-      if (!pwd) return;
-      if (pwd !== 'amnik2026') {
-        toast('Access Denied: Incorrect Admin Password.', 'error');
-        return;
-      }
-      if (!confirm('⚠️ Are you sure you want to PERMANENTLY CLEAR all attendance logs from the cloud database and active roster? This action is irreversible.')) {
-        return;
-      }
-
-      try {
-        if (typeof SupabaseData !== 'undefined' && SupabaseConfig.isConfigured() && window.sbClient) {
-          const { error } = await window.sbClient.from('attendance_logs').delete().neq('id', 'dummy_non_existent');
-          if (error) {
-            console.error('Supabase clear attendance logs error:', error);
-          } else {
-            console.log('✅ Supabase attendance_logs cleared by Admin.');
-          }
-        }
-
-        window._adminAttLogs = [];
-        localStorage.removeItem('da_admin_att_logs');
-
-        const state = getCRMState();
-        if (state.attendance) {
-          state.attendance.log = [];
-          state.attendance.status = 'out';
-          state.attendance.checkInTime = null;
-          state.attendance.lunchStartTime = null;
-          state.attendance.lunchEndTime = null;
-          state.attendance.checkOutTime = null;
-          state.attendance.lateLunchReason = null;
-        }
-        saveCRMState(state);
-
-        renderAdminAttendanceTable();
-        updateAdminKpis();
-        toast('✅ All attendance logs have been permanently cleared by Admin.', 'success');
-      } catch (e) {
-        console.error('Error clearing attendance logs:', e);
-        toast('Failed to clear logs: ' + e.message, 'error');
-      }
-    }
-
-        // ====================================================================
-    // ADMIN LIVE AGENCY ACTIVITY STREAM (CLOUD SYNCED & DAILY REFRESH)
-    // ====================================================================
-    let _adminActivities = [];
-
-    async function loadAdminActivities() {
-      if (typeof SupabaseData !== 'undefined' && SupabaseConfig.isConfigured() && window.sbClient) {
-        const list = await SupabaseData.fetchActivities();
-        if (Array.isArray(list) && list.length > 0) {
-          _adminActivities = list;
-        }
-      }
-      renderAdminActivities();
-    }
-
-    function renderAdminActivities() {
-      const container = document.getElementById('admin-activity-timeline');
-      if (!container) return;
-
-      const todayDateStr = fmtDate(Date.now());
-
-      let source = _adminActivities;
-      if (!source || source.length === 0) {
-        const state = getCRMState();
-        source = (state.activityLog || []).map(a => ({
-          id: a.id,
-          text: a.text,
-          color: a.color || 'purple',
-          created_at: new Date(a.time || Date.now()).toISOString()
-        }));
-      }
-
-      // DAILY REFRESH: Filter to strictly show actions logged TODAY
-      const todayList = source.filter(a => {
-        const dStr = fmtDate(new Date(a.created_at).getTime());
-        return dStr === todayDateStr;
-      });
-
-      if (todayList.length === 0) {
-        container.innerHTML = `
-          <div style="text-align:center;padding:16px;color:#94a3b8;font-size:12.5px">
-            <span>No agency activities logged yet today. Real-time check-ins, lunch breaks & deliverable actions will stream here live.</span>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = todayList.slice(0, 15).map(a => {
-        const timeStr = fmt(new Date(a.created_at).getTime());
-        const dotColor = a.color === 'green' ? '#10b981' : (a.color === 'orange' ? '#f59e0b' : (a.color === 'blue' ? '#3b82f6' : '#a855f7'));
-        return `
-          <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};box-shadow:0 0 8px ${dotColor};flex-shrink:0"></div>
-            <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <span style="font-size:12.5px;color:#e2e8f0;font-weight:500">${a.text}</span>
-              <span style="font-size:11px;color:#94a3b8;font-family:monospace;white-space:nowrap">${timeStr}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
     }
 
     function renderAdminAttendanceTable() {
@@ -3231,7 +3131,7 @@
         } else if (isPresent) {
           liveStatusHtml = `<span style="color:#34d399;font-size:11.5px;font-weight:600">🟢 Working</span>`;
         } else {
-          liveStatusHtml = `<span style="color:#64748b;font-size:11.5px;font-weight:600">🔴 Check Out</span>`;
+          liveStatusHtml = `<span style="color:#64748b;font-size:11.5px;font-weight:600">⚪ Not Punched In</span>`;
         }
 
         return `
@@ -3697,7 +3597,7 @@
         } else if (isPresent) {
           currentTaskHtml = `<span style="color:#34d399;font-weight:600;font-size:12px">🟢 Working</span>`;
         } else {
-          currentTaskHtml = `<span style="color:#64748b;font-weight:600;font-size:12px">🔴 Check Out</span>`;
+          currentTaskHtml = `<span style="color:#94a3b8;font-weight:600;font-size:12px">⚪ Not Punched In</span>`;
         }
 
         return `
@@ -5125,7 +5025,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js"></script>
+  <script src="supabase-client.js?v=7.0.0"></script>
 
 </body>
 

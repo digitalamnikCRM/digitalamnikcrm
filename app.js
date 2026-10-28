@@ -90,6 +90,16 @@ function fmt(ts) {
   return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+function isSameCalendarDay(t1, t2) {
+  if (!t1) return false;
+  const d1 = new Date(t1);
+  const d2 = new Date(t2 || Date.now());
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+}
+
 function fmtDate(ts) {
   if (!ts) return '';
   return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -364,6 +374,34 @@ function load() {
         }
       }
     } catch (e) {}
+
+    // Verify restored attendance belongs strictly to TODAY
+    const isTodaySession = STATE.attendance.checkInTime && isSameCalendarDay(STATE.attendance.checkInTime, Date.now());
+    if (STATE.attendance.checkInTime && !isTodaySession) {
+      console.log('🌅 New calendar day detected in load()! Archiving past session and resetting active attendance.');
+      const prevDateStr = fmtDate(STATE.attendance.checkInTime);
+      if (!STATE.attendance.log) STATE.attendance.log = [];
+      const alreadyLogged = STATE.attendance.log.some(l => l.date === prevDateStr && (l.employeeId === STATE.employee?.id || l.employee_id === STATE.employee?.id));
+      if (!alreadyLogged) {
+        STATE.attendance.log.unshift({
+          date: prevDateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: fmt(STATE.attendance.checkInTime),
+          checkOut: STATE.attendance.checkOutTime ? fmt(STATE.attendance.checkOutTime) : '--:--',
+          lunch: 'None',
+          workHrs: 'Completed',
+          status: 'done'
+        });
+      }
+      STATE.attendance.status = 'out';
+      STATE.attendance.checkInTime = null;
+      STATE.attendance.lunchStartTime = null;
+      STATE.attendance.lunchEndTime = null;
+      STATE.attendance.checkOutTime = null;
+      STATE.attendance.photoUrl = null;
+      STATE.attendance.lateLunchReason = null;
+    }
   } catch (e) {
     console.warn('Storage parse error, resetting clean:', e);
     STATE.projects = [];

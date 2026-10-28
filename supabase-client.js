@@ -1,3 +1,30 @@
+function isSameCalendarDay(t1, t2) {
+  if (!t1) return false;
+  const d1 = new Date(t1);
+  const d2 = new Date(t2 || Date.now());
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+}
+
+function isTodayDate(dateVal, tsVal) {
+  const todayStr = typeof fmtDate === 'function' ? fmtDate(Date.now()) : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (dateVal && typeof dateVal === 'string') {
+    const s = dateVal.trim();
+    if (s === todayStr) return true;
+    const d = new Date(s);
+    if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
+  }
+  if (tsVal) {
+    const num = typeof tsVal === 'number' ? tsVal : Number(tsVal);
+    if (!isNaN(num) && num > 0 && isSameCalendarDay(num)) return true;
+    const d = new Date(tsVal);
+    if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
+  }
+  return false;
+}
+
 /* ====================================================================
    DIGITAL AMNIK CRM — SUPABASE DATA LAYER & REALTIME ENGINE
    Seamless Cloud Sync for Real Agency Data
@@ -323,10 +350,8 @@ const SupabaseData = {
           
           const myTodayAtt = attData.find(a => {
             const aEmpId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const aDate = String(a.date || '').trim();
-            const isTodayDate = (aDate === todayDateStr);
-            const isRecentCheckIn = a.check_in && (Math.abs(Date.now() - Number(a.check_in)) < 24 * 3600 * 1000);
-            return aEmpId === empNorm && (isTodayDate || isRecentCheckIn);
+            if (aEmpId !== empNorm) return false;
+            return isTodayDate(a.date, a.check_in || a.created_at);
           });
 
           if (myTodayAtt) {
@@ -355,6 +380,19 @@ const SupabaseData = {
             if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
             if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
               startAttElapsed();
+            }
+          } else {
+            // No record for today in cloud: if local attendance has a previous day checkIn, reset it
+            if (st.attendance && st.attendance.checkInTime && !isSameCalendarDay(st.attendance.checkInTime)) {
+              console.log(`🌅 Resetting stale previous-day shift in local attendance state for ${loggedId}`);
+              st.attendance.status = 'out';
+              st.attendance.checkInTime = null;
+              st.attendance.lunchStartTime = null;
+              st.attendance.lunchEndTime = null;
+              st.attendance.checkOutTime = null;
+              st.attendance.photoUrl = null;
+              st.attendance.lateLunchReason = null;
+              if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
             }
           }
         }
