@@ -4142,22 +4142,32 @@
         clientSelect.innerHTML = clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
       }
 
-      // Assign specialists pills
+      // Assign specialists pills (Single Selection: Exactly 1 employee)
       const assignWrap = document.getElementById('admin-proj-assign-wrap');
       const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
       
-      const isOwnerActive = preSelectedEmp === 'Amaan Khan' || (!preSelectedEmp && staff.length === 0);
+      // Determine default pre-selection
+      let targetName = '';
+      if (preSelectedEmp) {
+        targetName = preSelectedEmp;
+      } else if (staff.length > 0) {
+        targetName = staff[0].name; // default to first specialist, not forcing owner
+      } else {
+        targetName = 'Amaan Khan';
+      }
+
+      const isOwnerActive = (targetName === 'Amaan Khan' || targetName === 'emp000');
 
       const specialistPills = staff.map(m => {
         const doms = getEmpDomains(m);
-        const isSelected = preSelectedEmp && (preSelectedEmp === m.name || preSelectedEmp === m.id);
-        return `<span class="domain-pill ${isSelected ? 'active' : ''}" data-name="${m.name}" data-id="${m.id}" onclick="toggleDomainPill(this)">👤 ${m.name} (${m.id} • ${doms[0] || m.role})</span>`;
+        const isSelected = !isOwnerActive && (targetName === m.name || targetName === m.id);
+        return `<span class="domain-pill ${isSelected ? 'active' : ''}" data-name="${m.name}" data-id="${m.id}" onclick="selectAdminProjectAssignee(this)">👤 ${m.name} (${m.id} • ${doms[0] || m.role})</span>`;
       });
 
       assignWrap.innerHTML = `
-        <div style="width:100%;font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Assign to Employee(s) / Specialist(s):</div>
+        <div style="width:100%;font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Select 1 Assignee for this Deliverable (Single Specialist):</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span class="domain-pill ${isOwnerActive ? 'active' : ''}" data-name="Amaan Khan" onclick="toggleDomainPill(this)">👑 Amaan Khan (Owner)</span>
+          <span class="domain-pill ${isOwnerActive ? 'active' : ''}" data-name="Amaan Khan" data-id="emp000" onclick="selectAdminProjectAssignee(this)">👑 Amaan Khan (Owner)</span>
           ${specialistPills.join('')}
         </div>
       `;
@@ -4168,6 +4178,15 @@
       document.getElementById('admin-proj-desc').value = '';
 
       openModal('admin-project-modal');
+    }
+
+    function selectAdminProjectAssignee(el) {
+      if (!el) return;
+      const wrap = document.getElementById('admin-proj-assign-wrap');
+      if (wrap) {
+        wrap.querySelectorAll('.domain-pill').forEach(p => p.classList.remove('active'));
+      }
+      el.classList.add('active');
     }
 
     async function saveAdminProject() {
@@ -4183,15 +4202,15 @@
       const deadline = document.getElementById('admin-proj-deadline')?.value || '';
       const desc = (document.getElementById('admin-proj-desc')?.value || '').trim();
 
-      const activePills = document.querySelectorAll('#admin-proj-assign-wrap .domain-pill.active');
-      let assigned = [];
-      activePills.forEach(p => {
-        const name = p.getAttribute('data-name');
-        const id = p.getAttribute('data-id');
-        if (name && !assigned.includes(name)) assigned.push(name);
-        if (id && !assigned.includes(id)) assigned.push(id);
-      });
-      if (assigned.length === 0) assigned = ['Amaan Khan', 'emp000'];
+      const activePill = document.querySelector('#admin-proj-assign-wrap .domain-pill.active');
+      if (!activePill) {
+        toast('⚠️ Please select an employee to assign this deliverable', 'error');
+        return;
+      }
+      const assignedName = activePill.getAttribute('data-name');
+      const assignedId = activePill.getAttribute('data-id');
+      const assigned = [assignedName];
+      if (assignedId && !assigned.includes(assignedId)) assigned.push(assignedId);
 
       const state = getCRMState();
       if (!Array.isArray(state.projects)) state.projects = [];

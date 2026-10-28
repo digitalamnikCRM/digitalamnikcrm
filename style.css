@@ -3157,7 +3157,7 @@ select option:checked {
   }
 
   .assign-chip {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
@@ -3165,9 +3165,12 @@ select option:checked {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
+    font-family: inherit;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    outline: none;
+    text-align: left;
     transition: all var(--transition);
   }
 

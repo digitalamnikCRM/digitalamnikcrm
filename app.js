@@ -2138,101 +2138,96 @@ function renderProjectAssignOptions(existingAssigned = []) {
   const container = document.getElementById('assign-options');
   if (!container) return;
 
-  const isMgr = isManagerRole();
-
-  if (!isMgr) {
-    // Non-managers: Dedicated Self-Task assignment box
-    container.innerHTML = `
-      <div style="width:100%;padding:12px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;display:flex;align-items:center;gap:12px">
-        <div style="width:36px;height:36px;border-radius:50%;background:rgba(59,130,246,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
-          👤
-        </div>
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:13px;color:#93c5fd;display:flex;align-items:center;gap:6px">
-            Self-Task: Assigned to You (${STATE.employee.name})
-            <span class="stat-badge blue" style="font-size:10px;padding:1px 6px">Personal Workflow</span>
-          </div>
-          <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">
-            You are creating this deliverable for your own task queue. Delegation to other specialists is reserved for Social Media Managers & Agency Owner.
-          </div>
-        </div>
-        <input type="checkbox" value="${STATE.employee.name}" checked style="display:none" />
-      </div>
-    `;
-    return;
+  const staff = (STATE.team || []);
+  
+  // Single selected assignee resolution
+  let currentTarget = '';
+  if (Array.isArray(existingAssigned) && existingAssigned.length > 0) {
+    currentTarget = existingAssigned[0];
+  } else if (typeof existingAssigned === 'string' && existingAssigned) {
+    currentTarget = existingAssigned;
   }
 
-  // Manager or Agency Owner: Full delegation picker across registered staff specialists only
-  const staff = (STATE.team || []);
-  const options = [
-    // 1. Current user
-    { label: `👑 ${STATE.employee.name} (You • ${STATE.employee.id})`, value: STATE.employee.name },
-    // 2. All other team members
-    ...staff.filter(t => t.name !== STATE.employee.name).map(t => {
+  // All team members as selectable employee options
+  const employeeOptions = [];
+  
+  // Current user option
+  employeeOptions.push({
+    id: STATE.employee.id || 'emp001',
+    name: STATE.employee.name,
+    role: STATE.employee.role || 'Specialist',
+    label: `👑 ${STATE.employee.name} (You • ${STATE.employee.id || 'emp001'})`
+  });
+
+  // Other team members
+  staff.forEach(t => {
+    const isSame = (t.name === STATE.employee.name || (t.id && STATE.employee.id && t.id.toLowerCase() === STATE.employee.id.toLowerCase()));
+    if (!isSame) {
       const roleText = t.role || (Array.isArray(t.domains) ? t.domains.join(', ') : 'Staff Specialist');
-      return {
-        label: `👤 ${t.name} (${t.id} • ${roleText})`,
-        value: t.name
-      };
-    })
-  ];
+      employeeOptions.push({
+        id: t.id || 'staff',
+        name: t.name,
+        role: roleText,
+        label: `👤 ${t.name} (${t.id || 'staff'} • ${roleText})`
+      });
+    }
+  });
+
+  // Match existing or default to first/specified
+  let matchedEmp = employeeOptions.find(opt => 
+    currentTarget && (
+      opt.name.toLowerCase() === currentTarget.toLowerCase() ||
+      opt.id.toLowerCase() === currentTarget.toLowerCase() ||
+      currentTarget.toLowerCase().includes(opt.name.toLowerCase())
+    )
+  );
+
+  // If nothing matched and currentTarget is empty, do NOT force self if others exist
+  if (!matchedEmp && employeeOptions.length > 0) {
+    matchedEmp = employeeOptions[0];
+  }
+
+  const selectedName = matchedEmp ? matchedEmp.name : '';
 
   container.innerHTML = `
     <div style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <span class="assign-manager-badge" style="background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3)">
-        ⚡ Select Specialist(s) to Assign
+      <span class="assign-manager-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd;border-color:rgba(139,92,246,0.3)">
+        👤 Select 1 Assignee for this Deliverable (Single Specialist)
       </span>
-      <div style="display:flex;gap:6px">
-        <button type="button" class="btn-small btn-secondary" onclick="assignSelectMyself()" style="font-size:10.5px;padding:2px 8px">Only Me</button>
-        <button type="button" class="btn-small btn-secondary" onclick="assignSelectAllSpecialists()" style="font-size:10.5px;padding:2px 8px">All Specialists</button>
-      </div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${options.map(opt => {
-        const isChecked = existingAssigned.length
-          ? (existingAssigned.includes(opt.value) || existingAssigned.some(a => opt.label.includes(a)))
-          : (opt.value === STATE.employee.name);
+    <div style="display:flex;flex-wrap:wrap;gap:8px" id="assign-chips-wrap">
+      ${employeeOptions.map(opt => {
+        const isSelected = (opt.name === selectedName);
         return `
-          <label class="assign-chip ${isChecked ? 'selected' : ''}">
-            <input type="checkbox" value="${opt.value}" ${isChecked ? 'checked' : ''} />
-            ${opt.label}
-          </label>
+          <button type="button" class="assign-chip ${isSelected ? 'selected' : ''}" data-name="${opt.name}" data-id="${opt.id}" onclick="selectSingleProjectAssignee(this)">
+            <span class="assign-radio-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid ${isSelected ? '#c084fc' : '#64748b'};background:${isSelected ? '#a855f7' : 'transparent'};margin-right:6px;flex-shrink:0"></span>
+            <span>${opt.label}</span>
+          </button>
         `;
       }).join('')}
     </div>
   `;
+}
 
-  container.querySelectorAll('.assign-chip').forEach(chip => {
-    chip.addEventListener('click', function (e) {
-      if (e.target.tagName !== 'INPUT') {
-        const cb = this.querySelector('input');
-        cb.checked = !cb.checked;
+function selectSingleProjectAssignee(btn) {
+  if (!btn) return;
+  const wrap = document.getElementById('assign-chips-wrap');
+  if (wrap) {
+    wrap.querySelectorAll('.assign-chip').forEach(b => {
+      b.classList.remove('selected');
+      const dot = b.querySelector('.assign-radio-dot');
+      if (dot) {
+        dot.style.borderColor = '#64748b';
+        dot.style.background = 'transparent';
       }
-      const cb = this.querySelector('input');
-      this.classList.toggle('selected', cb.checked);
     });
-  });
-}
-
-function assignSelectMyself() {
-  const chips = document.querySelectorAll('#assign-options .assign-chip');
-  chips.forEach(chip => {
-    const cb = chip.querySelector('input');
-    const isMe = cb && cb.value === STATE.employee.name;
-    if (cb) cb.checked = isMe;
-    chip.classList.toggle('selected', isMe);
-  });
-}
-
-function assignSelectAllSpecialists() {
-  const chips = document.querySelectorAll('#assign-options .assign-chip');
-  const staffNames = (STATE.team || []).map(t => t.name);
-  chips.forEach(chip => {
-    const cb = chip.querySelector('input');
-    const isStaff = cb && (staffNames.includes(cb.value) || cb.value === STATE.employee.name);
-    if (cb && isStaff) cb.checked = true;
-    if (isStaff) chip.classList.add('selected');
-  });
+  }
+  btn.classList.add('selected');
+  const dot = btn.querySelector('.assign-radio-dot');
+  if (dot) {
+    dot.style.borderColor = '#c084fc';
+    dot.style.background = '#a855f7';
+  }
 }
 
 function openProjectModal(id) {
@@ -2267,15 +2262,14 @@ function saveProject() {
   const name = document.getElementById('proj-name').value.trim();
   if (!name) { toast('Project name is required', 'error'); return; }
 
-  const isMgr = isManagerRole();
-  let assigned;
-  if (isMgr) {
-    const checks = document.querySelectorAll('#assign-options input[type=checkbox]:checked');
-    assigned = Array.from(checks).map(c => c.value);
-    if (!assigned.length) assigned = [STATE.employee.name];
-  } else {
-    // Specialists create self-tasks strictly assigned to their personal queue
-    assigned = [STATE.employee.name];
+  // Get single assigned employee from active chip
+  const activeChip = document.querySelector('#assign-chips-wrap .assign-chip.selected') || document.querySelector('#assign-options .assign-chip.selected');
+  const assignedName = activeChip ? activeChip.getAttribute('data-name') : (STATE.employee ? STATE.employee.name : 'Amaan Khan');
+  const assignedId = activeChip ? activeChip.getAttribute('data-id') : (STATE.employee ? STATE.employee.id : 'emp000');
+  
+  const assigned = [assignedName];
+  if (assignedId && !assigned.includes(assignedId)) {
+    assigned.push(assignedId);
   }
 
   const client = document.getElementById('proj-client').value.trim() || 'Internal Agency';
