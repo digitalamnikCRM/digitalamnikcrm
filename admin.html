@@ -1458,45 +1458,123 @@
     <!-- TAB 3: PROJECT HOURS & TIMESHEETS -->
     <div class="admin-pane" id="admin-pane-timesheets">
 
-      <!-- 1. LIVE AGENCY PULSE: REAL-TIME ACTIVE DELIVERABLE OPERATIONS -->
-      <div class="live-pulse-section" style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="live-pulse-dot-ring">
-              <span class="live-pulse-dot"></span>
-            </span>
-            <div>
-              <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station — Active Staff &amp; Real-Time Operations</h3>
-              <span style="font-size:12.5px;color:#94a3b8">Real-time live specialist activity and running deliverable clocks across the agency</span>
+      <!-- =========================================================
+           TOP SUMMARY CARDS (2-COLUMN EXECUTIVE OVERVIEW)
+           ========================================================= -->
+      <div class="timesheet-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:16px;margin-bottom:24px">
+        
+        <!-- CARD 1: LIVE WORK STATION -->
+        <div class="live-pulse-section" style="margin-bottom:0;background:linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(16,185,129,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="live-pulse-dot-ring">
+                <span class="live-pulse-dot"></span>
+              </span>
+              <div>
+                <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station</h3>
+                <span style="font-size:11.5px;color:#94a3b8">Specialists actively running project clocks</span>
+              </div>
             </div>
+            <span class="live-badge-count" id="admin-live-workers-count" style="font-size:11.5px;padding:3px 10px">0 Working Now</span>
           </div>
-          <span class="live-badge-count" id="admin-live-workers-count">0 Working Now</span>
+          <div id="admin-live-work-container" style="flex:1">
+            <!-- Rendered dynamically by JS -->
+          </div>
         </div>
-        <div id="admin-live-work-container">
-          <!-- Rendered dynamically by JS -->
+
+        <!-- CARD 2: TODAY'S COMPLETED DELIVERABLES -->
+        <div class="today-completed-section" style="margin-bottom:0;background:linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(124,58,237,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:26px;height:26px;border-radius:7px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:center;font-size:13px">
+                ✅
+              </div>
+              <div>
+                <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Concluded Today</h3>
+                <span style="font-size:11.5px;color:#94a3b8">Finished tasks &amp; logged work sessions</span>
+              </div>
+            </div>
+            <span class="stat-badge green" id="admin-today-completed-summary" style="font-size:11.5px;padding:3px 10px">0 Done Today</span>
+          </div>
+          <div id="admin-today-completed-container" style="flex:1">
+            <!-- Rendered dynamically by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- =========================================================
+           EXECUTIVE SUB-NAVIGATION SWITCHER (CLEAN FOCUSED WORKSPACE)
+           ========================================================= -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
+        
+        <!-- Clean Sub-Tabs -->
+        <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
+          <button type="button" class="ts-subtab-btn active" id="ts-subtab-deliverables" onclick="switchTimesheetSection('deliverables')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
+            <span>⏱️ Deliverables &amp; Projects</span>
+          </button>
+          <button type="button" class="ts-subtab-btn" id="ts-subtab-attendance" onclick="switchTimesheetSection('attendance')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
+            <span>📸 Daily Attendance Table</span>
+          </button>
+          <button type="button" class="ts-subtab-btn" id="ts-subtab-activity" onclick="switchTimesheetSection('activity')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
+            <span>⚡ Live Activity Stream</span>
+          </button>
+        </div>
+
+        <!-- Quick Action on Top Right -->
+        <div id="ts-top-action-bar">
+          <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            <span>+ Create Deliverable</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- =========================================================
+           VIEW 1: DELIVERABLES & TIMESHEETS (PRIMARY DEFAULT VIEW)
+           ========================================================= -->
+      <div class="ts-section-view" id="ts-view-deliverables">
+        <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="search-input-box" style="max-width:350px">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input type="text" class="search-input" id="admin-timesheet-search" placeholder="Search deliverables, clients..." oninput="renderAdminProjectsTime()" />
+          </div>
+          <span style="font-size:12px;color:#94a3b8">Executive oversight of agency deliverables &amp; work hours</span>
+        </div>
+
+        <div class="glass-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Deliverable / Project</th>
+                <th>Client</th>
+                <th>Assigned Domain</th>
+                <th>Status</th>
+                <th>Total Work Tracked</th>
+                <th>Sessions Count</th>
+                <th>Live State</th>
+              </tr>
+            </thead>
+            <tbody id="admin-timesheets-tbody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- 2. TODAY'S COMPLETED DELIVERABLES & SESSIONS -->
-      <div class="today-completed-section" style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <!-- =========================================================
+           VIEW 2: STAFF DAILY ATTENDANCE VERIFICATION
+           ========================================================= -->
+      <div class="ts-section-view" id="ts-view-attendance" style="display:none">
+        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
-            <h3 style="margin:0 0 2px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">✅ Concluded Deliverables &amp; Completed Work Sessions Today</h3>
-            <span style="font-size:12.5px;color:#94a3b8">Completed agency deliverables &amp; work sessions finished today by staff</span>
-          </div>
-          <span class="stat-badge green" id="admin-today-completed-summary">0 Done Today</span>
-        </div>
-        <div id="admin-today-completed-container">
-          <!-- Rendered dynamically by JS -->
-        </div>
-      </div>
-
-      <!-- 3. TODAY'S ATTENDANCE: PRESENT VS ABSENT BREAKDOWN -->
-      <div style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div>
-            <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">📸 Staff Daily Attendance Verification (Present vs Absent Breakdown)</h3>
-            <span style="font-size:12.5px;color:#94a3b8">Check-in photos and shift hours. Photo records auto-purged after 7 days to preserve storage.</span>
+            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">📸 Staff Daily Attendance Verification</h4>
+            <span style="font-size:12px;color:#94a3b8">Check-in photos and shift hours. Photo records auto-purged after 7 days to preserve storage.</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="att-filter-pills" id="admin-att-filters">
@@ -1515,6 +1593,7 @@
             </div>
           </div>
         </div>
+
         <div class="glass-table-wrap">
           <table class="data-table">
             <thead>
@@ -1537,73 +1616,32 @@
         </div>
       </div>
 
-      <!-- LIVE AGENCY ACTIVITY STREAM (REAL-TIME BACKEND CLOUD FEED) -->
-      <div style="margin-top:18px;margin-bottom:24px;background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px 20px;backdrop-filter:blur(16px)">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:10px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:16px">
-              ⚡
+      <!-- =========================================================
+           VIEW 3: LIVE AGENCY ACTIVITY STREAM
+           ========================================================= -->
+      <div class="ts-section-view" id="ts-view-activity" style="display:none">
+        <div style="background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 22px;backdrop-filter:blur(16px)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:16px">
+                ⚡
+              </div>
+              <div>
+                <h4 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Live Agency Activity Stream</h4>
+                <span style="font-size:12px;color:#94a3b8">Real-time cloud audit stream of agency actions, check-ins, lunch breaks &amp; deliverables today</span>
+              </div>
             </div>
-            <div>
-              <h4 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Live Agency Activity Stream</h4>
-              <span style="font-size:11.5px;color:#94a3b8">Real-time cloud audit stream of agency actions, check-ins, lunch breaks &amp; deliverables today</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="stat-badge green" style="font-size:11px;padding:3px 8px"><span class="timer-pulse-circle"></span> Cloud Synced</span>
+              <button type="button" class="btn-small btn-secondary" onclick="loadAdminActivities()" style="font-size:11px;padding:4px 12px">🔄 Refresh Stream</button>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="stat-badge green" style="font-size:11px;padding:3px 8px"><span class="timer-pulse-circle"></span> Cloud Synced</span>
-            <button type="button" class="btn-small btn-secondary" onclick="loadAdminActivities()" style="font-size:11px;padding:3px 10px">🔄 Refresh Stream</button>
+          <div id="admin-activity-timeline" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
+            <!-- Rendered live from Supabase activity_logs -->
           </div>
         </div>
-        <div id="admin-activity-timeline" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;padding-right:4px">
-          <!-- Rendered live from Supabase activity_logs -->
-        </div>
       </div>
 
-      <div class="section-header"
-        style="margin-bottom:14px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div>
-          <h3 style="margin:0 0 4px 0;font-size:17px;color:#fff;font-family:'Outfit',sans-serif">⏱️ Deliverables &amp;
-            Client Timesheets</h3>
-          <span style="font-size:12.5px;color:#94a3b8">Executive oversight of agency deliverables, assigned specialists
-            &amp; logged work hours</span>
-        </div>
-        <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-          </svg>
-          <span>+ Create Deliverable</span>
-        </button>
-      </div>
-
-      <div class="filter-bar" style="margin-bottom:16px">
-        <div class="search-input-box" style="max-width:350px">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path
-              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <input type="text" class="search-input" id="admin-timesheet-search"
-            placeholder="Search deliverables, clients..." oninput="renderAdminProjectsTime()" />
-        </div>
-      </div>
-
-      <div class="glass-table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Deliverable / Project</th>
-              <th>Client</th>
-              <th>Assigned Domain</th>
-              <th>Status</th>
-              <th>Total Work Tracked</th>
-              <th>Sessions Count</th>
-              <th>Live State</th>
-            </tr>
-          </thead>
-          <tbody id="admin-timesheets-tbody">
-            <!-- Rendered by JS -->
-          </tbody>
-        </table>
-      </div>
     </div>
 
     <!-- TAB 4: CONTENT CALENDARS & PDFS -->
@@ -3280,6 +3318,41 @@
         kpiPending.textContent = pendingAssignmentsCount;
         kpiPending.style.color = pendingAssignmentsCount > 0 ? '#ef4444' : '#10b981';
       }
+    }
+
+    function switchTimesheetSection(sectionName) {
+      const views = {
+        deliverables: document.getElementById('ts-view-deliverables'),
+        attendance: document.getElementById('ts-view-attendance'),
+        activity: document.getElementById('ts-view-activity')
+      };
+      const btns = {
+        deliverables: document.getElementById('ts-subtab-deliverables'),
+        attendance: document.getElementById('ts-subtab-attendance'),
+        activity: document.getElementById('ts-subtab-activity')
+      };
+
+      Object.keys(views).forEach(k => {
+        if (views[k]) views[k].style.display = (k === sectionName) ? 'block' : 'none';
+        if (btns[k]) {
+          if (k === sectionName) {
+            btns[k].style.background = 'linear-gradient(135deg,#7c3aed,#6366f1)';
+            btns[k].style.color = '#fff';
+            btns[k].classList.add('active');
+          } else {
+            btns[k].style.background = 'transparent';
+            btns[k].style.color = '#94a3b8';
+            btns[k].classList.remove('active');
+          }
+        }
+      });
+
+      if (sectionName === 'deliverables') renderAdminProjectsTime();
+      if (sectionName === 'attendance') {
+        renderAdminAttendanceTable();
+        loadAdminAttendanceLogs();
+      }
+      if (sectionName === 'activity') loadAdminActivities();
     }
 
     function switchAdminTab(tabName) {
