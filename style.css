@@ -1629,13 +1629,15 @@ select option:checked {
   }
 
   .stat-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    background: linear-gradient(135deg, rgba(23, 27, 44, 0.78) 0%, rgba(13, 16, 28, 0.88) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     padding: 22px 24px;
     position: relative;
     overflow: hidden;
-    box-shadow: var(--specular), 0 1px 3px rgba(0, 0, 0, 0.2), 0 6px 18px -4px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 32px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
     transition: all var(--transition);
     cursor: pointer;
     display: flex;
@@ -1643,19 +1645,42 @@ select option:checked {
     justify-content: space-between;
   }
 
-  .stat-glow {
-    display: none;
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+    pointer-events: none;
   }
 
+  .stat-glow {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.18;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .stat-card.stat-status .stat-glow { background: #10b981; }
+  .stat-card.stat-hours .stat-glow { background: #818cf8; }
+  .stat-card.stat-projects .stat-glow { background: #38bdf8; }
+  .stat-card.stat-pending-assignments .stat-glow { background: #ef4444; }
+
   .stat-card:hover {
-    transform: translateY(-2px);
-    background: var(--bg-card-hover);
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow: var(--specular), 0 1px 3px rgba(0, 0, 0, 0.25), 0 12px 28px -6px rgba(0, 0, 0, 0.45);
+    transform: translateY(-3px);
+    background: linear-gradient(135deg, rgba(28, 33, 54, 0.88) 0%, rgba(16, 20, 35, 0.94) 100%);
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.2);
   }
 
   .stat-card:hover .stat-glow {
-    opacity: 1;
+    opacity: 0.35;
   }
 
   .stat-header {
@@ -1681,96 +1706,107 @@ select option:checked {
   }
 
   .stat-icon-wrapper.green {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.22);
-    color: #10b981;
+    background: rgba(16, 185, 129, 0.18);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    color: #34d399;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
   }
 
   .stat-icon-wrapper.purple {
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.22);
-    color: #818cf8;
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(129, 140, 248, 0.4);
+    color: #a5b4fc;
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
   }
 
   .stat-icon-wrapper.blue {
-    background: rgba(14, 165, 233, 0.1);
-    border: 1px solid rgba(14, 165, 233, 0.22);
+    background: rgba(14, 165, 233, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.4);
     color: #38bdf8;
+    box-shadow: 0 0 16px rgba(14, 165, 233, 0.25);
   }
 
   .stat-icon-wrapper.orange {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.22);
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(251, 191, 36, 0.4);
     color: #fbbf24;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
   }
 
   .stat-badge {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 3px 9px;
+    padding: 4px 11px;
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #e2e8f0;
+    letter-spacing: 0.3px;
   }
 
   .stat-badge.green {
-    background: var(--emerald-bg);
-    color: var(--emerald-400);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border-color: rgba(52, 211, 153, 0.45);
   }
 
   .stat-badge.purple {
-    background: rgba(124, 58, 237, 0.2);
-    color: var(--violet-300);
-    border-color: rgba(124, 58, 237, 0.4);
+    background: rgba(124, 58, 237, 0.24);
+    color: #c4b5fd;
+    border-color: rgba(167, 139, 250, 0.45);
   }
 
   .stat-badge.blue {
-    background: rgba(6, 182, 212, 0.15);
-    color: var(--cyan-400);
-    border-color: rgba(6, 182, 212, 0.3);
+    background: rgba(6, 182, 212, 0.2);
+    color: #7dd3fc;
+    border-color: rgba(56, 189, 248, 0.45);
   }
 
   .stat-badge.orange {
-    background: var(--amber-bg);
-    color: var(--amber-400);
-    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.45);
   }
 
   .stat-label {
     font-size: 11.5px;
-    font-weight: 600;
-    color: var(--text-muted);
+    font-weight: 700;
+    color: #cbd5e1;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
   .stat-val-row {
     display: flex;
     align-items: baseline;
     gap: 6px;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
   }
 
   .stat-val {
     font-family: var(--font-display);
     font-size: 26px;
     font-weight: 900;
-    color: #fff;
+    color: #ffffff;
     letter-spacing: -0.5px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   }
 
   .stat-unit {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #94a3b8;
   }
 
   .stat-subtext {
-    font-size: 11px;
-    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.4;
+    display: block;
   }
 
   /* Circular ring meter in hours card */
