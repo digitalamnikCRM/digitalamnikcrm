@@ -1250,7 +1250,7 @@
         </div>
       </div>
 
-      <div class="admin-kpi-card emerald" onclick="switchAdminTab('timesheets'); setAttFilter('present')" style="cursor:pointer" title="Click to view employees present today">
+      <div class="admin-kpi-card emerald" onclick="switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('present')" style="cursor:pointer" title="Click to view employees present today">
         <div class="kpi-icon-box">🟢</div>
         <div class="kpi-info">
           <span class="kpi-label">Present Today</span>
@@ -1259,7 +1259,7 @@
         </div>
       </div>
 
-      <div class="admin-kpi-card rose" onclick="switchAdminTab('timesheets'); setAttFilter('absent')" style="cursor:pointer" title="Click to view employees absent today">
+      <div class="admin-kpi-card rose" onclick="switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('absent')" style="cursor:pointer" title="Click to view employees absent today">
         <div class="kpi-icon-box">🔴</div>
         <div class="kpi-info">
           <span class="kpi-label">Absent Today</span>
@@ -1314,6 +1314,10 @@
       <button class="admin-tab-btn" id="tab-btn-employees" onclick="switchAdminTab('employees')">
         <span>👥 Staff &amp; Team Roster</span>
         <span class="admin-tab-count" id="admin-tab-emp-count">0</span>
+      </button>
+      <button class="admin-tab-btn" id="tab-btn-attendance" onclick="switchAdminTab('attendance')">
+        <span>ðŸ“… Attendance &amp; Shift Register</span>
+        <span class="admin-tab-count" id="admin-tab-att-count">0</span>
       </button>
       <button class="admin-tab-btn" id="tab-btn-timesheets" onclick="switchAdminTab('timesheets')">
         <span>⏱️ Project Hours &amp; Assignments</span>
@@ -1453,6 +1457,168 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+        <!-- =========================================================
+         TAB: ATTENDANCE & SHIFT REGISTER (FULL 30-DAY & MONTHLY ARCHIVE)
+         ========================================================= -->
+    <div class="admin-pane" id="admin-pane-attendance">
+      
+      <!-- Sub-Navigation Switcher -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
+        <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
+          <button type="button" class="ts-subtab-btn active" id="att-subtab-history" onclick="switchAttendanceView('history')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
+            <span>ðŸ“… 30-Day History &amp; Monthly Register</span>
+          </button>
+          <button type="button" class="ts-subtab-btn" id="att-subtab-today" onclick="switchAttendanceView('today')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
+            <span>ðŸŸ¢ Today's Live Station</span>
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <button type="button" class="btn-small btn-secondary" onclick="loadAdminAll()" style="display:flex;align-items:center;gap:6px">
+            <span>ðŸ”„ Sync Cloud Records</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- VIEW A: 30-DAY HISTORICAL ATTENDANCE REGISTER -->
+      <div id="att-view-history">
+        <!-- KPI Strip for History -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:18px">
+          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px">
+            <span style="font-size:11.5px;color:#94a3b8;display:block">Total Records in View</span>
+            <strong id="history-kpi-total" style="font-size:20px;color:#fff">0</strong>
+            <span style="font-size:11px;color:#64748b;display:block">Permanent Supabase logs</span>
+          </div>
+          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
+            <span style="font-size:11.5px;color:#fcd34d;display:block">âš ï¸ Late Check-Ins</span>
+            <strong id="history-kpi-late-checkin" style="font-size:20px;color:#f59e0b">0</strong>
+            <span style="font-size:11px;color:#fcd34d;display:block">After 10:30 AM shift start</span>
+          </div>
+          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
+            <span style="font-size:11.5px;color:#fcd34d;display:block">ðŸŸ¡ Lunch Schedule Exceptions</span>
+            <strong id="history-kpi-late-lunch" style="font-size:20px;color:#fbbf24">0</strong>
+            <span style="font-size:11px;color:#fcd34d;display:block">&gt;60m or post-3PM</span>
+          </div>
+          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px">
+            <span style="font-size:11.5px;color:#c4b5fd;display:block">ðŸŽ¬ Deliverables Worked</span>
+            <strong id="history-kpi-projects" style="font-size:20px;color:#a78bfa">0</strong>
+            <span style="font-size:11px;color:#c4b5fd;display:block">Days with project work</span>
+          </div>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <div style="background:rgba(15,23,42,0.75);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px;margin-bottom:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <!-- Preset Date Pills -->
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:12px;color:#94a3b8;margin-right:4px">Period:</span>
+              <button type="button" class="att-pill active" id="btn-preset-all" onclick="setHistoryDatePreset('all', this)">Past 30 Days</button>
+              <button type="button" class="att-pill" id="btn-preset-today" onclick="setHistoryDatePreset('today', this)">Today</button>
+              <button type="button" class="att-pill" id="btn-preset-yesterday" onclick="setHistoryDatePreset('yesterday', this)">Yesterday</button>
+              <button type="button" class="att-pill" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
+              <button type="button" class="att-pill" id="btn-preset-last_month" onclick="setHistoryDatePreset('last_month', this)">Last Month</button>
+            </div>
+
+            <!-- Specific Date Picker -->
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:#94a3b8">Pick Date:</span>
+              <input type="date" id="admin-att-history-date-picker" onchange="onHistoryDatePickerChange(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none" />
+              <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">âœ• Clear</button>
+            </div>
+          </div>
+
+          <!-- Secondary Filters: Staff Specialist, Issue / Flag, Search -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;color:#94a3b8">Staff:</span>
+                <select id="admin-att-history-staff-select" onchange="onHistoryStaffSelect(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:#fff;font-size:12.5px;outline:none">
+                  <option value="all">All Specialists (Entire Team)</option>
+                </select>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;color:#94a3b8">Filter:</span>
+                <select id="admin-att-history-issue-select" onchange="onHistoryIssueSelect(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:#fff;font-size:12.5px;outline:none">
+                  <option value="all">All Attendance Records</option>
+                  <option value="late_checkin">âš ï¸ Late Check-In Only (Post 10:30 AM)</option>
+                  <option value="late_lunch">ðŸŸ¡ Late Lunch / Exceeded Break Only</option>
+                  <option value="worked_projects">ðŸŽ¬ Worked on Deliverables</option>
+                  <option value="present">ðŸŸ¢ Present Records Only</option>
+                  <option value="absent">ðŸ”´ Absent Records Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="search-input-box" style="max-width:280px;width:100%">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input type="text" class="search-input" id="admin-att-history-search" placeholder="Search by name, date..." oninput="onHistorySearchInput(this.value)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Historical Register Table -->
+        <div class="glass-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Staff Specialist</th>
+                <th>Punch In &amp; Late Status</th>
+                <th>Lunch Break &amp; Protocol</th>
+                <th>Deliverables / Projects Worked</th>
+                <th>Punch Out</th>
+                <th>Effective Work</th>
+                <th>Shift Status</th>
+                <th style="text-align:center">Selfie</th>
+              </tr>
+            </thead>
+            <tbody id="admin-att-history-tbody">
+              <!-- Rendered by renderAdminAttendanceHistory() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIEW B: TODAY'S LIVE PRESENCE STATION -->
+      <div id="att-view-today" style="display:none">
+        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">ðŸŸ¢ Today's Live Attendance Station</h4>
+            <span style="font-size:12px;color:#94a3b8">Real-time attendance pulse for today. Photos automatically preserved in permanent shift records.</span>
+          </div>
+          <div class="att-filter-pills" id="admin-att-today-filters">
+            <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
+            <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">ðŸŸ¢ Present (<span id="att-filter-pres-cnt">0</span>)</button>
+            <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">ðŸ”´ Absent (<span id="att-filter-abs-cnt">0</span>)</button>
+            <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">ðŸŸ¡ Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
+          </div>
+        </div>
+
+        <div class="glass-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Staff Specialist</th>
+                <th>Employee ID</th>
+                <th>Today's Presence</th>
+                <th>Snapshot</th>
+                <th>Punch In</th>
+                <th>Lunch Break</th>
+                <th>Activity</th>
+                <th>Punch Out</th>
+                <th>Effective Hours</th>
+              </tr>
+            </thead>
+            <tbody id="admin-attendance-tbody">
+              <!-- Rendered by renderAdminAttendanceTable() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- TAB 3: PROJECT HOURS & TIMESHEETS -->
@@ -2499,21 +2665,25 @@
 
     function setAttFilter(filter, btn) {
       _currentAttFilter = filter;
-      document.querySelectorAll('#admin-att-filters .att-pill').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#admin-att-filters .att-pill, #admin-att-today-filters .att-pill').forEach(b => b.classList.remove('active'));
       if (btn) {
         btn.classList.add('active');
       } else {
-        const found = document.querySelector(`#admin-att-filters .att-pill.${filter}`) ||
-                      document.querySelector(`#admin-att-filters .att-pill:first-child`);
+        const found = document.querySelector(`#admin-att-filters .att-pill.${filter}, #admin-att-today-filters .att-pill.${filter}`) ||
+                      document.querySelector(`#admin-att-filters .att-pill:first-child, #admin-att-today-filters .att-pill:first-child`);
         if (found) found.classList.add('active');
       }
-      renderAdminAttendanceTable();
+      renderAdminAttendanceTable(); renderAdminAttendanceHistory();
     }
 
     function setRosterAttFilter(filter, btn) {
       _currentRosterAttFilter = filter;
       document.querySelectorAll('#admin-roster-att-filters .att-pill').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
+      if (filter === 'all') {
+        const searchInput = document.getElementById('admin-emp-search');
+        if (searchInput) searchInput.value = '';
+      }
       renderAdminEmployees();
     }
 
@@ -2563,7 +2733,7 @@
       renderAdminClients();
       renderAdminEmployees();
       renderAdminProjectsTime();
-      renderAdminAttendanceTable();
+      renderAdminAttendanceTable(); renderAdminAttendanceHistory();
       renderLiveWorkAndCompletions();
 
       // Instant cloud hydration from Supabase
@@ -2696,7 +2866,7 @@
         renderAdminClients();
         renderAdminEmployees();
         renderAdminProjectsTime();
-        renderAdminAttendanceTable();
+        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
         renderLiveWorkAndCompletions();
         loadAdminCalendars();
         loadAdminActivities();
@@ -2759,7 +2929,7 @@
           window._adminAttLogs = data;
           updateAdminKpis();
           renderAdminEmployees();
-          renderAdminAttendanceTable();
+          renderAdminAttendanceTable(); renderAdminAttendanceHistory();
           renderLiveWorkAndCompletions();
         }
       } catch (err) {
@@ -3074,6 +3244,321 @@
       return null;
     }
 
+    
+    // ====================================================================
+    // ðŸ“… 30-DAY HISTORICAL ATTENDANCE REGISTER & MONTHLY ARCHIVE
+    // ====================================================================
+    let _historyDatePreset = 'all'; // 'all', 'today', 'yesterday', 'this_month', 'last_month', 'custom'
+    let _historySpecificDate = '';
+    let _historyStaffFilter = 'all';
+    let _historyIssueFilter = 'all';
+    let _historySearch = '';
+
+    function switchAttendanceView(viewName) {
+      const btnHist = document.getElementById('att-subtab-history');
+      const btnToday = document.getElementById('att-subtab-today');
+      const viewHist = document.getElementById('att-view-history');
+      const viewToday = document.getElementById('att-view-today');
+
+      if (viewName === 'today') {
+        if (btnHist) { btnHist.classList.remove('active'); btnHist.style.background = 'transparent'; btnHist.style.color = '#94a3b8'; }
+        if (btnToday) { btnToday.classList.add('active'); btnToday.style.background = 'linear-gradient(135deg,#7c3aed,#6366f1)'; btnToday.style.color = '#fff'; }
+        if (viewHist) viewHist.style.display = 'none';
+        if (viewToday) viewToday.style.display = 'block';
+        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
+      } else {
+        if (btnToday) { btnToday.classList.remove('active'); btnToday.style.background = 'transparent'; btnToday.style.color = '#94a3b8'; }
+        if (btnHist) { btnHist.classList.add('active'); btnHist.style.background = 'linear-gradient(135deg,#7c3aed,#6366f1)'; btnHist.style.color = '#fff'; }
+        if (viewToday) viewToday.style.display = 'none';
+        if (viewHist) viewHist.style.display = 'block';
+        renderAdminAttendanceHistory();
+      }
+    }
+
+    function setHistoryDatePreset(preset, btn) {
+      _historyDatePreset = preset;
+      _historySpecificDate = '';
+      const picker = document.getElementById('admin-att-history-date-picker');
+      if (picker) picker.value = '';
+
+      document.querySelectorAll('#att-view-history .att-pill').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderAdminAttendanceHistory();
+    }
+
+    function onHistoryDatePickerChange(dateVal) {
+      if (!dateVal) {
+        _historySpecificDate = '';
+        _historyDatePreset = 'all';
+      } else {
+        _historySpecificDate = dateVal;
+        _historyDatePreset = 'custom';
+        document.querySelectorAll('#att-view-history .att-pill').forEach(b => b.classList.remove('active'));
+      }
+      renderAdminAttendanceHistory();
+    }
+
+    function resetHistoryDatePicker() {
+      const picker = document.getElementById('admin-att-history-date-picker');
+      if (picker) picker.value = '';
+      _historySpecificDate = '';
+      _historyDatePreset = 'all';
+      const defaultPill = document.getElementById('btn-preset-all');
+      document.querySelectorAll('#att-view-history .att-pill').forEach(b => b.classList.remove('active'));
+      if (defaultPill) defaultPill.classList.add('active');
+      renderAdminAttendanceHistory();
+    }
+
+    function onHistoryStaffSelect(val) {
+      _historyStaffFilter = val;
+      renderAdminAttendanceHistory();
+    }
+
+    function onHistoryIssueSelect(val) {
+      _historyIssueFilter = val;
+      renderAdminAttendanceHistory();
+    }
+
+    function onHistorySearchInput(val) {
+      _historySearch = (val || '').toLowerCase().trim();
+      renderAdminAttendanceHistory();
+    }
+
+    function populateHistoryStaffDropdown() {
+      const select = document.getElementById('admin-att-history-staff-select');
+      if (!select) return;
+      const state = getCRMState();
+      const staff = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
+      
+      const currentVal = select.value;
+      let opts = '<option value="all">All Specialists (Entire Team)</option>';
+      staff.forEach(m => {
+        const normId = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        opts += `<option value="${normId}">${m.name} (${m.id})</option>`;
+      });
+      select.innerHTML = opts;
+      if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+        select.value = currentVal;
+      }
+    }
+
+    function renderAdminAttendanceHistory() {
+      const tbody = document.getElementById('admin-att-history-tbody');
+      if (!tbody) return;
+
+      populateHistoryStaffDropdown();
+
+      const state = getCRMState();
+      const attLogs = window._adminAttLogs || [];
+      const staffList = (state.team || []).filter(m => !m.isFounder && (m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'));
+
+      const today = new Date();
+      const todayStr = fmtDate(Date.now());
+      const yesterday = new Date(Date.now() - 86400000);
+      const yesterdayStr = fmtDate(yesterday.getTime());
+
+      // Filter logs
+      let filtered = attLogs.filter(a => {
+        if (!a) return false;
+        const normEmpId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normEmpId === 'emp000') return false;
+
+        // 1. Staff Filter
+        if (_historyStaffFilter !== 'all' && normEmpId !== _historyStaffFilter) {
+          return false;
+        }
+
+        // 2. Date Filter
+        const logDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+        const logTime = Number(a.check_in) || (a.created_at ? new Date(a.created_at).getTime() : 0);
+        const logDateObj = logTime ? new Date(logTime) : null;
+
+        if (_historyDatePreset === 'today') {
+          if (logDateStr !== todayStr && !isSameCalendarDay(logTime, Date.now())) return false;
+        } else if (_historyDatePreset === 'yesterday') {
+          if (logDateStr !== yesterdayStr && !isSameCalendarDay(logTime, yesterday.getTime())) return false;
+        } else if (_historyDatePreset === 'this_month') {
+          if (logDateObj && (logDateObj.getMonth() !== today.getMonth() || logDateObj.getFullYear() !== today.getFullYear())) return false;
+        } else if (_historyDatePreset === 'last_month') {
+          const lastMonthM = (today.getMonth() - 1 + 12) % 12;
+          const lastMonthY = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+          if (logDateObj && (logDateObj.getMonth() !== lastMonthM || logDateObj.getFullYear() !== lastMonthY)) return false;
+        } else if (_historyDatePreset === 'custom' && _historySpecificDate) {
+          const targetD = new Date(_historySpecificDate);
+          if (!isNaN(targetD.getTime()) && !isSameCalendarDay(logTime, targetD.getTime())) {
+            const targetFmt = fmtDate(targetD.getTime());
+            if (logDateStr !== targetFmt) return false;
+          }
+        }
+
+        // 3. Issue / Flag Filter
+        const isLateCheckIn = Boolean(a.is_late || a.isLate || (a.check_in && (new Date(a.check_in).getHours() + new Date(a.check_in).getMinutes()/60 > 10.5)));
+        const isLunchLate = Boolean(a.is_lunch_late || a.isLunchLate || a.late_lunch_reason || a.lateLunchReason);
+        const hasProjects = (Array.isArray(a.projects_worked) && a.projects_worked.length > 0) || (Array.isArray(a.projectsWorked) && a.projectsWorked.length > 0) || Boolean(a.tasks_summary || a.tasksSummary);
+        const isAbsent = (String(a.status || '').toLowerCase() === 'absent');
+
+        if (_historyIssueFilter === 'late_checkin' && !isLateCheckIn) return false;
+        if (_historyIssueFilter === 'late_lunch' && !isLunchLate) return false;
+        if (_historyIssueFilter === 'worked_projects' && !hasProjects) return false;
+        if (_historyIssueFilter === 'present' && isAbsent) return false;
+        if (_historyIssueFilter === 'absent' && !isAbsent) return false;
+
+        // 4. Search Filter
+        if (_historySearch) {
+          const empName = (a.employee_name || a.employeeName || '').toLowerCase();
+          const empId = (a.employee_id || a.employeeId || '').toLowerCase();
+          const taskSum = (a.tasks_summary || a.tasksSummary || '').toLowerCase();
+          if (!empName.includes(_historySearch) && !empId.includes(_historySearch) && !logDateStr.toLowerCase().includes(_historySearch) && !taskSum.includes(_historySearch)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Update KPI strip
+      let lateCheckInCount = 0;
+      let lateLunchCount = 0;
+      let projectsDayCount = 0;
+
+      filtered.forEach(a => {
+        const isLateCheckIn = Boolean(a.is_late || a.isLate || (a.check_in && (new Date(a.check_in).getHours() + new Date(a.check_in).getMinutes()/60 > 10.5)));
+        const isLunchLate = Boolean(a.is_lunch_late || a.isLunchLate || a.late_lunch_reason || a.lateLunchReason);
+        const hasProjects = (Array.isArray(a.projects_worked) && a.projects_worked.length > 0) || (Array.isArray(a.projectsWorked) && a.projectsWorked.length > 0) || Boolean(a.tasks_summary || a.tasksSummary);
+        if (isLateCheckIn) lateCheckInCount++;
+        if (isLunchLate) lateLunchCount++;
+        if (hasProjects) projectsDayCount++;
+      });
+
+      const elTot = document.getElementById('history-kpi-total');
+      if (elTot) elTot.textContent = filtered.length;
+      const elLateCI = document.getElementById('history-kpi-late-checkin');
+      if (elLateCI) elLateCI.textContent = lateCheckInCount;
+      const elLateL = document.getElementById('history-kpi-late-lunch');
+      if (elLateL) elLateL.textContent = lateLunchCount;
+      const elProj = document.getElementById('history-kpi-projects');
+      if (elProj) elProj.textContent = projectsDayCount;
+      const tabAttCnt = document.getElementById('admin-tab-att-count');
+      if (tabAttCnt) tabAttCnt.textContent = attLogs.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center;padding:45px 20px;color:#94a3b8">
+              <div style="font-size:32px;margin-bottom:8px">ðŸ“…</div>
+              <strong style="color:#fff;font-size:15px;display:block;margin-bottom:6px">No Attendance Records Match Filter</strong>
+              <p style="font-size:12.5px;color:#64748b;margin:0">Try changing the date period, staff selector, or issue filter above.</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(a => {
+        const empName = a.employee_name || a.employeeName || 'Specialist';
+        const empId = a.employee_id || a.employeeId || 'â€”';
+        const matchedStaff = staffList.find(m => String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === String(empId).toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const empRole = matchedStaff ? matchedStaff.role : 'Specialist';
+        const dateStr = a.date || (a.check_in ? fmtDate(a.check_in) : 'â€”');
+
+        // Check In & Late
+        let checkInStr = a.check_in ? fmt(a.check_in) : (a.checkIn ? (typeof a.checkIn === 'number' ? fmt(a.checkIn) : a.checkIn) : '--:--');
+        let lateBadge = '';
+        if (a.check_in || a.checkIn) {
+          const ciTime = Number(a.check_in) || Number(a.checkIn) || 0;
+          if (ciTime > 0) {
+            const d = new Date(ciTime);
+            if ((d.getHours() + d.getMinutes() / 60) > 10.5) {
+              const mins = Math.round(((d.getHours() + d.getMinutes() / 60) - 10.5) * 60);
+              lateBadge = `<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Official shift start is 10:30 AM">âš ï¸ Late (+${mins}m)</span>`;
+            } else {
+              lateBadge = `<span style="font-size:10px;color:#10b981;font-weight:600;margin-left:4px">âœ“ On-Time</span>`;
+            }
+          }
+        }
+
+        // Lunch Break & Late
+        const lunchDur = formatLunchDurationDisplay(a.lunch_duration || a.lunchDuration || a.lunch, a.lunch_start || a.lunchStart, a.lunch_end || a.lunchEnd, a.status);
+        const reason = a.late_lunch_reason || a.lateLunchReason || '';
+        const isLunchLate = Boolean(a.is_lunch_late || a.isLunchLate || reason);
+        let lunchHtml = `
+          <div>
+            <div style="display:inline-flex;align-items:center;gap:4px">
+              <strong style="color:#fcd34d">${lunchDur}</strong>
+              ${isLunchLate ? `<span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or schedule exception">âš ï¸ Late Lunch</span>` : ''}
+            </div>
+            ${reason ? `<div style="font-size:10.5px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ${reason}">âš ï¸ "${reason}"</div>` : ''}
+          </div>
+        `;
+
+        // Deliverables / Projects Worked
+        let projHtml = '<span style="color:#64748b">â€”</span>';
+        const pList = Array.isArray(a.projects_worked) && a.projects_worked.length > 0
+          ? a.projects_worked
+          : (Array.isArray(a.projectsWorked) && a.projectsWorked.length > 0 ? a.projectsWorked : null);
+
+        if (pList && pList.length > 0) {
+          projHtml = `
+            <div style="font-size:12px">
+              <strong style="color:#c4b5fd">${pList.length} Project${pList.length > 1 ? 's' : ''}:</strong>
+              <div style="color:#cbd5e1;font-size:11px;margin-top:2px">${pList.map(p => (typeof p === 'object' ? `${p.name} <span style="color:#a78bfa">(${p.durationStr || 'tracked'})</span>` : p)).join(', ')}</div>
+            </div>
+          `;
+        } else if (a.tasks_summary || a.tasksSummary) {
+          projHtml = `<span style="font-size:11.5px;color:#cbd5e1">${a.tasks_summary || a.tasksSummary}</span>`;
+        }
+
+        // Check Out
+        const checkOutStr = a.check_out ? fmt(a.check_out) : (a.checkOut ? (typeof a.checkOut === 'number' ? fmt(a.checkOut) : a.checkOut) : '--:--');
+
+        // Effective Hours
+        const hoursStr = a.effective_hours || a.effectiveHours || '0h 0m';
+
+        // Shift Status
+        const rawStatus = String(a.status || '').toLowerCase();
+        const isAbsent = (rawStatus === 'absent');
+        const statusHtml = isAbsent
+          ? `<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">â— Absent</span>`
+          : `<span class="stat-badge green">â— Present</span>`;
+
+        // Selfie
+        const photoUrl = a.photo_url || a.photoUrl || null;
+        let photoHtml = '<span style="color:#64748b">â€”</span>';
+        if (photoUrl) {
+          photoHtml = `
+            <button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview('${empName}', '${photoUrl}', '${checkInStr}', '${empRole}')" style="font-size:11px;padding:3px 8px">
+              ðŸ“· Inspect
+            </button>
+          `;
+        }
+
+        return `
+          <tr>
+            <td data-label="Date"><strong>${dateStr}</strong></td>
+            <td data-label="Staff Specialist">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;color:#c4b5fd;flex-shrink:0">
+                  ${computeInitials(empName)}
+                </div>
+                <div>
+                  <strong style="color:#fff;font-size:13px;display:block">${empName}</strong>
+                  <span style="color:#94a3b8;font-size:11px">${empRole} <code style="color:#cbd5e1;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">${empId}</code></span>
+                </div>
+              </div>
+            </td>
+            <td data-label="Punch In & Late Status">
+              <div><strong>${checkInStr}</strong>${lateBadge}</div>
+            </td>
+            <td data-label="Lunch Break & Protocol">${lunchHtml}</td>
+            <td data-label="Deliverables / Projects Worked">${projHtml}</td>
+            <td data-label="Punch Out"><span>${checkOutStr}</span></td>
+            <td data-label="Effective Work"><span class="stat-badge purple">${hoursStr}</span></td>
+            <td data-label="Shift Status">${statusHtml}</td>
+            <td data-label="Selfie" style="text-align:center">${photoHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
     function renderAdminAttendanceTable() {
       const tbody = document.getElementById('admin-attendance-tbody');
       if (!tbody) return;
@@ -3349,7 +3834,7 @@
 
       if (sectionName === 'deliverables') renderAdminProjectsTime();
       if (sectionName === 'attendance') {
-        renderAdminAttendanceTable();
+        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
         loadAdminAttendanceLogs();
       }
       if (sectionName === 'activity') loadAdminActivities();
@@ -3370,8 +3855,13 @@
         renderAdminEmployees();
         loadAdminAttendanceLogs();
       }
+      if (tabName === 'attendance') {
+        renderAdminAttendanceHistory();
+        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
+        loadAdminAttendanceLogs();
+      }
       if (tabName === 'timesheets') {
-        renderAdminAttendanceTable();
+        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
         renderAdminProjectsTime();
         loadAdminAttendanceLogs();
       }
@@ -3807,7 +4297,7 @@
       closeModal('employee-add-modal');
       updateAdminKpis();
       renderAdminEmployees();
-      renderAdminAttendanceTable();
+      renderAdminAttendanceTable(); renderAdminAttendanceHistory();
       renderLiveWorkAndCompletions();
       toast(`Team member ${name} (${id}) added with ${domains.length} domain(s)! Password: "${password}" 🎉`, 'success');
     }
@@ -3832,7 +4322,7 @@
       }
       updateAdminKpis();
       renderAdminEmployees();
-      renderAdminAttendanceTable();
+      renderAdminAttendanceTable(); renderAdminAttendanceHistory();
       renderLiveWorkAndCompletions();
       toast(`Team member ${emp.name} removed from roster`, 'info');
     }

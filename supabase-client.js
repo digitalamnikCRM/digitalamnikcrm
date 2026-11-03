@@ -116,6 +116,14 @@ const SupabaseConfig = {
         }
       });
 
+      // Listen for time logs changes
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'time_logs' }, (payload) => {
+        console.log('⚡ Realtime Time Log Change:', payload);
+        if (typeof SupabaseData !== 'undefined') {
+          SupabaseData.syncTimeRealtime(payload);
+        }
+      });
+
       // Listen for activity logs changes
       channel.on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, (payload) => {
         console.log('⚡ Realtime Activity Change:', payload);
@@ -281,37 +289,97 @@ const SupabaseData = {
         }));
       }
 
-      // 5. Fetch Attendance Logs
+      // 5. Fetch Attendance Logs (Fetch up to 1000 records for full historical archive)
       const { data: attData, error: attErr } = await window.sbClient
         .from('attendance_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(150);
+        .limit(1000);
 
       if (!attErr && Array.isArray(attData)) {
-        window._adminAttLogs = attData.map(a => ({
-          ...a,
-          photo_url: a.photo_url || (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:') ? a.late_lunch_reason.slice(6) : null)
-        }));
-        if (!st.attendance) st.attendance = { status: 'out' };
-        st.attendance.log = attData.map(a => {
+        window._adminAttLogs = attData.map(a => {
           const photo = a.photo_url || (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:') ? a.late_lunch_reason.slice(6) : null);
+          const cleanReason = (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:')) ? null : a.late_lunch_reason;
+          const ciTime = Number(a.check_in) || 0;
+          let isLateCalc = false;
+          let lateMinsCalc = 0;
+          if (ciTime > 0) {
+            const d = new Date(ciTime);
+            const hourFrac = d.getHours() + (d.getMinutes() / 60);
+            if (hourFrac > 10.5) {
+              isLateCalc = true;
+              lateMinsCalc = Math.round((hourFrac - 10.5) * 60);
+            }
+          }
           return {
-            id: a.id,
-            employeeId: a.employee_id,
-            employeeName: a.employee_name,
-            date: a.date,
-            checkIn: a.check_in,
-            lunchStart: a.lunch_start,
-            lunchEnd: a.lunch_end,
-            checkOut: a.check_out,
-            effectiveHours: a.effective_hours,
-            lateLunchReason: (a.late_lunch_reason && String(a.late_lunch_reason).startsWith('photo:')) ? null : a.late_lunch_reason,
-            status: a.status,
+            ...a,
+            photo_url: photo,
             photoUrl: photo,
-            createdAt: a.created_at,
+            late_lunch_reason: cleanReason,
+            lateLunchReason: cleanReason,
+            is_late: (typeof a.is_late !== 'undefined' && a.is_late !== null) ? Boolean(a.is_late) : isLateCalc,
+            isLate: (typeof a.is_late !== 'undefined' && a.is_late !== null) ? Boolean(a.is_late) : isLateCalc,
+            late_minutes: a.late_minutes || lateMinsCalc,
+            is_lunch_late: (typeof a.is_lunch_late !== 'undefined' && a.is_lunch_late !== null) ? Boolean(a.is_lunch_late) : false,
+            isLunchLate: (typeof a.is_lunch_late !== 'undefined' && a.is_lunch_late !== null) ? Boolean(a.is_lunch_late) : false,
+            lunch_duration: a.lunch_duration || '0m',
+            lunchDuration: a.lunch_duration || '0m',
+            projects_worked: Array.isArray(a.projects_worked) ? a.projects_worked : [],
+            projectsWorked: Array.isArray(a.projects_worked) ? a.projects_worked : [],
+            tasks_summary: a.tasks_summary || '',
+            tasksSummary: a.tasks_summary || '',
           };
         });
+
+        if (!st.attendance) st.attendance = { status: 'out' };
+
+        // Hydrate employee attendance history table with this employee's records
+        const activeEmp = localStorage.getItem('da_logged_in_emp') || (st.employee && st.employee.id);
+        const normEmpId = activeEmp ? String(activeEmp).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
+        const myLogs = normEmpId 
+          ? window._adminAttLogs.filter(a => {
+              const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              return aId === normEmpId;
+            })
+          : window._adminAttLogs;
+
+        st.attendance.log = myLogs.map(a => ({
+          id: a.id,
+          employeeId: a.employee_id,
+          employeeName: a.employee_name,
+          date: a.date,
+          checkIn: a.check_in,
+          lunchStart: a.lunch_start,
+          lunchEnd: a.lunch_end,
+          checkOut: a.check_out,
+          effectiveHours: a.effective_hours,
+          lateLunchReason: a.late_lunch_reason,
+          status: a.status,
+          photoUrl: a.photo_url,
+          isLate: a.is_late,
+          lateMinutes: a.late_minutes,
+          isLunchLate: a.is_lunch_late,
+          lunchDuration: a.lunch_duration,
+          projectsWorked: a.projects_worked,
+          tasksSummary: a.tasks_summary,
+          createdAt: a.created_at,
+        }));
+      }
+
+      // 5b. Fetch Time Logs (Project Sessions History)
+      try {
+        const { data: timeData, error: timeErr } = await window.sbClient
+          .from('time_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1000);
+        if (!timeErr && Array.isArray(timeData)) {
+          st.timeLogs = timeData;
+          window._adminTimeLogs = timeData;
+        }
+      } catch (tErr) {
+        console.warn('time_logs fetch warning:', tErr);
       }
 
       // 6. Fetch Activity Logs (Cloud Audit Trail)
@@ -646,9 +714,11 @@ const SupabaseData = {
       const currentEmpId = (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.id) ? STATE.employee.id : 'emp001';
       const currentEmpName = (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.name) ? STATE.employee.name : 'Specialist';
       const rawEmpId = String(entry.employee_id || entry.employeeId || currentEmpId).trim().toLowerCase();
-      const rawDate = String(entry.date || '').trim();
+      const rawEmpName = entry.employeeName || entry.employee_name || currentEmpName;
+      const rawDate = String(entry.date || '').trim() || (typeof fmtDate === 'function' ? fmtDate(Date.now()) : '');
       const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9]/g, '_');
       const deterministicId = entry.id || `att_${rawEmpId.replace(/[^a-z0-9]/g, '')}_${sanitizedDate}`;
+
       const photo = entry.photoUrl || entry.photo_url || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.photoUrl) ? STATE.attendance.photoUrl : null);
       const rawCheckIn = typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : ((typeof STATE !== 'undefined' && STATE.attendance && typeof STATE.attendance.checkInTime === 'number') ? STATE.attendance.checkInTime : Date.now()));
       const rawLunchStart = entry.lunchStart || entry.lunch_start || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchStartTime) ? STATE.attendance.lunchStartTime : null);
@@ -656,49 +726,172 @@ const SupabaseData = {
       const rawCheckOut = entry.checkOut || entry.check_out || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.checkOutTime) ? STATE.attendance.checkOutTime : null);
       const rawStatus = entry.status || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.status) ? STATE.attendance.status : (rawLunchStart && !rawLunchEnd ? 'lunch' : 'in'));
 
+      // 1. Calculate check-in late status (Official shift start is 10:30 AM)
+      let isLate = false;
+      let lateMins = 0;
+      if (rawCheckIn) {
+        const d = new Date(rawCheckIn);
+        const hourVal = d.getHours() + (d.getMinutes() / 60);
+        if (hourVal > 10.5) {
+          isLate = true;
+          lateMins = Math.round((hourVal - 10.5) * 60);
+        }
+      }
+
+      // 2. Calculate lunch duration & late lunch flag (exceeded 60 mins or post-3PM)
+      let lunchDurStr = '0m';
+      let isLunchLate = false;
+      if (rawLunchStart) {
+        const endMs = rawLunchEnd || (rawStatus === 'lunch' ? Date.now() : rawLunchStart);
+        const diffMs = Math.max(0, endMs - rawLunchStart);
+        const totalM = Math.round(diffMs / 60000);
+        const h = Math.floor(totalM / 60);
+        const m = totalM % 60;
+        lunchDurStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        const startHour = new Date(rawLunchStart).getHours();
+        const endHour = rawLunchEnd ? new Date(rawLunchEnd).getHours() : startHour;
+        if (totalM > 60 || startHour >= 15 || endHour >= 15 || Boolean(entry.lateLunchReason || entry.late_lunch_reason)) {
+          isLunchLate = true;
+        }
+      }
+
+      // 3. Compile projects & deliverables worked on that day
+      let projectsWorked = [];
+      try {
+        const normId = rawEmpId.replace(/[^a-z0-9]/g, '');
+        const normName = rawEmpName.toLowerCase().trim();
+        const stateProjects = (typeof STATE !== 'undefined' && Array.isArray(STATE.projects)) ? STATE.projects : [];
+        stateProjects.forEach(p => {
+          if (Array.isArray(p.sessions)) {
+            const myDaySessions = p.sessions.filter(s => {
+              if (!s) return false;
+              const sDate = s.date || (s.startTime && typeof fmtDate === 'function' ? fmtDate(s.startTime) : '');
+              if (sDate !== rawDate) return false;
+              const sUid = String(s.userId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const sUname = String(s.userName || s.user || '').toLowerCase().trim();
+              return (sUid === normId || (normName && sUname === normName));
+            });
+            if (myDaySessions.length > 0) {
+              const totalMs = myDaySessions.reduce((acc, s) => acc + (Number(s.durationMs) || 0), 0);
+              projectsWorked.push({
+                id: p.id,
+                name: p.name,
+                client: p.client || '',
+                durationStr: typeof fmtDuration === 'function' ? fmtDuration(totalMs) : `${Math.round(totalMs/60000)}m`,
+                durationMs: totalMs,
+                sessionsCount: myDaySessions.length
+              });
+            }
+          }
+        });
+      } catch (projErr) {
+        console.warn('Projects summary compile warning:', projErr);
+      }
+
+      const tasksSummary = projectsWorked.length > 0
+        ? `${projectsWorked.length} Deliverable(s): ` + projectsWorked.map(p => `${p.name} (${p.durationStr})`).join(', ')
+        : '';
+
+      const cleanReason = (entry.lateLunchReason || entry.late_lunch_reason || null);
+      const finalReason = (cleanReason && cleanReason.startsWith('photo:')) ? null : cleanReason;
+
       const row = {
         id: deterministicId,
         employee_id: rawEmpId,
-        employee_name: entry.employeeName || entry.employee_name || currentEmpName,
+        employee_name: rawEmpName,
         date: rawDate,
         check_in: rawCheckIn,
         lunch_start: rawLunchStart,
         lunch_end: rawLunchEnd,
         check_out: rawCheckOut,
         effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
-        photo_url: photo,
-        late_lunch_reason: (entry.lateLunchReason || entry.late_lunch_reason || null),
+        late_lunch_reason: finalReason,
         status: rawStatus,
+        photo_url: photo,
+        is_late: isLate,
+        late_minutes: lateMins,
+        lunch_duration: lunchDurStr,
+        is_lunch_late: isLunchLate,
+        projects_worked: projectsWorked,
+        projects_count: projectsWorked.length,
+        tasks_summary: tasksSummary,
         created_at: new Date().toISOString(),
       };
-      let { data: upsertedRow, error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' }).select();
-      if (error && error.message && error.message.includes('photo_url')) {
-        const fallbackRow = { ...row };
-        delete fallbackRow.photo_url;
-        if (photo && !fallbackRow.late_lunch_reason) fallbackRow.late_lunch_reason = `photo:${photo}`;
-        const res = await window.sbClient.from('attendance_logs').upsert(fallbackRow, { onConflict: 'id' }).select();
-        upsertedRow = res.data;
-        error = res.error;
-      }
+
+      // Upsert to Supabase with automatic resilient fallback
+      let { error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' });
+
       if (error) {
-        console.error('Supabase logAttendance error:', error);
-      } else {
-        console.log('✅ Attendance successfully logged to Supabase Cloud for:', rawEmpId);
-        if (Array.isArray(window._adminAttLogs)) {
-          const idx = window._adminAttLogs.findIndex(a => a.id === deterministicId || ((a.employee_id || a.employeeId) === rawEmpId && a.date === rawDate));
-          const updatedEntry = {
-            ...row,
-            photo_url: photo
-          };
-          if (idx !== -1) {
-            window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...updatedEntry };
-          } else {
-            window._adminAttLogs.unshift(updatedEntry);
-          }
+        console.warn('Supabase logAttendance initial upsert note (fallback to base schema):', error.message);
+        const baseRow = {
+          id: deterministicId,
+          employee_id: rawEmpId,
+          employee_name: rawEmpName,
+          date: rawDate,
+          check_in: rawCheckIn,
+          lunch_start: rawLunchStart,
+          lunch_end: rawLunchEnd,
+          check_out: rawCheckOut,
+          effective_hours: entry.effectiveHours || entry.effective_hours || '0h 0m',
+          late_lunch_reason: finalReason || (tasksSummary ? `Tasks: ${tasksSummary}` : null),
+          status: rawStatus,
+          created_at: new Date().toISOString(),
+        };
+        const retryRes = await window.sbClient.from('attendance_logs').upsert(baseRow, { onConflict: 'id' });
+        if (retryRes.error) {
+          console.error('Supabase logAttendance fallback error:', retryRes.error);
+        } else {
+          console.log('✅ Attendance logged via resilient base schema for:', rawEmpId);
         }
+      } else {
+        console.log('✅ Attendance successfully logged to Supabase with full schema for:', rawEmpId);
+      }
+
+      // Keep local admin & employee attendance logs in instant sync
+      if (!Array.isArray(window._adminAttLogs)) window._adminAttLogs = [];
+      const updatedLocal = {
+        ...row,
+        photo_url: photo,
+        projects_worked: projectsWorked,
+        tasks_summary: tasksSummary
+      };
+      const idx = window._adminAttLogs.findIndex(a => a.id === deterministicId || ((a.employee_id || a.employeeId) === rawEmpId && a.date === rawDate));
+      if (idx !== -1) {
+        window._adminAttLogs[idx] = { ...window._adminAttLogs[idx], ...updatedLocal };
+      } else {
+        window._adminAttLogs.unshift(updatedLocal);
       }
     } catch (e) {
       console.error('logAttendance exception:', e);
+    }
+  },
+
+  // 7. BILLABLE PROJECT TIME LOG OPERATIONS
+  async logTime(session) {
+    if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
+    try {
+      const row = {
+        id: session.id || ('tl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+        project_id: session.projectId || session.project_id || '',
+        project_name: session.projectName || session.project_name || '',
+        user_name: session.user || session.userName || (typeof STATE !== 'undefined' && STATE.employee && STATE.employee.name) || '',
+        date: session.date || (typeof fmtDate === 'function' ? fmtDate(Date.now()) : ''),
+        start_time: session.start || session.start_time || '',
+        end_time: session.end || session.end_time || '',
+        duration_ms: session.durationMs || session.duration_ms || 0,
+        duration_str: session.durationStr || session.duration_str || '0h 0m',
+        created_at: new Date().toISOString()
+      };
+      const { error } = await window.sbClient.from('time_logs').upsert(row, { onConflict: 'id' });
+      if (error) {
+        console.warn('logTime warning:', error.message);
+      } else {
+        console.log('✅ Session saved to Supabase time_logs:', row.project_name);
+        if (!Array.isArray(window._adminTimeLogs)) window._adminTimeLogs = [];
+        window._adminTimeLogs.unshift(row);
+      }
+    } catch (e) {
+      console.warn('logTime exception:', e);
     }
   },
 
@@ -973,6 +1166,20 @@ const SupabaseData = {
       window._adminAttLogs = window._adminAttLogs.filter(a => a.id !== oldRow.id);
     }
 
+    triggerAllUIRenders();
+  },
+
+  syncTimeRealtime(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+    if (!Array.isArray(window._adminTimeLogs)) window._adminTimeLogs = [];
+    if (eventType === 'INSERT') {
+      window._adminTimeLogs.unshift(newRow);
+    } else if (eventType === 'UPDATE') {
+      const idx = window._adminTimeLogs.findIndex(t => t.id === newRow.id);
+      if (idx !== -1) window._adminTimeLogs[idx] = newRow;
+    } else if (eventType === 'DELETE') {
+      window._adminTimeLogs = window._adminTimeLogs.filter(t => t.id !== oldRow.id);
+    }
     triggerAllUIRenders();
   }
 };

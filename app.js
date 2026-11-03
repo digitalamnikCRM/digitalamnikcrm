@@ -251,12 +251,11 @@ function load() {
       STATE.clients = [];
     }
 
-    // Clean Real Team (Only registered real members, keep Founder Amaan Khan)
+    // Clean Real Team (Preserve all recruited team members & Founder Amaan Khan)
     if (Array.isArray(data.team)) {
       STATE.team = data.team.filter(m =>
-        m && m.id === 'EMP-000' ||
-        (!['EMP-001', 'EMP-002', 'EMP-003', 'EMP-004', 'EMP-005', 'EMP-006'].includes(m.id) &&
-         !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || ''))
+        m && (m.id || m.name) &&
+        !/team member|sarah jenkins|rohit sharma|priya patel|kabir verma|neha gupta/i.test(m.name || '')
       );
       if (!STATE.team.some(m => m.id === 'EMP-000')) {
         STATE.team.unshift(DEFAULT_TEAM[0]);
@@ -1958,6 +1957,10 @@ function doCheckIn(photoUrl) {
 
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.logAttendance({
+      employeeId: STATE.employee.id,
+      employee_id: STATE.employee.id,
+      employeeName: STATE.employee.name,
+      employee_name: STATE.employee.name,
       date: todayDateStr,
       checkIn: now,
       status: 'in',
@@ -2040,6 +2043,10 @@ function doCheckOut() {
   save();
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.logAttendance({
+      employeeId: STATE.employee.id,
+      employee_id: STATE.employee.id,
+      employeeName: STATE.employee.name,
+      employee_name: STATE.employee.name,
       date: fmtDate(now),
       checkIn: STATE.attendance.checkInTime,
       lunchStart: STATE.attendance.lunchStartTime,
@@ -2078,47 +2085,88 @@ function showAttendanceSummary() {
 function renderAttLog() {
   const tbody = document.getElementById('att-log-body');
   if (!tbody) return;
-  if (!STATE.attendance.log || STATE.attendance.log.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-td">No attendance records logged yet</td></tr>';
+
+  const currentEmpId = String(STATE.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const allLogs = Array.isArray(STATE.attendance.log) ? STATE.attendance.log : [];
+  
+  // Filter for current employee so records are personal & accurate
+  const myLogs = currentEmpId 
+    ? allLogs.filter(r => {
+        const rId = String(r.employeeId || r.employee_id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return !rId || rId === currentEmpId;
+      })
+    : allLogs;
+
+  if (myLogs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-td" style="padding:24px;text-align:center;color:#94a3b8">No attendance records logged yet for this account</td></tr>';
     return;
   }
-  tbody.innerHTML = STATE.attendance.log.map(r => {
+
+  tbody.innerHTML = myLogs.map(r => {
     let checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
     let lateCheckInBadge = '';
+    
+    // Check if late (either flag or checkIn timestamp > 10:30 AM)
+    const isLateFlag = r.isLate || r.is_late;
     if (typeof r.checkIn === 'number') {
       const ciD = new Date(r.checkIn);
       if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
-        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:600;margin-left:4px" title="Check-in after 10:30 AM official shift start">⚠️ Late</span>';
+        const mins = Math.round(((ciD.getHours() + ciD.getMinutes() / 60) - 10.5) * 60);
+        lateCheckInBadge = `<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">âš ï¸ Late (+${mins}m)</span>`;
       }
+    } else if (isLateFlag) {
+      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">âš ï¸ Late</span>';
     }
+
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
     
     // Format lunch duration in hours and minutes
-    const lunchDurFormatted = formatLunchDurationDisplay(r.lunch, r.lunchStart || r.lunchStartTime, r.lunchEnd || r.lunchEndTime, r.status);
-    
+    const lunchDurFormatted = formatLunchDurationDisplay(r.lunch || r.lunchDuration, r.lunchStart || r.lunchStartTime, r.lunchEnd || r.lunchEndTime, r.status);
+    const reasonText = r.lateLunchReason || r.late_lunch_reason || '';
+    const isLunchLateFlag = r.isLunchLate || r.is_lunch_late;
+
+    // Projects worked summary on this day
+    let projectsHtml = '<span style="color:#64748b">â€”</span>';
+    const projList = Array.isArray(r.projectsWorked) && r.projectsWorked.length > 0
+      ? r.projectsWorked
+      : (Array.isArray(r.projects_worked) && r.projects_worked.length > 0 ? r.projects_worked : null);
+
+    if (projList && projList.length > 0) {
+      projectsHtml = `
+        <div style="font-size:11.5px">
+          <strong style="color:#a78bfa">${projList.length} Project${projList.length > 1 ? 's' : ''}:</strong>
+          <span style="color:#cbd5e1">${projList.map(p => (typeof p === 'object' ? `${p.name} (${p.durationStr || 'tracked'})` : p)).join(', ')}</span>
+        </div>
+      `;
+    } else if (r.tasksSummary || r.tasks_summary) {
+      projectsHtml = `<span style="font-size:11.5px;color:#cbd5e1">${r.tasksSummary || r.tasks_summary}</span>`;
+    }
+
     const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
     
-    // STRICT USER REQUIREMENT: Status only shows "Present" or "Absent"
+    // Status: Present or Absent
     const rawStatus = String(r.status || '').toLowerCase();
     const isAbsent = (rawStatus === 'absent');
-    const statusLabel = isAbsent ? '● Absent' : '● Present';
+    const statusLabel = isAbsent ? 'â— Absent' : 'â— Present';
     const statusClass = isAbsent ? 'red' : 'green';
-
-    const reasonText = r.lateLunchReason || r.late_lunch_reason || '';
 
     return `
       <tr>
         <td data-label="Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
         <td data-label="Check In">
-          <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <strong>${checkInStr}</strong>${lateCheckInBadge}
-            ${r.photoUrl ? `<span title="Selfie photo verified" style="cursor:pointer;font-size:12px">📸</span>` : ''}
+            ${r.photoUrl ? `<span title="Selfie photo verified" style="cursor:pointer;font-size:12px">ðŸ“¸</span>` : ''}
           </div>
         </td>
         <td data-label="Lunch Time">
-          <strong style="color:#fcd34d">${lunchDurFormatted}</strong>
-          ${reasonText ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ${reasonText}">⚠️ ${reasonText}</div>` : ''}
+          <div style="display:inline-flex;align-items:center;gap:4px">
+            <strong style="color:#fcd34d">${lunchDurFormatted}</strong>
+            ${isLunchLateFlag ? `<span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">âš ï¸ Late Lunch</span>` : ''}
+          </div>
+          ${reasonText ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ${reasonText}">âš ï¸ ${reasonText}</div>` : ''}
         </td>
+        <td data-label="Projects Worked">${projectsHtml}</td>
         <td data-label="Check Out"><span>${checkOutStr}</span></td>
         <td data-label="Effective Hours"><span class="stat-badge purple">${workHrsStr}</span></td>
         <td data-label="Status"><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
@@ -2126,7 +2174,6 @@ function renderAttLog() {
     `;
   }).join('');
 }
-
 function clearAttLog() {
   toast('Attendance records are permanent agency logs. Only Admin can clear attendance history.', 'warning');
 }
@@ -3665,16 +3712,21 @@ const FOCUS_SOUND_NAMES = {
 };
 
 function initAudioContext() {
-  if (!_audioCtx) {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     _audioCtx = new AudioContextClass();
     _audioMasterGain = _audioCtx.createGain();
-    _audioMasterGain.gain.setValueAtTime(0.75, _audioCtx.currentTime);
+    _audioMasterGain.gain.value = 1.0;
     _audioMasterGain.connect(_audioCtx.destination);
   }
   if (_audioCtx.state === 'suspended') {
-    _audioCtx.resume();
+    try {
+      _audioCtx.resume();
+    } catch (e) {
+      console.warn('AudioContext resume error:', e);
+    }
   }
+  return _audioCtx;
 }
 
 function stopCurrentSound() {
@@ -3691,8 +3743,9 @@ function stopCurrentSound() {
 }
 
 function getNoiseBuffer(ctx, seconds, type) {
-  const length = ctx.sampleRate * seconds;
-  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const sampleRate = ctx.sampleRate || 44100;
+  const length = Math.floor(sampleRate * seconds);
+  const buffer = ctx.createBuffer(1, length, sampleRate);
   const data = buffer.getChannelData(0);
 
   if (type === 'pink') {
@@ -3705,7 +3758,7 @@ function getNoiseBuffer(ctx, seconds, type) {
       b3 = 0.86650 * b3 + white * 0.3104856;
       b4 = 0.55000 * b4 + white * 0.5329522;
       b5 = -0.7616 * b5 - white * 0.0168980;
-      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.045;
+      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.35;
       b6 = white * 0.115926;
     }
   } else if (type === 'brown') {
@@ -3714,12 +3767,12 @@ function getNoiseBuffer(ctx, seconds, type) {
       const white = Math.random() * 2 - 1;
       data[i] = (lastOut + (0.02 * white)) / 1.02;
       lastOut = data[i];
-      data[i] *= 0.35;
+      data[i] *= 1.2;
     }
   } else {
     // white
     for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.035;
+      data[i] = (Math.random() * 2 - 1) * 0.35;
     }
   }
   return buffer;
@@ -3727,61 +3780,77 @@ function getNoiseBuffer(ctx, seconds, type) {
 
 function startSoundEngine(type) {
   stopCurrentSound();
-  initAudioContext();
-  const ctx = _audioCtx;
+  const ctx = initAudioContext();
   const now = ctx.currentTime;
 
   const soundGain = ctx.createGain();
-  soundGain.gain.setValueAtTime(0.001, now);
-  soundGain.gain.exponentialRampToValueAtTime(1.0, now + 0.3);
+  soundGain.gain.value = 0.95;
   soundGain.connect(_audioMasterGain);
   _activeSoundNodes.push(soundGain);
 
   if (type === 'rain') {
-    // 1. 🌧️ Gentle Studio Rain
+    // 1. 🌧️ Gentle Studio Rain (Crisp, audible raindrops & ambient shower)
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
     noise.loop = true;
 
     const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(850, now);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2200, now);
+    filter.Q.setValueAtTime(0.7, now);
 
-    const lfo = ctx.createOscillator();
-    lfo.frequency.setValueAtTime(0.2, now);
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.setValueAtTime(160, now);
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
+    const rainGain = ctx.createGain();
+    rainGain.gain.value = 0.85;
 
     noise.connect(filter);
-    filter.connect(soundGain);
+    filter.connect(rainGain);
+    rainGain.connect(soundGain);
+    noise.start();
+    _activeSoundNodes.push(noise, filter, rainGain);
 
-    lfo.start(now);
-    noise.start(now);
-    _activeSoundNodes.push(noise, filter, lfo, lfoGain);
+    // Droplet impacts
+    const dropTimer = setInterval(() => {
+      if (!STATE.audioPlaying) return;
+      try {
+        const drop = ctx.createOscillator();
+        drop.type = 'sine';
+        const startFreq = 1400 + Math.random() * 800;
+        drop.frequency.setValueAtTime(startFreq, ctx.currentTime);
+        drop.frequency.exponentialRampToValueAtTime(startFreq * 0.45, ctx.currentTime + 0.08);
+
+        const dGain = ctx.createGain();
+        dGain.gain.setValueAtTime(0.12, ctx.currentTime);
+        dGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+
+        drop.connect(dGain);
+        dGain.connect(soundGain);
+        drop.start();
+        drop.stop(ctx.currentTime + 0.1);
+      } catch (e) {}
+    }, 240);
+    _activeSoundIntervals.push(dropTimer);
 
   } else if (type === 'waves') {
-    // 2. 🌊 Deep Ocean Surf
+    // 2. 🌊 Deep Ocean Surf (Resonant surging ocean waves)
     const noise = ctx.createBufferSource();
-    noise.buffer = getNoiseBuffer(ctx, 4, 'brown');
+    noise.buffer = getNoiseBuffer(ctx, 4, 'pink');
     noise.loop = true;
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(320, now);
+    filter.frequency.setValueAtTime(800, now);
 
     const lfo = ctx.createOscillator();
-    lfo.frequency.setValueAtTime(0.125, now);
+    lfo.frequency.setValueAtTime(0.12, now);
     const lfoFilterGain = ctx.createGain();
-    lfoFilterGain.gain.setValueAtTime(260, now);
+    lfoFilterGain.gain.setValueAtTime(650, now);
     lfo.connect(lfoFilterGain);
     lfoFilterGain.connect(filter.frequency);
 
     const waveGain = ctx.createGain();
-    waveGain.gain.setValueAtTime(0.7, now);
+    waveGain.gain.setValueAtTime(0.55, now);
     const lfoVolGain = ctx.createGain();
-    lfoVolGain.gain.setValueAtTime(0.3, now);
+    lfoVolGain.gain.setValueAtTime(0.35, now);
     lfo.connect(lfoVolGain);
     lfoVolGain.connect(waveGain.gain);
 
@@ -3789,184 +3858,198 @@ function startSoundEngine(type) {
     filter.connect(waveGain);
     waveGain.connect(soundGain);
 
-    lfo.start(now);
-    noise.start(now);
+    lfo.start();
+    noise.start();
     _activeSoundNodes.push(noise, filter, waveGain, lfo, lfoFilterGain, lfoVolGain);
 
   } else if (type === 'cafe') {
-    // 3. ☕ Cozy Creative Cafe
+    // 3. ☕ Cozy Creative Cafe (Warm study atmosphere + Rhodes piano notes + chimes)
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
     noise.loop = true;
 
-    const band1 = ctx.createBiquadFilter();
-    band1.type = 'bandpass';
-    band1.frequency.setValueAtTime(450, now);
-    band1.Q.setValueAtTime(1.5, now);
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.setValueAtTime(1200, now);
+    band.Q.setValueAtTime(0.9, now);
 
-    const roomHum = ctx.createOscillator();
-    roomHum.type = 'sine';
-    roomHum.frequency.setValueAtTime(60, now);
-    const roomHumGain = ctx.createGain();
-    roomHumGain.gain.setValueAtTime(0.04, now);
-    roomHum.connect(roomHumGain);
-    roomHumGain.connect(soundGain);
-    roomHum.start(now);
+    const cafeGain = ctx.createGain();
+    cafeGain.gain.value = 0.55;
 
-    noise.connect(band1);
-    band1.connect(soundGain);
-    noise.start(now);
-    _activeSoundNodes.push(noise, band1, roomHum, roomHumGain);
+    noise.connect(band);
+    band.connect(cafeGain);
+    cafeGain.connect(soundGain);
+    noise.start();
+    _activeSoundNodes.push(noise, band, cafeGain);
 
+    // Warm Rhodes electric piano notes (E major pentatonic chords)
+    const notes = [329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+    const pianoTimer = setInterval(() => {
+      if (!STATE.audioPlaying) return;
+      try {
+        const noteFreq = notes[Math.floor(Math.random() * notes.length)];
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(noteFreq, ctx.currentTime);
+
+        const pGain = ctx.createGain();
+        pGain.gain.setValueAtTime(0.08, ctx.currentTime);
+        pGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.8);
+
+        osc.connect(pGain);
+        pGain.connect(soundGain);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.9);
+      } catch (e) {}
+    }, 3200);
+    _activeSoundIntervals.push(pianoTimer);
+
+    // Ceramic cup chime
     const chimeTimer = setInterval(() => {
       if (!STATE.audioPlaying) return;
       try {
         const chime = ctx.createOscillator();
         chime.type = 'sine';
-        chime.frequency.setValueAtTime(2100 + Math.random() * 400, ctx.currentTime);
-        const chimeGain = ctx.createGain();
-        chimeGain.gain.setValueAtTime(0.012, ctx.currentTime);
-        chimeGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-        chime.connect(chimeGain);
-        chimeGain.connect(soundGain);
+        chime.frequency.setValueAtTime(2200 + Math.random() * 400, ctx.currentTime);
+        const cGain = ctx.createGain();
+        cGain.gain.setValueAtTime(0.06, ctx.currentTime);
+        cGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+        chime.connect(cGain);
+        cGain.connect(soundGain);
         chime.start();
-        chime.stop(ctx.currentTime + 0.3);
+        chime.stop(ctx.currentTime + 0.4);
       } catch (e) {}
-    }, 4500);
+    }, 4800);
     _activeSoundIntervals.push(chimeTimer);
 
   } else if (type === 'alpha') {
-    // 4. 🧠 Alpha Waves (10 Hz Binaural Beats - 200Hz L / 210Hz R)
+    // 4. 🧠 Alpha Waves (10 Hz Binaural Beat - 432Hz / 442Hz + Warm Harmonic Pad)
     const oscL = ctx.createOscillator();
     oscL.type = 'sine';
-    oscL.frequency.setValueAtTime(200, now);
+    oscL.frequency.setValueAtTime(432, now);
 
     const oscR = ctx.createOscillator();
     oscR.type = 'sine';
-    oscR.frequency.setValueAtTime(210, now);
+    oscR.frequency.setValueAtTime(442, now);
 
     const merger = ctx.createChannelMerger(2);
     oscL.connect(merger, 0, 0);
     oscR.connect(merger, 0, 1);
 
     const binauralGain = ctx.createGain();
-    binauralGain.gain.setValueAtTime(0.18, now);
+    binauralGain.gain.value = 0.45;
     merger.connect(binauralGain);
     binauralGain.connect(soundGain);
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = getNoiseBuffer(ctx, 2, 'pink');
-    noise.loop = true;
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.setValueAtTime(400, now);
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.15, now);
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(soundGain);
+    // Ambient warm harmonic pad
+    const pad = ctx.createOscillator();
+    pad.type = 'triangle';
+    pad.frequency.setValueAtTime(216, now);
+    const padGain = ctx.createGain();
+    padGain.gain.value = 0.20;
+    pad.connect(padGain);
+    padGain.connect(soundGain);
 
-    oscL.start(now);
-    oscR.start(now);
-    noise.start(now);
-    _activeSoundNodes.push(oscL, oscR, merger, binauralGain, noise, noiseFilter, noiseGain);
+    oscL.start();
+    oscR.start();
+    pad.start();
+    _activeSoundNodes.push(oscL, oscR, merger, binauralGain, pad, padGain);
 
   } else if (type === 'theta') {
-    // 5. 🧘 Theta Meditation (6 Hz Binaural - 150Hz L / 156Hz R)
+    // 5. 🧘 Theta Meditation (6 Hz Binaural - 320Hz / 326Hz + Singing Bowl Resonance)
     const oscL = ctx.createOscillator();
     oscL.type = 'sine';
-    oscL.frequency.setValueAtTime(150, now);
+    oscL.frequency.setValueAtTime(320, now);
 
     const oscR = ctx.createOscillator();
     oscR.type = 'sine';
-    oscR.frequency.setValueAtTime(156, now);
+    oscR.frequency.setValueAtTime(326, now);
 
     const merger = ctx.createChannelMerger(2);
     oscL.connect(merger, 0, 0);
     oscR.connect(merger, 0, 1);
 
     const thetaGain = ctx.createGain();
-    thetaGain.gain.setValueAtTime(0.2, now);
+    thetaGain.gain.value = 0.50;
     merger.connect(thetaGain);
     thetaGain.connect(soundGain);
 
-    const drone = ctx.createOscillator();
-    drone.type = 'triangle';
-    drone.frequency.setValueAtTime(75, now);
-    const droneGain = ctx.createGain();
-    droneGain.gain.setValueAtTime(0.08, now);
-    drone.connect(droneGain);
-    droneGain.connect(soundGain);
+    // 528Hz singing bowl tone
+    const bowl = ctx.createOscillator();
+    bowl.type = 'sine';
+    bowl.frequency.setValueAtTime(528, now);
+    const bowlGain = ctx.createGain();
+    bowlGain.gain.value = 0.18;
+    bowl.connect(bowlGain);
+    bowlGain.connect(soundGain);
 
-    oscL.start(now);
-    oscR.start(now);
-    drone.start(now);
-    _activeSoundNodes.push(oscL, oscR, merger, thetaGain, drone, droneGain);
+    oscL.start();
+    oscR.start();
+    bowl.start();
+    _activeSoundNodes.push(oscL, oscR, merger, thetaGain, bowl, bowlGain);
 
   } else if (type === 'forest') {
-    // 6. 🌲 Forest Breeze & Pines
+    // 6. 🌲 Forest Breeze & Pines (Wind through pine needles + chirping birds)
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, 3, 'pink');
     noise.loop = true;
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(650, now);
-    filter.Q.setValueAtTime(2.2, now);
+    filter.frequency.setValueAtTime(1400, now);
+    filter.Q.setValueAtTime(1.5, now);
 
     const lfo = ctx.createOscillator();
     lfo.frequency.setValueAtTime(0.18, now);
     const lfoGain = ctx.createGain();
-    lfoGain.gain.setValueAtTime(320, now);
+    lfoGain.gain.setValueAtTime(450, now);
     lfo.connect(lfoGain);
     lfoGain.connect(filter.frequency);
 
+    const forestGain = ctx.createGain();
+    forestGain.gain.value = 0.65;
+
     noise.connect(filter);
-    filter.connect(soundGain);
+    filter.connect(forestGain);
+    forestGain.connect(soundGain);
 
-    lfo.start(now);
-    noise.start(now);
-    _activeSoundNodes.push(noise, filter, lfo, lfoGain);
+    lfo.start();
+    noise.start();
+    _activeSoundNodes.push(noise, filter, lfo, lfoGain, forestGain);
 
+    // Singing bird chirps
     const birdTimer = setInterval(() => {
       if (!STATE.audioPlaying) return;
       try {
         const bird = ctx.createOscillator();
         bird.type = 'sine';
-        bird.frequency.setValueAtTime(2800, ctx.currentTime);
-        bird.frequency.exponentialRampToValueAtTime(3300, ctx.currentTime + 0.12);
+        bird.frequency.setValueAtTime(2800 + Math.random() * 400, ctx.currentTime);
+        bird.frequency.exponentialRampToValueAtTime(3400 + Math.random() * 400, ctx.currentTime + 0.12);
         const bGain = ctx.createGain();
-        bGain.gain.setValueAtTime(0.015, ctx.currentTime);
+        bGain.gain.setValueAtTime(0.08, ctx.currentTime);
         bGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
         bird.connect(bGain);
         bGain.connect(soundGain);
         bird.start();
         bird.stop(ctx.currentTime + 0.2);
       } catch (e) {}
-    }, 6000);
+    }, 4200);
     _activeSoundIntervals.push(birdTimer);
 
   } else if (type === 'space') {
-    // 7. 🌌 Deep Space Drone
-    const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(55, now);
-    const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(55.35, now);
-    const o3 = ctx.createOscillator(); o3.type = 'sine'; o3.frequency.setValueAtTime(110, now);
-    const o4 = ctx.createOscillator(); o4.type = 'sine'; o4.frequency.setValueAtTime(164.8, now);
+    // 7. 🌌 Deep Space Drone (Inspiring celestial synthesizer chords)
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(220, now);
+    const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(277.18, now);
+    const o3 = ctx.createOscillator(); o3.type = 'sine'; o3.frequency.setValueAtTime(329.63, now);
+    const o4 = ctx.createOscillator(); o4.type = 'sine'; o4.frequency.setValueAtTime(440, now);
 
     const spaceFilter = ctx.createBiquadFilter();
     spaceFilter.type = 'lowpass';
-    spaceFilter.frequency.setValueAtTime(350, now);
-    spaceFilter.Q.setValueAtTime(3.5, now);
-
-    const spaceLfo = ctx.createOscillator();
-    spaceLfo.frequency.setValueAtTime(0.06, now);
-    const spaceLfoGain = ctx.createGain();
-    spaceLfoGain.gain.setValueAtTime(160, now);
-    spaceLfo.connect(spaceLfoGain);
-    spaceLfoGain.connect(spaceFilter.frequency);
+    spaceFilter.frequency.setValueAtTime(850, now);
+    spaceFilter.Q.setValueAtTime(2.5, now);
 
     const synthGain = ctx.createGain();
-    synthGain.gain.setValueAtTime(0.12, now);
+    synthGain.gain.value = 0.40;
 
     o1.connect(spaceFilter);
     o2.connect(spaceFilter);
@@ -3975,42 +4058,47 @@ function startSoundEngine(type) {
     spaceFilter.connect(synthGain);
     synthGain.connect(soundGain);
 
-    o1.start(now); o2.start(now); o3.start(now); o4.start(now); spaceLfo.start(now);
-    _activeSoundNodes.push(o1, o2, o3, o4, spaceFilter, spaceLfo, spaceLfoGain, synthGain);
+    o1.start(); o2.start(); o3.start(); o4.start();
+    _activeSoundNodes.push(o1, o2, o3, o4, spaceFilter, synthGain);
 
   } else if (type === 'fire') {
-    // 8. 🔥 Fireplace Crackle
+    // 8. 🔥 Fireplace Crackle (Warm hearth rumble + crisp wood crackling snaps)
     const noise = ctx.createBufferSource();
-    noise.buffer = getNoiseBuffer(ctx, 2, 'brown');
+    noise.buffer = getNoiseBuffer(ctx, 2, 'pink');
     noise.loop = true;
 
     const rumble = ctx.createBiquadFilter();
     rumble.type = 'lowpass';
-    rumble.frequency.setValueAtTime(180, now);
+    rumble.frequency.setValueAtTime(500, now);
+
+    const fireRumbleGain = ctx.createGain();
+    fireRumbleGain.gain.value = 0.70;
 
     noise.connect(rumble);
-    rumble.connect(soundGain);
-    noise.start(now);
-    _activeSoundNodes.push(noise, rumble);
+    rumble.connect(fireRumbleGain);
+    fireRumbleGain.connect(soundGain);
+    noise.start();
+    _activeSoundNodes.push(noise, rumble, fireRumbleGain);
 
-    const fireCrackleTimer = setInterval(() => {
+    // Realistic wood snap and pop crackles
+    const crackleTimer = setInterval(() => {
       if (!STATE.audioPlaying) return;
       try {
-        const popCount = 1 + Math.floor(Math.random() * 3);
-        for (let p = 0; p < popCount; p++) {
-          const delay = Math.random() * 0.15;
+        const count = 1 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          const delay = Math.random() * 0.12;
           const pop = ctx.createBufferSource();
-          const pBuffer = ctx.createBuffer(1, 300, ctx.sampleRate);
-          const pData = pBuffer.getChannelData(0);
-          for (let i = 0; i < 300; i++) pData[i] = (Math.random() * 2 - 1) * Math.exp(-i / 40);
-          pop.buffer = pBuffer;
+          const popBuf = ctx.createBuffer(1, 400, ctx.sampleRate);
+          const popData = popBuf.getChannelData(0);
+          for (let s = 0; s < 400; s++) popData[s] = (Math.random() * 2 - 1) * Math.exp(-s / 35);
+          pop.buffer = popBuf;
 
           const pFilter = ctx.createBiquadFilter();
           pFilter.type = 'highpass';
-          pFilter.frequency.setValueAtTime(1200 + Math.random() * 2500, ctx.currentTime + delay);
+          pFilter.frequency.setValueAtTime(1800 + Math.random() * 2000, ctx.currentTime + delay);
 
           const pGain = ctx.createGain();
-          pGain.gain.setValueAtTime(0.04 + Math.random() * 0.04, ctx.currentTime + delay);
+          pGain.gain.setValueAtTime(0.18 + Math.random() * 0.12, ctx.currentTime + delay);
 
           pop.connect(pFilter);
           pFilter.connect(pGain);
@@ -4018,66 +4106,70 @@ function startSoundEngine(type) {
           pop.start(ctx.currentTime + delay);
         }
       } catch (e) {}
-    }, 380);
-    _activeSoundIntervals.push(fireCrackleTimer);
+    }, 180);
+    _activeSoundIntervals.push(crackleTimer);
 
   } else if (type === 'white') {
-    // 9. 💨 Studio White Noise
+    // 9. 💨 Studio White Noise (Full-spectrum focus noise)
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, 2, 'white');
     noise.loop = true;
 
     const smoothFilter = ctx.createBiquadFilter();
     smoothFilter.type = 'lowpass';
-    smoothFilter.frequency.setValueAtTime(4200, now);
+    smoothFilter.frequency.setValueAtTime(5500, now);
 
     const wGain = ctx.createGain();
-    wGain.gain.setValueAtTime(0.7, now);
+    wGain.gain.value = 0.75;
 
     noise.connect(smoothFilter);
     smoothFilter.connect(wGain);
     wGain.connect(soundGain);
-    noise.start(now);
+    noise.start();
     _activeSoundNodes.push(noise, smoothFilter, wGain);
 
   } else if (type === 'lofi') {
-    // 10. 🪟 Lo-Fi Vinyl Night Rain
+    // 10. 🪟 Lo-Fi Vinyl Night Rain (Rain + vinyl needle crackle + warm chords)
     const rain = ctx.createBufferSource();
     rain.buffer = getNoiseBuffer(ctx, 2, 'pink');
     rain.loop = true;
     const rainFilter = ctx.createBiquadFilter();
-    rainFilter.type = 'lowpass';
-    rainFilter.frequency.setValueAtTime(620, now);
+    rainFilter.type = 'bandpass';
+    rainFilter.frequency.setValueAtTime(1600, now);
+    rainFilter.Q.setValueAtTime(0.8, now);
+    const rainGain = ctx.createGain();
+    rainGain.gain.value = 0.65;
 
     const vinylNoise = ctx.createBufferSource();
     vinylNoise.buffer = getNoiseBuffer(ctx, 1, 'white');
     vinylNoise.loop = true;
     const vinylFilter = ctx.createBiquadFilter();
     vinylFilter.type = 'highpass';
-    vinylFilter.frequency.setValueAtTime(2500, now);
+    vinylFilter.frequency.setValueAtTime(2600, now);
     const vinylGain = ctx.createGain();
-    vinylGain.gain.setValueAtTime(0.06, now);
+    vinylGain.gain.value = 0.18;
 
-    const hum = ctx.createOscillator();
-    hum.type = 'sine';
-    hum.frequency.setValueAtTime(50, now);
-    const humGain = ctx.createGain();
-    humGain.gain.setValueAtTime(0.025, now);
+    const pad = ctx.createOscillator();
+    pad.type = 'triangle';
+    pad.frequency.setValueAtTime(392, now); // G4
+    const padGain = ctx.createGain();
+    padGain.gain.value = 0.14;
 
     rain.connect(rainFilter);
-    rainFilter.connect(soundGain);
+    rainFilter.connect(rainGain);
+    rainGain.connect(soundGain);
 
     vinylNoise.connect(vinylFilter);
     vinylFilter.connect(vinylGain);
     vinylGain.connect(soundGain);
 
-    hum.connect(humGain);
-    humGain.connect(soundGain);
+    pad.connect(padGain);
+    padGain.connect(soundGain);
 
-    rain.start(now);
-    vinylNoise.start(now);
-    hum.start(now);
-    _activeSoundNodes.push(rain, rainFilter, vinylNoise, vinylFilter, vinylGain, hum, humGain);
+    rain.start();
+    vinylNoise.start();
+    pad.start();
+    _activeSoundNodes.push(rain, rainFilter, rainGain, vinylNoise, vinylFilter, vinylGain, pad, padGain);
   }
 }
 
@@ -4086,6 +4178,9 @@ function toggleAmbientAudio() {
   const txt = document.getElementById('audio-btn-txt');
   const capsule = document.getElementById('focus-audio-capsule');
   const select = document.getElementById('focus-sound-select');
+
+  // Clear any legacy volume constraints
+  try { localStorage.removeItem('da_focus_vol'); } catch (e) {}
 
   if (!STATE.audioPlaying) {
     try {
@@ -4103,10 +4198,6 @@ function toggleAmbientAudio() {
     }
   } else {
     stopCurrentSound();
-    if (_audioCtx) {
-      try { _audioCtx.close(); } catch (e) {}
-      _audioCtx = null;
-    }
     STATE.audioPlaying = false;
     if (btn) btn.classList.remove('active');
     if (capsule) capsule.classList.remove('active');
@@ -4328,6 +4419,9 @@ function init() {
     updateProjectTimerTicker();
     syncActiveTaskTopbar();
   }
+
+  // Clear any legacy focus volume restrictions
+  try { localStorage.removeItem('da_focus_vol'); } catch (e) {}
 
   checkEmployeeLogin();
   rotateQuote(false);

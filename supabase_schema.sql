@@ -70,13 +70,30 @@ CREATE TABLE IF NOT EXISTS public.attendance_logs (
     check_out BIGINT,
     effective_hours TEXT DEFAULT '0h 0m',
     late_lunch_reason TEXT DEFAULT NULL,
-    status TEXT DEFAULT 'done', -- 'in', 'lunch', 'done', 'out'
-    photo_url TEXT DEFAULT NULL, -- Check-in verification photo (auto-purged after 7 days to preserve storage)
+    status TEXT DEFAULT 'done', -- 'in', 'lunch', 'done', 'out', 'absent'
+    photo_url TEXT DEFAULT NULL, -- Check-in verification photo (auto-purged after 7 days)
+    is_late BOOLEAN DEFAULT FALSE, -- Check-in after official 10:30 AM shift start
+    late_minutes INTEGER DEFAULT 0, -- Minutes late after shift start
+    lunch_duration TEXT DEFAULT '0m', -- Total duration of lunch break
+    is_lunch_late BOOLEAN DEFAULT FALSE, -- Exceeded 60m or started/ended after 3:00 PM
+    projects_worked JSONB DEFAULT '[]'::JSONB, -- Array of deliverables worked on that day
+    projects_count INTEGER DEFAULT 0, -- Count of projects worked on that day
+    tasks_summary TEXT DEFAULT '', -- Text description of work completed on that day
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migration safety for existing tables:
+-- ====================================================================
+-- MIGRATION SAFETY FOR EXISTING DATABASES:
+-- Run these lines in Supabase SQL Editor if table already exists!
+-- ====================================================================
 ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT NULL;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS is_late BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS late_minutes INTEGER DEFAULT 0;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS lunch_duration TEXT DEFAULT '0m';
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS is_lunch_late BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS projects_worked JSONB DEFAULT '[]'::JSONB;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS projects_count INTEGER DEFAULT 0;
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS tasks_summary TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT NULL;
 
 -- ====================================================================
@@ -165,6 +182,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.team_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.calendars;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.time_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_logs;
 
 -- ====================================================================
 -- 11. INSERT INITIAL REAL FOUNDER / ADMIN DATA (Amaan Khan)
