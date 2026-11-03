@@ -84,17 +84,41 @@ let _audioNode = null;
 // ========================
 // FORMATTERS & UTILITIES
 // ========================
+function parseSafeDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    if (/^\d+$/.test(trimmed)) {
+      const d = new Date(Number(trimmed));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const normalized = trimmed.replace(/-/g, ' ');
+    const d1 = new Date(normalized);
+    if (!isNaN(d1.getTime())) return d1;
+    const d2 = new Date(trimmed);
+    if (!isNaN(d2.getTime())) return d2;
+  }
+  return null;
+}
+
 function fmt(ts) {
   if (!ts) return '--:--';
-  const d = new Date(ts);
+  const d = parseSafeDate(ts);
+  if (!d) return String(ts);
   return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function isSameCalendarDay(t1, t2) {
   if (!t1) return false;
-  const d1 = new Date(t1);
-  const d2 = new Date(t2 || Date.now());
-  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  const d1 = parseSafeDate(t1);
+  const d2 = parseSafeDate(t2 || Date.now());
+  if (!d1 || !d2) return false;
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
@@ -102,7 +126,9 @@ function isSameCalendarDay(t1, t2) {
 
 function fmtDate(ts) {
   if (!ts) return '';
-  return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const d = parseSafeDate(ts);
+  if (!d) return String(ts);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function fmtDuration(ms) {
@@ -915,6 +941,11 @@ function checkEmployeeLogin() {
       document.body.style.overflow = '';
       syncProfileUI();
       renderProjects();
+      syncAttendanceUI();
+      renderAttLog();
+      if (STATE.attendance && (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch')) {
+        startAttElapsed();
+      }
       return;
     } else {
       // Logged in ID exists, keep overlay hidden while Supabase hydrates in background!
@@ -1051,6 +1082,14 @@ async function handleEmployeeLogin(e) {
 
   syncProfileUI();
   renderProjects();
+  syncAttendanceUI();
+  renderAttLog();
+  if (STATE.attendance && (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch')) {
+    startAttElapsed();
+  }
+  if (window.SupabaseData && typeof SupabaseData.loadAll === 'function') {
+    SupabaseData.loadAll();
+  }
   addActivity(`Team member logged in: ${member.name} (${member.role})`, 'purple');
   triggerConfetti();
   toast(`Welcome back, ${member.name}! Studio access authorized.`, 'success');
@@ -4394,6 +4433,7 @@ function closeModalOutside(e, id) {
 // INITIALIZATION
 // ========================
 function init() {
+  checkEmployeeLogin();
   load();
   evaluateAutoAbsent();
   syncProfileUI();
@@ -4423,7 +4463,6 @@ function init() {
   // Clear any legacy focus volume restrictions
   try { localStorage.removeItem('da_focus_vol'); } catch (e) {}
 
-  checkEmployeeLogin();
   rotateQuote(false);
 
   console.log('%c DIGITAL AMNIK OS v2.5 ', 'background:#7c3aed;color:#fff;padding:6px 14px;border-radius:4px;font-weight:900;letter-spacing:1px');

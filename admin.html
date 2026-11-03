@@ -2585,36 +2585,50 @@
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
-        function isSameCalendarDay(t1, t2) {
+    function parseSafeDate(val) {
+      if (!val) return null;
+      if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+      if (typeof val === 'number') {
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (!trimmed) return null;
+        if (/^\d+$/.test(trimmed)) {
+          const d = new Date(Number(trimmed));
+          if (!isNaN(d.getTime())) return d;
+        }
+        const normalized = trimmed.replace(/-/g, ' ');
+        const d1 = new Date(normalized);
+        if (!isNaN(d1.getTime())) return d1;
+        const d2 = new Date(trimmed);
+        if (!isNaN(d2.getTime())) return d2;
+      }
+      return null;
+    }
+
+    function isSameCalendarDay(t1, t2) {
       if (!t1) return false;
-      const d1 = new Date(t1);
-      const d2 = new Date(t2 || Date.now());
-      if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+      const d1 = parseSafeDate(t1);
+      const d2 = parseSafeDate(t2 || Date.now());
+      if (!d1 || !d2) return false;
       return d1.getFullYear() === d2.getFullYear() &&
              d1.getMonth() === d2.getMonth() &&
              d1.getDate() === d2.getDate();
     }
 
     function isTodayDateMatch(dateVal, tsVal) {
-      const todayStr = fmtDate(Date.now());
-      if (dateVal && typeof dateVal === 'string') {
-        const s = dateVal.trim();
-        if (s === todayStr) return true;
-        const d = new Date(s);
-        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-      }
-      if (tsVal) {
-        const num = typeof tsVal === 'number' ? tsVal : Number(tsVal);
-        if (!isNaN(num) && num > 0 && isSameCalendarDay(num)) return true;
-        const d = new Date(tsVal);
-        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-      }
+      if (dateVal && isSameCalendarDay(dateVal, Date.now())) return true;
+      if (tsVal && isSameCalendarDay(tsVal, Date.now())) return true;
       return false;
     }
 
     function fmtDate(ts) {
       if (!ts) return '';
-      return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const d = parseSafeDate(ts);
+      if (!d) return String(ts);
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
     function fmtDuration(ms) {

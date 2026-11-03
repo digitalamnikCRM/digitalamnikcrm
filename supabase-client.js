@@ -1,27 +1,39 @@
+function parseSafeDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    if (/^\d+$/.test(trimmed)) {
+      const d = new Date(Number(trimmed));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const normalized = trimmed.replace(/-/g, ' ');
+    const d1 = new Date(normalized);
+    if (!isNaN(d1.getTime())) return d1;
+    const d2 = new Date(trimmed);
+    if (!isNaN(d2.getTime())) return d2;
+  }
+  return null;
+}
+
 function isSameCalendarDay(t1, t2) {
   if (!t1) return false;
-  const d1 = new Date(t1);
-  const d2 = new Date(t2 || Date.now());
-  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  const d1 = parseSafeDate(t1);
+  const d2 = parseSafeDate(t2 || Date.now());
+  if (!d1 || !d2) return false;
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
 }
 
 function isTodayDate(dateVal, tsVal) {
-  const todayStr = typeof fmtDate === 'function' ? fmtDate(Date.now()) : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  if (dateVal && typeof dateVal === 'string') {
-    const s = dateVal.trim();
-    if (s === todayStr) return true;
-    const d = new Date(s);
-    if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-  }
-  if (tsVal) {
-    const num = typeof tsVal === 'number' ? tsVal : Number(tsVal);
-    if (!isNaN(num) && num > 0 && isSameCalendarDay(num)) return true;
-    const d = new Date(tsVal);
-    if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-  }
+  if (dateVal && isSameCalendarDay(dateVal, Date.now())) return true;
+  if (tsVal && isSameCalendarDay(tsVal, Date.now())) return true;
   return false;
 }
 
@@ -179,13 +191,20 @@ function triggerAllUIRenders() {
   if (typeof renderCalendars === 'function') renderCalendars();
   if (typeof updateDashCounts === 'function') updateDashCounts();
   if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+  if (typeof renderAttLog === 'function') renderAttLog();
   if (typeof renderAdminClients === 'function') renderAdminClients();
   if (typeof renderAdminEmployees === 'function') renderAdminEmployees();
   if (typeof renderAdminProjectsTime === 'function') renderAdminProjectsTime();
   if (typeof renderAdminCalendars === 'function') renderAdminCalendars();
   if (typeof renderAdminAttendanceTable === 'function') renderAdminAttendanceTable();
+  if (typeof renderAdminAttendanceHistory === 'function') renderAdminAttendanceHistory();
   if (typeof updateAdminKpis === 'function') updateAdminKpis();
   if (typeof renderLiveWorkAndCompletions === 'function') renderLiveWorkAndCompletions();
+
+  const st = getActiveCRMState();
+  if (st && st.attendance && (st.attendance.status === 'in' || st.attendance.status === 'lunch')) {
+    if (typeof startAttElapsed === 'function') startAttElapsed();
+  }
 }
 
 // ====================================================================
@@ -424,34 +443,45 @@ const SupabaseData = {
 
           if (myTodayAtt) {
             if (!st.attendance) st.attendance = {};
-            st.attendance.checkInTime = Number(myTodayAtt.check_in) || myTodayAtt.checkIn;
-            st.attendance.lunchStartTime = myTodayAtt.lunch_start ? Number(myTodayAtt.lunch_start) : null;
-            st.attendance.lunchEndTime = myTodayAtt.lunch_end ? Number(myTodayAtt.lunch_end) : null;
-            st.attendance.checkOutTime = myTodayAtt.check_out ? Number(myTodayAtt.check_out) : null;
+            const parsedCheckIn = parseSafeDate(myTodayAtt.check_in || myTodayAtt.checkIn);
+            st.attendance.checkInTime = parsedCheckIn ? parsedCheckIn.getTime() : (Number(myTodayAtt.check_in) || myTodayAtt.checkIn);
+            
+            const parsedLunchStart = parseSafeDate(myTodayAtt.lunch_start);
+            st.attendance.lunchStartTime = parsedLunchStart ? parsedLunchStart.getTime() : (myTodayAtt.lunch_start ? Number(myTodayAtt.lunch_start) : null);
+            
+            const parsedLunchEnd = parseSafeDate(myTodayAtt.lunch_end);
+            st.attendance.lunchEndTime = parsedLunchEnd ? parsedLunchEnd.getTime() : (myTodayAtt.lunch_end ? Number(myTodayAtt.lunch_end) : null);
+            
+            const parsedCheckOut = parseSafeDate(myTodayAtt.check_out);
+            st.attendance.checkOutTime = parsedCheckOut ? parsedCheckOut.getTime() : (myTodayAtt.check_out ? Number(myTodayAtt.check_out) : null);
+            
             st.attendance.photoUrl = myTodayAtt.photo_url || null;
             st.attendance.lateLunchReason = myTodayAtt.late_lunch_reason || null;
 
-            if (st.attendance.checkOutTime) {
+            if (st.attendance.checkOutTime || myTodayAtt.status === 'done') {
               st.attendance.status = 'done';
-            } else if (st.attendance.lunchStartTime && !st.attendance.lunchEndTime) {
+            } else if ((st.attendance.lunchStartTime && !st.attendance.lunchEndTime) || myTodayAtt.status === 'lunch') {
               st.attendance.status = 'lunch';
-            } else if (st.attendance.checkInTime) {
+            } else if (st.attendance.checkInTime || myTodayAtt.status === 'in') {
               st.attendance.status = 'in'; // ACTIVE PUNCH IN RESTORED!
             }
 
             // Cache active attendance session locally as immediate offline backup
             try {
-              localStorage.setItem(`da_att_${empNorm}_${todayDateStr}`, JSON.stringify(st.attendance));
+              if (todayDateStr) {
+                localStorage.setItem(`da_att_${empNorm}_${todayDateStr}`, JSON.stringify(st.attendance));
+              }
             } catch (e) {}
 
             console.log(`✅ Restored active attendance session for ${loggedId}: status=${st.attendance.status}, checkIn=${st.attendance.checkInTime}`);
             if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+            if (typeof renderAttLog === 'function') renderAttLog();
             if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
               startAttElapsed();
             }
           } else {
             // No record for today in cloud: if local attendance has a previous day checkIn, reset it
-            if (st.attendance && st.attendance.checkInTime && !isSameCalendarDay(st.attendance.checkInTime)) {
+            if (st.attendance && st.attendance.checkInTime && !isSameCalendarDay(st.attendance.checkInTime, Date.now())) {
               console.log(`🌅 Resetting stale previous-day shift in local attendance state for ${loggedId}`);
               st.attendance.status = 'out';
               st.attendance.checkInTime = null;
@@ -461,6 +491,7 @@ const SupabaseData = {
               st.attendance.photoUrl = null;
               st.attendance.lateLunchReason = null;
               if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+              if (typeof renderAttLog === 'function') renderAttLog();
             }
           }
         }
