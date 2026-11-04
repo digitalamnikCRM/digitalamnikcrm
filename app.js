@@ -162,8 +162,9 @@ function computeInitials(name) {
 }
 
 function isManagerRole(roleName) {
-  const emp = STATE.employee || {};
-  if (emp.isFounder || emp.id === 'EMP-000') return true;
+  const emp = (typeof STATE !== 'undefined' && STATE && STATE.employee) ? STATE.employee : {};
+  const normId = String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (emp.isFounder || normId === 'emp000' || /amaan/i.test(emp.name || '')) return true;
   const r = (roleName || emp.role || '').toLowerCase();
   const domains = Array.isArray(emp.domains)
     ? emp.domains.map(d => String(d).trim().toLowerCase())
@@ -535,10 +536,24 @@ function syncProfileUI() {
     }
   }
 
-  // Ensure '+ New Deliverable' button is visible to all specialists
+  // Role-aware project creation button and header subtitle
+  const isMgr = isManagerRole();
   const newDelivBtn = document.querySelector('#section-projects .section-header .btn-primary');
   if (newDelivBtn) {
     newDelivBtn.style.display = 'inline-flex';
+    const btnSpan = newDelivBtn.querySelector('span');
+    if (btnSpan) {
+      btnSpan.textContent = isMgr ? 'Create New Deliverable' : 'Create My Task';
+    }
+    newDelivBtn.title = isMgr
+      ? 'Create agency deliverable and delegate to specialist'
+      : 'Create a personal workflow task for yourself';
+  }
+  const projSub = document.querySelector('#section-projects .section-header .section-sub');
+  if (projSub) {
+    projSub.textContent = isMgr
+      ? 'Manage agency deliverables, campaign assignments, and specialist delegation'
+      : 'Your assigned deliverables from Owner / Social Media & personal tasks';
   }
 
   // Role notice in Projects section
@@ -844,7 +859,7 @@ function renderRoleNotice() {
     noticeText.innerHTML = `<strong>👑 Delegation Station Active (${STATE.employee.name}):</strong> As Social Media Manager / Agency Owner, you have full delegation rights to assign deliverables across all agency specialists and domain disciplines.`;
   } else {
     noticeEl.className = 'role-notice';
-    noticeText.innerHTML = `<strong>Domain: ${STATE.employee.role || 'Specialist'} (${STATE.employee.name}):</strong> You can create self-tasks for your own workflow, accept deliverables assigned to you by Social Media Manager / Owner, and track billable work hours.`;
+    noticeText.innerHTML = `<strong>Domain: ${STATE.employee.role || 'Specialist'} (${STATE.employee.name}):</strong> You have access strictly to deliverables assigned to you by Owner &amp; Social Media Manager, plus your own personal self-tasks. Deliverables delegation is restricted to Owner &amp; Social Media.`;
   }
 }
 
@@ -2224,6 +2239,35 @@ function renderProjectAssignOptions(existingAssigned = []) {
   const container = document.getElementById('assign-options');
   if (!container) return;
 
+  const isMgr = isManagerRole();
+
+  // If NOT a manager / owner (e.g. Video Editor, Graphic Designer, SEO, etc.)
+  // Strictly hide all team member names and lock assignment to SELF!
+  if (!isMgr) {
+    const currentName = STATE.employee?.name || 'Specialist';
+    const currentRole = STATE.employee?.role || 'Specialist';
+    const currentId = STATE.employee?.id || 'emp001';
+
+    container.innerHTML = `
+      <div style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;line-height:1">🔒</span>
+        <div>
+          <div style="font-weight:700;color:#fff;font-size:13px;margin-bottom:3px">
+            Assigned strictly to: ${currentName} (${currentRole})
+          </div>
+          <div style="font-size:11.5px;color:#94a3b8;line-height:1.4">
+            Personal workflow task. Deliverables delegation across other team specialists is reserved exclusively for Agency Owner &amp; Social Media Manager.
+          </div>
+        </div>
+      </div>
+      <div id="assign-chips-wrap" style="display:none">
+        <button type="button" class="assign-chip selected" data-name="${currentName}" data-id="${currentId}"></button>
+      </div>
+    `;
+    return;
+  }
+
+  // MANAGER / OWNER VIEW: Full agency delegation roster with single-specialist selection
   const staff = (STATE.team || []);
   
   // Single selected assignee resolution
@@ -2239,15 +2283,15 @@ function renderProjectAssignOptions(existingAssigned = []) {
   
   // Current user option
   employeeOptions.push({
-    id: STATE.employee.id || 'emp001',
-    name: STATE.employee.name,
-    role: STATE.employee.role || 'Specialist',
-    label: `👑 ${STATE.employee.name} (You • ${STATE.employee.id || 'emp001'})`
+    id: STATE.employee?.id || 'emp000',
+    name: STATE.employee?.name || 'Amaan Khan',
+    role: STATE.employee?.role || 'Admin',
+    label: `👑 ${STATE.employee?.name || 'Amaan Khan'} (You • ${STATE.employee?.id || 'emp000'})`
   });
 
   // Other team members
   staff.forEach(t => {
-    const isSame = (t.name === STATE.employee.name || (t.id && STATE.employee.id && t.id.toLowerCase() === STATE.employee.id.toLowerCase()));
+    const isSame = (t.name === STATE.employee?.name || (t.id && STATE.employee?.id && t.id.toLowerCase() === STATE.employee.id.toLowerCase()));
     if (!isSame) {
       const roleText = t.role || (Array.isArray(t.domains) ? t.domains.join(', ') : 'Staff Specialist');
       employeeOptions.push({
@@ -2268,7 +2312,6 @@ function renderProjectAssignOptions(existingAssigned = []) {
     )
   );
 
-  // If nothing matched and currentTarget is empty, do NOT force self if others exist
   if (!matchedEmp && employeeOptions.length > 0) {
     matchedEmp = employeeOptions[0];
   }
@@ -2277,8 +2320,8 @@ function renderProjectAssignOptions(existingAssigned = []) {
 
   container.innerHTML = `
     <div style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <span class="assign-manager-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd;border-color:rgba(139,92,246,0.3)">
-        👤 Select 1 Assignee for this Deliverable (Single Specialist)
+      <span class="assign-manager-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3);padding:6px 10px;border-radius:6px;font-size:11.5px;font-weight:600">
+        👑 Agency Delegation Active: Select 1 Specialist to assign this Deliverable
       </span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px" id="assign-chips-wrap">
@@ -2318,8 +2361,24 @@ function selectSingleProjectAssignee(btn) {
 
 function openProjectModal(id) {
   STATE.editingProjectId = id || null;
+  const isMgr = isManagerRole();
   const title = document.getElementById('proj-modal-title');
-  if (title) title.textContent = id ? 'Edit Deliverable' : 'Create New Deliverable';
+  const tag = document.querySelector('#project-modal .modal-tag');
+  const saveBtn = document.querySelector('#project-modal .modal-footer .btn-primary');
+
+  if (title) {
+    if (id) {
+      title.textContent = isMgr ? 'Edit Deliverable' : 'Edit Self-Task';
+    } else {
+      title.textContent = isMgr ? 'Create New Deliverable' : 'Create Self-Task';
+    }
+  }
+  if (tag) {
+    tag.textContent = isMgr ? 'DELIVERABLE' : 'SELF TASK';
+  }
+  if (saveBtn) {
+    saveBtn.textContent = isMgr ? (id ? 'Update Deliverable' : 'Save & Assign Deliverable') : (id ? 'Update Task' : 'Save My Task');
+  }
 
   if (id) {
     const p = STATE.projects.find(x => x.id === id);
@@ -2336,39 +2395,51 @@ function openProjectModal(id) {
     document.getElementById('proj-name').value = '';
     document.getElementById('proj-client').value = '';
     document.getElementById('proj-priority').value = 'Medium';
-    document.getElementById('proj-service').value = STATE.employee.role || 'Web Developer';
+    document.getElementById('proj-service').value = STATE.employee?.role || 'Video Editing';
     document.getElementById('proj-deadline').value = '';
     document.getElementById('proj-desc').value = '';
-    renderProjectAssignOptions([STATE.employee.name]);
+    renderProjectAssignOptions([STATE.employee?.name || 'Amaan Khan']);
   }
   openModal('project-modal');
 }
 
 function saveProject() {
-  const name = document.getElementById('proj-name').value.trim();
-  if (!name) { toast('Project name is required', 'error'); return; }
+  const isMgr = isManagerRole();
+  const name = (document.getElementById('proj-name')?.value || '').trim();
+  if (!name) { toast('⚠️ Project / Task title is required', 'error'); return; }
 
-  // Get single assigned employee from active chip
-  const activeChip = document.querySelector('#assign-chips-wrap .assign-chip.selected') || document.querySelector('#assign-options .assign-chip.selected');
-  const assignedName = activeChip ? activeChip.getAttribute('data-name') : (STATE.employee ? STATE.employee.name : 'Amaan Khan');
-  const assignedId = activeChip ? activeChip.getAttribute('data-id') : (STATE.employee ? STATE.employee.id : 'emp000');
-  
+  // Assignee resolution
+  let assignedName = STATE.employee ? STATE.employee.name : 'Amaan Khan';
+  let assignedId = STATE.employee ? STATE.employee.id : 'emp000';
+
+  if (isMgr) {
+    const activeChip = document.querySelector('#assign-chips-wrap .assign-chip.selected') || document.querySelector('#assign-options .assign-chip.selected');
+    if (activeChip) {
+      assignedName = activeChip.getAttribute('data-name') || assignedName;
+      assignedId = activeChip.getAttribute('data-id') || assignedId;
+    }
+  } else {
+    // Non-managers are strictly self-assigned
+    assignedName = STATE.employee ? STATE.employee.name : 'Specialist';
+    assignedId = STATE.employee ? STATE.employee.id : 'emp001';
+  }
+
   const assigned = [assignedName];
   if (assignedId && !assigned.includes(assignedId)) {
     assigned.push(assignedId);
   }
 
-  const client = document.getElementById('proj-client').value.trim() || 'Internal Agency';
-  const service = document.getElementById('proj-service').value;
-  const priority = document.getElementById('proj-priority').value;
-  const deadline = document.getElementById('proj-deadline').value;
-  const desc = document.getElementById('proj-desc').value.trim();
+  const client = (document.getElementById('proj-client')?.value || '').trim() || 'Internal Agency';
+  const service = document.getElementById('proj-service')?.value || (STATE.employee?.role || 'Video Editing');
+  const priority = document.getElementById('proj-priority')?.value || 'Medium';
+  const deadline = document.getElementById('proj-deadline')?.value || '';
+  const desc = (document.getElementById('proj-desc')?.value || '').trim();
 
   // If created as a self-task by specialist, status starts as 'In Progress' ready to execute; if delegated by manager, 'Assigned'
   const initialStatus = isMgr ? 'Assigned' : 'In Progress';
 
   const project = {
-    id: STATE.editingProjectId || uid(),
+    id: STATE.editingProjectId || ('p-' + uid()),
     name,
     client,
     priority,
@@ -2379,9 +2450,11 @@ function saveProject() {
     assigned,
     assignedTo: assigned.join(', '),
     status: initialStatus,
-    progress: 15,
+    progress: isMgr ? 0 : 25,
     totalTimeSpent: 0,
     sessions: [],
+    createdBy: STATE.employee?.name || 'Amaan Khan',
+    creatorId: STATE.employee?.id || 'emp000',
     createdAt: Date.now(),
   };
 
@@ -2393,14 +2466,16 @@ function saveProject() {
       project.createdAt = STATE.projects[idx].createdAt;
       project.totalTimeSpent = STATE.projects[idx].totalTimeSpent || 0;
       project.sessions = STATE.projects[idx].sessions || [];
+      project.createdBy = STATE.projects[idx].createdBy || project.createdBy;
+      project.creatorId = STATE.projects[idx].creatorId || project.creatorId;
       STATE.projects[idx] = project;
     }
-    toast('Deliverable updated!', 'success');
+    toast(isMgr ? 'Deliverable updated!' : 'Task updated!', 'success');
   } else {
     STATE.projects.unshift(project);
-    addActivity(`Project created: ${name} (Assigned to ${assigned.join(', ')})`, 'blue');
+    addActivity(`Project created: "${name}" (${isMgr ? 'Delegated to ' + assigned.join(', ') : 'Self-task by ' + (STATE.employee?.name || 'Specialist')})`, 'blue');
     triggerConfetti();
-    toast(`Deliverable added & assigned to ${assigned.join(', ')}! 🚀`, 'success');
+    toast(isMgr ? `Deliverable assigned to ${assigned.join(', ')}! 🚀` : `Self-task "${name}" created! Ready to execute. 🚀`, 'success');
   }
 
   updateDashCounts();
@@ -2426,11 +2501,20 @@ function renderProjects() {
   if (!grid) return;
 
   const search = (document.getElementById('proj-search')?.value || '').toLowerCase();
+  const isMgr = isManagerRole();
 
   let list = STATE.projects;
-  const empDomains = Array.isArray(STATE.employee.domains) && STATE.employee.domains.length > 0
-    ? STATE.employee.domains
-    : [STATE.employee.role].filter(Boolean);
+
+  // Regular specialists ONLY see projects assigned to them or created by them
+  if (!isMgr) {
+    const currentEmp = STATE.employee;
+    list = list.filter(p => {
+      const isAssigned = isProjectAssignedTo(p, currentEmp);
+      const isCreator = (p.createdBy && currentEmp?.name && p.createdBy.toLowerCase() === currentEmp.name.toLowerCase()) ||
+                        (p.creatorId && currentEmp?.id && p.creatorId.toLowerCase() === currentEmp.id.toLowerCase());
+      return isAssigned || isCreator;
+    });
+  }
 
   if (_activeFilter === 'my') {
     list = list.filter(p => isProjectAssignedTo(p, STATE.employee));
@@ -2459,7 +2543,7 @@ function renderProjects() {
   if (list.length === 0) {
     grid.innerHTML = `<div class="projects-empty">
       <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-      <p>No deliverables match your search. Create one to get started!</p>
+      <p>${isMgr ? 'No agency deliverables match your search. Click "+ Create New Deliverable" to delegate work!' : 'No tasks or deliverables assigned to you currently. Click "+ Create My Task" to create your workflow!'}</p>
     </div>`;
     return;
   }
@@ -2808,6 +2892,10 @@ function stopProjectWork(id, isSwitching = false) {
     proj.sessions.unshift(session);
     if (!STATE.timeLogs) STATE.timeLogs = [];
     STATE.timeLogs.unshift(session);
+
+    if (typeof SupabaseData !== 'undefined') {
+      SupabaseData.logTime(session);
+    }
 
     if (!isSwitching) {
       toast(`⏹ Session logged: ${fmtDuration(duration)} on "${proj.name}"`, 'info');

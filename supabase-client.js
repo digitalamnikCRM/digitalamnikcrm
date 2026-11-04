@@ -205,6 +205,10 @@ function triggerAllUIRenders() {
   if (st && st.attendance && (st.attendance.status === 'in' || st.attendance.status === 'lunch')) {
     if (typeof startAttElapsed === 'function') startAttElapsed();
   }
+  if (st && st.activeProjectTimer) {
+    if (typeof updateProjectTimerTicker === 'function') updateProjectTimerTicker();
+    if (typeof syncActiveTaskTopbar === 'function') syncActiveTaskTopbar();
+  }
 }
 
 // ====================================================================
@@ -610,7 +614,7 @@ const SupabaseData = {
         description: proj.desc || '',
         total_time_spent: proj.totalTimeSpent || 0,
         sessions: proj.sessions || [],
-        created_by: proj.createdBy || (STATE.employee && STATE.employee.name) || 'Admin',
+        created_by: proj.createdBy || ((typeof STATE !== 'undefined' && STATE && STATE.employee && STATE.employee.name) ? STATE.employee.name : 'Admin'),
         created_at: new Date(proj.createdAt || Date.now()).toISOString(),
       };
       const { error } = await window.sbClient.from('projects').upsert(row, { onConflict: 'id' });
