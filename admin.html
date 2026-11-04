@@ -13,7 +13,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=8.1.0" />
+  <link rel="stylesheet" href="style.css?v=8.2.0" />
   <style>
     /* =========================================================
        DEDICATED EXECUTIVE ADMIN STYLES & AUTH GATE
@@ -1316,7 +1316,7 @@
         <span class="admin-tab-count" id="admin-tab-emp-count">0</span>
       </button>
       <button class="admin-tab-btn" id="tab-btn-attendance" onclick="switchAdminTab('attendance')">
-        <span>ðŸ“… Attendance &amp; Shift Register</span>
+        <span>&#128197; Attendance &amp; Shift Register</span>
         <span class="admin-tab-count" id="admin-tab-att-count">0</span>
       </button>
       <button class="admin-tab-btn" id="tab-btn-timesheets" onclick="switchAdminTab('timesheets')">
@@ -1468,7 +1468,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
         <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
           <button type="button" class="ts-subtab-btn active" id="att-subtab-history" onclick="switchAttendanceView('history')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
-            <span>ðŸ“… 30-Day History &amp; Monthly Register</span>
+            <span>&#128197; 30-Day History &amp; Monthly Register</span>
           </button>
           <button type="button" class="ts-subtab-btn" id="att-subtab-today" onclick="switchAttendanceView('today')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
             <span>ðŸŸ¢ Today's Live Station</span>
@@ -1502,12 +1502,12 @@
             <span style="font-size:11px;color:#fcd34d;display:block">&gt;60m or post-3PM</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#c4b5fd;display:block">🎬 Deliverables Worked</span>
+            <span style="font-size:11.5px;color:#c4b5fd;display:block">&#128188; Deliverables Worked</span>
             <strong id="history-kpi-projects" style="font-size:20px;color:#a78bfa">0</strong>
             <span style="font-size:11px;color:#c4b5fd;display:block">Days with project work</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fca5a5;display:block">🔴 Absent Days</span>
+            <span style="font-size:11.5px;color:#fca5a5;display:block">&#128308; Absent Days</span>
             <strong id="history-kpi-absent" style="font-size:20px;color:#f87171">0</strong>
             <span style="font-size:11px;color:#fca5a5;display:block">Missed working shifts</span>
           </div>
@@ -1750,9 +1750,9 @@
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="att-filter-pills" id="admin-att-filters">
               <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
-              <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">🟢 Present (<span id="att-filter-pres-cnt">0</span>)</button>
-              <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
-              <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
+              <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">&#128994; Present (<span id="att-filter-pres-cnt">0</span>)</button>
+              <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">&#128308; Absent (<span id="att-filter-abs-cnt">0</span>)</button>
+              <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">&#127857; Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <button class="btn-small btn-secondary" onclick="loadAdminAll()" style="gap:6px">
@@ -2659,8 +2659,45 @@
 
     function isTodayDateMatch(dateVal, tsVal) {
       if (dateVal && isSameCalendarDay(dateVal, Date.now())) return true;
-      if (tsVal && isSameCalendarDay(tsVal, Date.now())) return true;
+      if (tsVal && typeof tsVal !== 'string' && isSameCalendarDay(tsVal, Date.now())) return true;
+      if (tsVal && typeof tsVal === 'string' && /^\d+$/.test(tsVal.trim()) && isSameCalendarDay(Number(tsVal.trim()), Date.now())) return true;
       return false;
+    }
+
+    function formatLunchDurationDisplay(lunchVal, lunchStart, lunchEnd, status) {
+      if (lunchStart && lunchEnd) {
+        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+        const e = typeof lunchEnd === 'number' ? lunchEnd : new Date(lunchEnd).getTime();
+        if (!isNaN(s) && !isNaN(e) && e >= s) {
+          const totalMins = Math.round((e - s) / 60000);
+          const hrs = Math.floor(totalMins / 60);
+          const mins = totalMins % 60;
+          return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        }
+      }
+      if (status === 'lunch' && lunchStart) {
+        const s = typeof lunchStart === 'number' ? lunchStart : new Date(lunchStart).getTime();
+        if (!isNaN(s)) {
+          const elapsedMins = Math.max(0, Math.round((Date.now() - s) / 60000));
+          const hrs = Math.floor(elapsedMins / 60);
+          const mins = elapsedMins % 60;
+          return hrs > 0 ? `${hrs}h ${mins}m (Live)` : `${mins}m (Live)`;
+        }
+      }
+      if (typeof lunchVal === 'string' && lunchVal.trim()) {
+        const cleaned = lunchVal.trim();
+        if (cleaned.toLowerCase() === 'none' || cleaned === '--:--' || cleaned === '0m') return 'None';
+        if (cleaned.includes('h')) return cleaned;
+        const mMatch = cleaned.match(/^(\d+)\s*m$/i);
+        if (mMatch) {
+          const totalM = parseInt(mMatch[1], 10);
+          const h = Math.floor(totalM / 60);
+          const m = totalM % 60;
+          return h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+        return cleaned;
+      }
+      return 'None';
     }
 
     function fmtDate(ts) {
@@ -3179,13 +3216,19 @@
 
       // 1. PRIMARY SOURCE: Supabase Cloud Database (Verified attendance logs for this specific employee TODAY)
       if (Array.isArray(attLogs) && attLogs.length > 0) {
-        const cloudMatch = attLogs.find(a => {
+        const todayMatches = attLogs.filter(a => {
+          if (!a) return false;
           const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
           const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
           const matchEmployee = (aId && aId === normEmpId) || (aName && aName === normEmpName);
           if (!matchEmployee) return false;
-          return isTodayDateMatch(a.date, a.check_in || a.created_at);
+          const isDateToday = a.date && isSameCalendarDay(a.date, Date.now());
+          const isCheckInToday = a.check_in && isSameCalendarDay(a.check_in, Date.now());
+          return Boolean(isDateToday || isCheckInToday);
         });
+
+        // Always prioritize active check-in or verified present shift over an absent record
+        const cloudMatch = todayMatches.find(a => a.status === 'in' || a.status === 'lunch' || a.status === 'done' || (a.check_in && a.status !== 'absent')) || todayMatches[0];
 
         if (cloudMatch) {
           let photo = cloudMatch.photo_url || cloudMatch.photoUrl || null;
@@ -3302,7 +3345,7 @@
 
     
     // ====================================================================
-    // ðŸ“… 30-DAY HISTORICAL ATTENDANCE REGISTER & MONTHLY ARCHIVE
+    // &#128197; 30-DAY HISTORICAL ATTENDANCE REGISTER & MONTHLY ARCHIVE
     // ====================================================================
     let _historyDatePreset = 'all'; // 'all', 'today', 'yesterday', 'this_month', 'last_month', 'custom'
     let _historySpecificDate = '';
@@ -3461,15 +3504,29 @@
           const normEmpName = String(m.name || '').toLowerCase().trim();
 
           // Check if there is an existing log for this staff on this day
-          const matched = attLogs.find(a => {
-            if (!a) return false;
-            const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
-            if (aId !== normEmpId && aName !== normEmpName) return false;
-            const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
-            const aTime = Number(a.check_in) || (a.created_at ? new Date(a.created_at).getTime() : 0);
-            return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dTs));
-          });
+          let matched = null;
+          if (isTodayDay) {
+            const allTodayMatches = attLogs.filter(a => {
+              if (!a) return false;
+              const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+              if (aId !== normEmpId && aName !== normEmpName) return false;
+              const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+              const aTime = Number(a.check_in) || 0;
+              return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dTs));
+            });
+            matched = allTodayMatches.find(a => a.status === 'in' || a.status === 'lunch' || a.status === 'done' || (a.check_in && a.status !== 'absent')) || allTodayMatches[0];
+          } else {
+            matched = attLogs.find(a => {
+              if (!a) return false;
+              const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+              if (aId !== normEmpId && aName !== normEmpName) return false;
+              const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+              const aTime = Number(a.check_in) || 0;
+              return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dTs));
+            });
+          }
 
           if (matched) {
             combinedLedger.push(matched);
@@ -3658,16 +3715,16 @@
       if (tabAttCnt) tabAttCnt.textContent = attLogs.length;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:45px 20px;color:#94a3b8"><div style="font-size:32px;margin-bottom:8px">ðŸ“…</div><strong style="color:#fff;font-size:15px;display:block;margin-bottom:6px">No Attendance Records Match Filter</strong><p style="font-size:12.5px;color:#64748b;margin:0">Try changing the date period, staff selector, or issue filter above.</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:45px 20px;color:#94a3b8"><div style="font-size:32px;margin-bottom:8px">&#128197;</div><strong style="color:#fff;font-size:15px;display:block;margin-bottom:6px">No Attendance Records Match Filter</strong><p style="font-size:12.5px;color:#64748b;margin:0">Try changing the date period, staff selector, or issue filter above.</p></td></tr>';
         return;
       }
 
       tbody.innerHTML = filtered.map(a => {
         const empName = a.employee_name || a.employeeName || 'Specialist';
-        const empId = a.employee_id || a.employeeId || 'â€”';
+        const empId = a.employee_id || a.employeeId || '&mdash;';
         const matchedStaff = staffList.find(m => String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === String(empId).toLowerCase().replace(/[^a-z0-9]/g, ''));
         const empRole = matchedStaff ? matchedStaff.role : 'Specialist';
-        const dateStr = a.date || (a.check_in ? fmtDate(a.check_in) : 'â€”');
+        const dateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '&mdash;');
 
         // Check In & Late
         let checkInStr = a.check_in ? fmt(a.check_in) : (a.checkIn ? (typeof a.checkIn === 'number' ? fmt(a.checkIn) : a.checkIn) : '--:--');
@@ -3680,7 +3737,7 @@
               const mins = Math.round(((d.getHours() + d.getMinutes() / 60) - 10.5) * 60);
               lateBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Official shift start is 10:30 AM">âš ï¸ Late (+' + mins + 'm)</span>';
             } else {
-              lateBadge = '<span style="font-size:10px;color:#10b981;font-weight:600;margin-left:4px">âœ“ On-Time</span>';
+              lateBadge = '<span style="font-size:10px;color:#10b981;font-weight:600;margin-left:4px">&#10003; On-Time</span>';
             }
           }
         }
@@ -3695,7 +3752,7 @@
           '</div>';
 
         // Deliverables / Projects Worked
-        let projHtml = '<span style="color:#64748b">â€”</span>';
+        let projHtml = '<span style="color:#64748b">&mdash;</span>';
         const pList = Array.isArray(a.projects_worked) && a.projects_worked.length > 0
           ? a.projects_worked
           : (Array.isArray(a.projectsWorked) && a.projectsWorked.length > 0 ? a.projectsWorked : null);
@@ -3728,9 +3785,9 @@
 
         // Selfie
         const photoUrl = a.photo_url || a.photoUrl || null;
-        let photoHtml = '<span style="color:#64748b">â€”</span>';
+        let photoHtml = '<span style="color:#64748b">&mdash;</span>';
         if (photoUrl) {
-          photoHtml = '<button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview(\'' + empName + '\', \'' + photoUrl + '\', \'' + checkInStr + '\', \'' + empRole + '\')" style="font-size:11px;padding:3px 8px">ðŸ“· Inspect</button>';
+          photoHtml = '<button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview(\'' + empName + '\', \'' + photoUrl + '\', \'' + checkInStr + '\', \'' + empRole + '\')" style="font-size:11px;padding:3px 8px">&#128247; Inspect</button>';
         }
 
         return '<tr>' +
@@ -5798,7 +5855,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=8.1.0"></script>
+  <script src="supabase-client.js?v=8.2.0"></script>
 
 </body>
 

@@ -1832,14 +1832,15 @@ function updateHoursRing(totalMs) {
 
 function startAttElapsed() {
   clearInterval(STATE.attendance.elapsedInterval);
-  STATE.attendance.elapsedInterval = setInterval(() => {
+  const tick = () => {
     if (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch') {
       const now = Date.now();
-      let total = now - STATE.attendance.checkInTime;
+      const checkIn = Number(STATE.attendance.checkInTime) || now;
+      let total = now - checkIn;
       if (STATE.attendance.lunchStartTime && STATE.attendance.lunchEndTime) {
-        total -= (STATE.attendance.lunchEndTime - STATE.attendance.lunchStartTime);
+        total -= (Number(STATE.attendance.lunchEndTime) - Number(STATE.attendance.lunchStartTime));
       } else if (STATE.attendance.lunchStartTime) {
-        total -= (now - STATE.attendance.lunchStartTime);
+        total -= (now - Number(STATE.attendance.lunchStartTime));
       }
       if (total < 0) total = 0;
       const elText = fmtHHMMSS(total);
@@ -1850,7 +1851,9 @@ function startAttElapsed() {
 
       updateHoursRing(total);
     }
-  }, 1000);
+  };
+  tick(); // Execute immediately so there is zero latency
+  STATE.attendance.elapsedInterval = setInterval(tick, 1000);
 }
 
 // ========================
@@ -2375,10 +2378,10 @@ function renderAttLog() {
       const ciD = new Date(r.checkIn);
       if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
         const mins = Math.round(((ciD.getHours() + ciD.getMinutes() / 60) - 10.5) * 60);
-        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">âš ï¸ Late (+' + mins + 'm)</span>';
+        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">⚠️ï¸ Late (+' + mins + 'm)</span>';
       }
     } else if (isLateFlag) {
-      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">âš ï¸ Late</span>';
+      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">⚠️ï¸ Late</span>';
     }
 
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
@@ -2389,7 +2392,7 @@ function renderAttLog() {
     const isLunchLateFlag = r.isLunchLate || r.is_lunch_late;
 
     // Projects worked summary on this day
-    let projectsHtml = '<span style="color:#64748b">â€”</span>';
+    let projectsHtml = '<span style="color:#64748b">—</span>';
     const projList = Array.isArray(r.projectsWorked) && r.projectsWorked.length > 0
       ? r.projectsWorked
       : (Array.isArray(r.projects_worked) && r.projects_worked.length > 0 ? r.projects_worked : null);
@@ -2427,15 +2430,15 @@ function renderAttLog() {
       '<td data-label="Check In">' +
         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
           '<strong>' + checkInStr + '</strong>' + lateCheckInBadge +
-          (r.photoUrl ? ' <span title="Selfie photo verified" style="cursor:pointer;font-size:12px">ðŸ“¸</span>' : '') +
+          (r.photoUrl ? ' <span title="Selfie photo verified" style="cursor:pointer;font-size:12px">📷</span>' : '') +
         '</div>' +
       '</td>' +
       '<td data-label="Lunch Time">' +
         '<div style="display:inline-flex;align-items:center;gap:4px">' +
           '<strong style="color:#fcd34d">' + lunchDurFormatted + '</strong>' +
-          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">âš ï¸ Late Lunch</span>' : '') +
+          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">⚠️ï¸ Late Lunch</span>' : '') +
         '</div>' +
-        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">âš ï¸ ' + reasonText + '</div>' : '') +
+        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">⚠️ï¸ ' + reasonText + '</div>' : '') +
       '</td>' +
       '<td data-label="Projects Worked">' + projectsHtml + '</td>' +
       '<td data-label="Check Out"><span>' + checkOutStr + '</span></td>' +

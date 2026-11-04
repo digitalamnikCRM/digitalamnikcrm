@@ -77,7 +77,8 @@ function fmtDate(ts) {
 
 function isTodayDate(dateVal, tsVal) {
   if (dateVal && isSameCalendarDay(dateVal, Date.now())) return true;
-  if (tsVal && isSameCalendarDay(tsVal, Date.now())) return true;
+  if (tsVal && typeof tsVal !== 'string' && isSameCalendarDay(tsVal, Date.now())) return true;
+  if (tsVal && typeof tsVal === 'string' && /^\d+$/.test(tsVal.trim()) && isSameCalendarDay(Number(tsVal.trim()), Date.now())) return true;
   return false;
 }
 
@@ -485,16 +486,22 @@ const SupabaseData = {
           const currentEmpName = loggedName ? loggedName.trim().toLowerCase() : '';
           const todayDateStr = typeof fmtDate === 'function' ? fmtDate(Date.now()) : '';
           
-          const myTodayAtt = attData.find(a => {
+          const todayLogs = attData.filter(a => {
+            if (!a) return false;
             const aEmpId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const aEmpName = String(a.employee_name || a.employeeName || '').trim().toLowerCase();
             const idMatches = empNorm && (aEmpId === empNorm);
             const nameMatches = currentEmpName && (aEmpName === currentEmpName);
             if (!idMatches && !nameMatches) return false;
-            return isTodayDate(a.date, a.check_in || a.created_at);
+            const isDateToday = a.date && isSameCalendarDay(a.date, Date.now());
+            const isCheckInToday = a.check_in && isSameCalendarDay(a.check_in, Date.now());
+            return Boolean(isDateToday || isCheckInToday);
           });
 
-          if (myTodayAtt) {
+          // Prioritize active or verified present shift over an absent placeholder
+          const myTodayAtt = todayLogs.find(a => (a.status === 'in' || a.status === 'lunch' || a.status === 'done' || (a.check_in && a.status !== 'absent'))) || todayLogs[0];
+
+          if (myTodayAtt && myTodayAtt.status !== 'absent') {
             if (!st.attendance) st.attendance = {};
             const parsedCheckIn = parseSafeDate(myTodayAtt.check_in || myTodayAtt.checkIn);
             st.attendance.checkInTime = parsedCheckIn ? parsedCheckIn.getTime() : (Number(myTodayAtt.check_in) || myTodayAtt.checkIn);
@@ -981,7 +988,7 @@ const SupabaseData = {
             const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
             if (aId !== normId && aName !== normName) return false;
             const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
-            return (aDateStr === dStr) || isSameCalendarDay(a.check_in || a.created_at, d.getTime());
+            return (aDateStr === dStr) || (a.check_in && isSameCalendarDay(a.check_in, d.getTime()));
           });
 
           if (!hasLog) {
@@ -1385,6 +1392,9 @@ function initSupabaseApp() {
         if (typeof updateDashCounts === 'function') updateDashCounts();
         if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
         if (typeof renderAttLog === 'function') renderAttLog();
+        if (typeof STATE !== 'undefined' && STATE.attendance && (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch')) {
+          if (typeof startAttElapsed === 'function') startAttElapsed();
+        }
       }
     });
   }
