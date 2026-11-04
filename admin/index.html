@@ -13,7 +13,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="../style.css?v=6.2.0" />
+  <link rel="stylesheet" href="style.css?v=8.0.0" />
   <style>
     /* =========================================================
        DEDICATED EXECUTIVE ADMIN STYLES & AUTH GATE
@@ -1124,7 +1124,7 @@
   <div class="auth-gate-wrap" id="admin-auth-gate">
     <div class="auth-card" id="auth-card-box">
       <div class="auth-logo-box">
-        <img src="../logo.png" alt="Digital Amnik"
+        <img src="logo.png" alt="Digital Amnik"
           onerror="this.style.display='none';document.getElementById('auth-fallback-txt').style.display='block'" />
         <span id="auth-fallback-txt"
           style="display:none;font-family:'Outfit';font-size:24px;font-weight:800;color:#fff">Digital <span
@@ -1174,7 +1174,7 @@
     <!-- Topbar -->
     <header class="admin-topbar-nav">
       <div class="admin-brand-left">
-        <img src="../logo.png" alt="Digital Amnik" onerror="this.style.display='none'" />
+        <img src="logo.png" alt="Digital Amnik" onerror="this.style.display='none'" />
         <div class="admin-badge-owner">
           <span>👑</span>
           <span>Amaan Khan — Agency Founder &amp; Owner</span>
@@ -1189,7 +1189,7 @@
           </svg>
           <span>Change Password</span>
         </button>
-        <a href="../index.html" class="btn-portal-back">
+        <a href="index.html" class="btn-portal-back">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
@@ -2585,36 +2585,87 @@
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
-        function isSameCalendarDay(t1, t2) {
+    var CRM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    function parseSafeDate(val) {
+      if (!val) return null;
+      if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+      if (typeof val === 'number') {
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (!trimmed) return null;
+        // 1. Numeric timestamp string
+        if (/^\d+$/.test(trimmed)) {
+          const d = new Date(Number(trimmed));
+          if (!isNaN(d.getTime())) return d;
+        }
+        // 2. Named month format: e.g. "04 Nov 2026", "4-Nov-2026", "04 November 2026"
+        const namedMonthMatch = trimmed.match(/^(\d{1,2})[\s\-\/]+([a-zA-Z]+)[\s\-\/]+(\d{4})/);
+        if (namedMonthMatch) {
+          const day = parseInt(namedMonthMatch[1], 10);
+          const mStr = namedMonthMatch[2].toLowerCase().slice(0, 3);
+          const year = parseInt(namedMonthMatch[3], 10);
+          const mIdx = CRM_MONTHS.findIndex(m => m.toLowerCase() === mStr);
+          if (mIdx !== -1) {
+            const d = new Date(year, mIdx, day);
+            if (!isNaN(d.getTime())) return d;
+          }
+        }
+        // 3. Indian / European DD/MM/YYYY or DD-MM-YYYY format
+        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (dmyMatch) {
+          const day = parseInt(dmyMatch[1], 10);
+          const month = parseInt(dmyMatch[2], 10) - 1;
+          const year = parseInt(dmyMatch[3], 10);
+          const d = new Date(year, month, day);
+          if (!isNaN(d.getTime())) return d;
+        }
+        // 4. ISO YYYY-MM-DD format
+        const ymdMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (ymdMatch) {
+          const year = parseInt(ymdMatch[1], 10);
+          const month = parseInt(ymdMatch[2], 10) - 1;
+          const day = parseInt(ymdMatch[3], 10);
+          const d = new Date(year, month, day);
+          if (!isNaN(d.getTime())) return d;
+        }
+        // 5. Fallback standard parse
+        const normalized = trimmed.replace(/-/g, ' ');
+        const d1 = new Date(normalized);
+        if (!isNaN(d1.getTime())) return d1;
+        const d2 = new Date(trimmed);
+        if (!isNaN(d2.getTime())) return d2;
+      }
+      return null;
+    }
+
+    function isSameCalendarDay(t1, t2) {
       if (!t1) return false;
-      const d1 = new Date(t1);
-      const d2 = new Date(t2 || Date.now());
-      if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+      const d1 = parseSafeDate(t1);
+      const d2 = parseSafeDate(t2 || Date.now());
+      if (!d1 || !d2) return false;
       return d1.getFullYear() === d2.getFullYear() &&
              d1.getMonth() === d2.getMonth() &&
              d1.getDate() === d2.getDate();
     }
 
     function isTodayDateMatch(dateVal, tsVal) {
-      const todayStr = fmtDate(Date.now());
-      if (dateVal && typeof dateVal === 'string') {
-        const s = dateVal.trim();
-        if (s === todayStr) return true;
-        const d = new Date(s);
-        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-      }
-      if (tsVal) {
-        const num = typeof tsVal === 'number' ? tsVal : Number(tsVal);
-        if (!isNaN(num) && num > 0 && isSameCalendarDay(num)) return true;
-        const d = new Date(tsVal);
-        if (!isNaN(d.getTime()) && isSameCalendarDay(d)) return true;
-      }
+      if (dateVal && isSameCalendarDay(dateVal, Date.now())) return true;
+      if (tsVal && isSameCalendarDay(tsVal, Date.now())) return true;
       return false;
     }
 
     function fmtDate(ts) {
       if (!ts) return '';
-      return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const d = parseSafeDate(ts);
+      if (!d) return String(ts);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = CRM_MONTHS[d.getMonth()];
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
     }
 
     function fmtDuration(ms) {
@@ -4793,6 +4844,8 @@
         progress: 0,
         totalTimeSpent: 0,
         sessions: [],
+        createdBy: 'Amaan Khan',
+        creatorId: 'emp000',
         createdAt: Date.now()
       };
 
@@ -5599,7 +5652,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../supabase-client.js?v=7.1.0"></script>
+  <script src="supabase-client.js?v=8.0.0"></script>
 
 </body>
 

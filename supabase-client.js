@@ -1,3 +1,5 @@
+var CRM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function parseSafeDate(val) {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
@@ -8,10 +10,42 @@ function parseSafeDate(val) {
   if (typeof val === 'string') {
     const trimmed = val.trim();
     if (!trimmed) return null;
+    // 1. Numeric timestamp string
     if (/^\d+$/.test(trimmed)) {
       const d = new Date(Number(trimmed));
       if (!isNaN(d.getTime())) return d;
     }
+    // 2. Named month format: e.g. "04 Nov 2026", "4-Nov-2026", "04 November 2026"
+    const namedMonthMatch = trimmed.match(/^(\d{1,2})[\s\-\/]+([a-zA-Z]+)[\s\-\/]+(\d{4})/);
+    if (namedMonthMatch) {
+      const day = parseInt(namedMonthMatch[1], 10);
+      const mStr = namedMonthMatch[2].toLowerCase().slice(0, 3);
+      const year = parseInt(namedMonthMatch[3], 10);
+      const mIdx = CRM_MONTHS.findIndex(m => m.toLowerCase() === mStr);
+      if (mIdx !== -1) {
+        const d = new Date(year, mIdx, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    // 3. Indian / European DD/MM/YYYY or DD-MM-YYYY format
+    const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10) - 1;
+      const year = parseInt(dmyMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // 4. ISO YYYY-MM-DD format
+    const ymdMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymdMatch) {
+      const year = parseInt(ymdMatch[1], 10);
+      const month = parseInt(ymdMatch[2], 10) - 1;
+      const day = parseInt(ymdMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // 5. Fallback standard parse
     const normalized = trimmed.replace(/-/g, ' ');
     const d1 = new Date(normalized);
     if (!isNaN(d1.getTime())) return d1;
@@ -29,6 +63,16 @@ function isSameCalendarDay(t1, t2) {
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
+}
+
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = parseSafeDate(ts);
+  if (!d) return String(ts);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = CRM_MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function isTodayDate(dateVal, tsVal) {
@@ -435,13 +479,18 @@ const SupabaseData = {
       // 7. RESTORE ACTIVE LOGGED-IN EMPLOYEE ATTENDANCE SESSION FROM SUPABASE CLOUD
       try {
         const loggedId = localStorage.getItem('da_logged_in_emp') || (st && st.employee && st.employee.id);
-        if (loggedId && Array.isArray(attData)) {
-          const empNorm = String(loggedId).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const loggedName = (st && st.employee && st.employee.name) || '';
+        if ((loggedId || loggedName) && Array.isArray(attData)) {
+          const empNorm = loggedId ? String(loggedId).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+          const currentEmpName = loggedName ? loggedName.trim().toLowerCase() : '';
           const todayDateStr = typeof fmtDate === 'function' ? fmtDate(Date.now()) : '';
           
           const myTodayAtt = attData.find(a => {
             const aEmpId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (aEmpId !== empNorm) return false;
+            const aEmpName = String(a.employee_name || a.employeeName || '').trim().toLowerCase();
+            const idMatches = empNorm && (aEmpId === empNorm);
+            const nameMatches = currentEmpName && (aEmpName === currentEmpName);
+            if (!idMatches && !nameMatches) return false;
             return isTodayDate(a.date, a.check_in || a.created_at);
           });
 
@@ -472,12 +521,13 @@ const SupabaseData = {
 
             // Cache active attendance session locally as immediate offline backup
             try {
-              if (todayDateStr) {
+              if (todayDateStr && empNorm) {
                 localStorage.setItem(`da_att_${empNorm}_${todayDateStr}`, JSON.stringify(st.attendance));
               }
+              if (typeof save === 'function') save();
             } catch (e) {}
 
-            console.log(`✅ Restored active attendance session for ${loggedId}: status=${st.attendance.status}, checkIn=${st.attendance.checkInTime}`);
+            console.log(`✅ Restored active attendance session for ${loggedId || loggedName}: status=${st.attendance.status}, checkIn=${st.attendance.checkInTime}`);
             if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
             if (typeof renderAttLog === 'function') renderAttLog();
             if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
@@ -486,7 +536,7 @@ const SupabaseData = {
           } else {
             // No record for today in cloud: if local attendance has a previous day checkIn, reset it
             if (st.attendance && st.attendance.checkInTime && !isSameCalendarDay(st.attendance.checkInTime, Date.now())) {
-              console.log(`🌅 Resetting stale previous-day shift in local attendance state for ${loggedId}`);
+              console.log(`🌅 Resetting stale previous-day shift in local attendance state for ${loggedId || loggedName}`);
               st.attendance.status = 'out';
               st.attendance.checkInTime = null;
               st.attendance.lunchStartTime = null;
@@ -1197,6 +1247,47 @@ const SupabaseData = {
       } else {
         window._adminAttLogs.unshift(mapped);
       }
+
+      // Keep active session in sync if this record is for the current logged-in employee today
+      try {
+        const st = (typeof STATE !== 'undefined') ? STATE : window._adminState;
+        if (st && st.attendance) {
+          const loggedId = localStorage.getItem('da_logged_in_emp') || (st.employee && st.employee.id);
+          const loggedName = (st.employee && st.employee.name) || '';
+          const empNorm = loggedId ? String(loggedId).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+          const currentEmpName = loggedName ? loggedName.trim().toLowerCase() : '';
+          const aEmpId = String(mapped.employee_id || mapped.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const aEmpName = String(mapped.employee_name || mapped.employeeName || '').trim().toLowerCase();
+
+          if ((empNorm && aEmpId === empNorm) || (currentEmpName && aEmpName === currentEmpName)) {
+            if (isTodayDate(mapped.date, mapped.check_in || mapped.created_at)) {
+              const parsedCheckIn = parseSafeDate(mapped.check_in || mapped.checkIn);
+              st.attendance.checkInTime = parsedCheckIn ? parsedCheckIn.getTime() : (Number(mapped.check_in) || mapped.checkIn);
+              const parsedLunchStart = parseSafeDate(mapped.lunch_start);
+              st.attendance.lunchStartTime = parsedLunchStart ? parsedLunchStart.getTime() : (mapped.lunch_start ? Number(mapped.lunch_start) : null);
+              const parsedLunchEnd = parseSafeDate(mapped.lunch_end);
+              st.attendance.lunchEndTime = parsedLunchEnd ? parsedLunchEnd.getTime() : (mapped.lunch_end ? Number(mapped.lunch_end) : null);
+              const parsedCheckOut = parseSafeDate(mapped.check_out);
+              st.attendance.checkOutTime = parsedCheckOut ? parsedCheckOut.getTime() : (mapped.check_out ? Number(mapped.check_out) : null);
+              st.attendance.photoUrl = mapped.photo_url || null;
+              st.attendance.lateLunchReason = mapped.late_lunch_reason || null;
+
+              if (st.attendance.checkOutTime || mapped.status === 'done') {
+                st.attendance.status = 'done';
+              } else if ((st.attendance.lunchStartTime && !st.attendance.lunchEndTime) || mapped.status === 'lunch') {
+                st.attendance.status = 'lunch';
+              } else if (st.attendance.checkInTime || mapped.status === 'in') {
+                st.attendance.status = 'in';
+              }
+              if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+              if (typeof renderAttLog === 'function') renderAttLog();
+              if ((st.attendance.status === 'in' || st.attendance.status === 'lunch') && typeof startAttElapsed === 'function') {
+                startAttElapsed();
+              }
+            }
+          }
+        }
+      } catch (rtAttErr) {}
     } else if (eventType === 'DELETE') {
       window._adminAttLogs = window._adminAttLogs.filter(a => a.id !== oldRow.id);
     }
@@ -1231,18 +1322,24 @@ function openSupabaseModal() {
 function closeSupabaseModal() {}
 function saveSupabaseConfig() {}
 
-// Global initialization
-document.addEventListener('DOMContentLoaded', () => {
+// Global initialization - zero latency immediate cloud hydration
+function initSupabaseApp() {
   SupabaseConfig.initClient();
-  setTimeout(() => {
-    if (SupabaseConfig.isConfigured()) {
-      SupabaseData.loadAll().then(ok => {
-        if (ok) {
-          if (typeof renderProjects === 'function') renderProjects();
-          if (typeof renderCalendars === 'function') renderCalendars();
-          if (typeof updateDashCounts === 'function') updateDashCounts();
-        }
-      });
-    }
-  }, 300);
-});
+  if (SupabaseConfig.isConfigured()) {
+    SupabaseData.loadAll().then(ok => {
+      if (ok) {
+        if (typeof renderProjects === 'function') renderProjects();
+        if (typeof renderCalendars === 'function') renderCalendars();
+        if (typeof updateDashCounts === 'function') updateDashCounts();
+        if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
+        if (typeof renderAttLog === 'function') renderAttLog();
+      }
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSupabaseApp);
+} else {
+  initSupabaseApp();
+}

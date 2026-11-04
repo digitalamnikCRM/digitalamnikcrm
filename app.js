@@ -84,6 +84,8 @@ let _audioNode = null;
 // ========================
 // FORMATTERS & UTILITIES
 // ========================
+var CRM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function parseSafeDate(val) {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
@@ -94,10 +96,42 @@ function parseSafeDate(val) {
   if (typeof val === 'string') {
     const trimmed = val.trim();
     if (!trimmed) return null;
+    // 1. Numeric timestamp string
     if (/^\d+$/.test(trimmed)) {
       const d = new Date(Number(trimmed));
       if (!isNaN(d.getTime())) return d;
     }
+    // 2. Named month format: e.g. "04 Nov 2026", "4-Nov-2026", "04 November 2026"
+    const namedMonthMatch = trimmed.match(/^(\d{1,2})[\s\-\/]+([a-zA-Z]+)[\s\-\/]+(\d{4})/);
+    if (namedMonthMatch) {
+      const day = parseInt(namedMonthMatch[1], 10);
+      const mStr = namedMonthMatch[2].toLowerCase().slice(0, 3);
+      const year = parseInt(namedMonthMatch[3], 10);
+      const mIdx = CRM_MONTHS.findIndex(m => m.toLowerCase() === mStr);
+      if (mIdx !== -1) {
+        const d = new Date(year, mIdx, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    // 3. Indian / European DD/MM/YYYY or DD-MM-YYYY format
+    const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10) - 1;
+      const year = parseInt(dmyMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // 4. ISO YYYY-MM-DD format
+    const ymdMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymdMatch) {
+      const year = parseInt(ymdMatch[1], 10);
+      const month = parseInt(ymdMatch[2], 10) - 1;
+      const day = parseInt(ymdMatch[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // 5. Fallback standard parse
     const normalized = trimmed.replace(/-/g, ' ');
     const d1 = new Date(normalized);
     if (!isNaN(d1.getTime())) return d1;
@@ -128,7 +162,10 @@ function fmtDate(ts) {
   if (!ts) return '';
   const d = parseSafeDate(ts);
   if (!d) return String(ts);
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = CRM_MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function fmtDuration(ms) {
@@ -390,7 +427,25 @@ function load() {
     try {
       const activeEmpId = String(localStorage.getItem('da_logged_in_emp') || STATE.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const curDateStr = fmtDate(Date.now());
-      const savedEmpAtt = localStorage.getItem(`da_att_${activeEmpId}_${curDateStr}`);
+      let savedEmpAtt = localStorage.getItem(`da_att_${activeEmpId}_${curDateStr}`);
+      if (!savedEmpAtt && activeEmpId) {
+        // Fallback search in local storage keys for this employee today
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(`da_att_${activeEmpId}_`)) {
+            const rawVal = localStorage.getItem(k);
+            if (rawVal) {
+              try {
+                const p = JSON.parse(rawVal);
+                if (p && p.checkInTime && isSameCalendarDay(p.checkInTime, Date.now())) {
+                  savedEmpAtt = rawVal;
+                  break;
+                }
+              } catch (err) {}
+            }
+          }
+        }
+      }
       if (savedEmpAtt) {
         const parsedAtt = JSON.parse(savedEmpAtt);
         if (parsedAtt && (parsedAtt.checkInTime || parsedAtt.status === 'in' || parsedAtt.status === 'lunch')) {
@@ -438,8 +493,7 @@ function load() {
     STATE.calendars = [];
     STATE.team = JSON.parse(JSON.stringify(DEFAULT_TEAM));
   }
-  // Immediately persist cleaned state so stale projects don't linger
-  save();
+  // Safe read complete - DO NOT call save() here so pending cloud hydration is preserved
 }
 
 // ========================
@@ -1086,6 +1140,41 @@ async function handleEmployeeLogin(e) {
   (STATE.team || []).forEach(m => {
     m.isCurrent = (m.id.toLowerCase() === member.id.toLowerCase());
   });
+
+  // Restore newly logged-in employee's today attendance if exists locally
+  try {
+    const curNorm = String(member.id).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const curDateStr = fmtDate(Date.now());
+    let savedMemberAtt = localStorage.getItem(`da_att_${curNorm}_${curDateStr}`);
+    if (!savedMemberAtt && curNorm) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(`da_att_${curNorm}_`)) {
+          const rawVal = localStorage.getItem(k);
+          if (rawVal) {
+            try {
+              const p = JSON.parse(rawVal);
+              if (p && p.checkInTime && isSameCalendarDay(p.checkInTime, Date.now())) {
+                savedMemberAtt = rawVal;
+                break;
+              }
+            } catch (err) {}
+          }
+        }
+      }
+    }
+    if (savedMemberAtt) {
+      const parsed = JSON.parse(savedMemberAtt);
+      if (parsed && (parsed.checkInTime || parsed.status === 'in' || parsed.status === 'lunch')) {
+        STATE.attendance.status = parsed.status;
+        STATE.attendance.checkInTime = parsed.checkInTime;
+        STATE.attendance.lunchStartTime = parsed.lunchStartTime;
+        STATE.attendance.lunchEndTime = parsed.lunchEndTime;
+        STATE.attendance.checkOutTime = parsed.checkOutTime;
+        STATE.attendance.lateLunchReason = parsed.lateLunchReason || null;
+      }
+    }
+  } catch (e) {}
 
   save();
   const overlay = document.getElementById('emp-login-overlay');
