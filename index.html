@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=8.0.0" />
+  <link rel="stylesheet" href="style.css?v=8.1.0" />
 </head>
 <body>
 
@@ -521,7 +521,11 @@
           <h3>Shift History &amp; Attendance Logs</h3>
           <span class="section-sub">Verified Agency Attendance History (Permanent Record)</span>
         </div>
-        <span style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:4px 10px;border-radius:99px">🔒 Permanent Verified Records</span>
+        <div style="display:flex;align-items:center;gap:8px" id="att-history-summary-pills">
+          <span class="stat-badge green" id="att-pill-present-count">Present: 0 Days</span>
+          <span class="stat-badge red" id="att-pill-absent-count" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">Absent: 0 Days</span>
+          <span style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:4px 10px;border-radius:99px">🔒 30-Day Register</span>
+        </div>
       </div>
 
       <div class="glass-table-wrap">
@@ -1425,8 +1429,8 @@ window.saveEmployeeProfile = async function() {
   } catch (e) {}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-client.js?v=8.0.0"></script>
-<script src="quotes-data.js?v=8.0.0"></script>
-<script src="app.js?v=8.0.0"></script>
+<script src="supabase-client.js?v=8.1.0"></script>
+<script src="quotes-data.js?v=8.1.0"></script>
+<script src="app.js?v=8.1.0"></script>
 </body>
 </html>

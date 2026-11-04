@@ -2230,22 +2230,142 @@ function renderAttLog() {
   if (!tbody) return;
 
   const currentEmpId = String(STATE.employee?.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const currentEmpName = String(STATE.employee?.name || '').toLowerCase().trim();
   const allLogs = Array.isArray(STATE.attendance.log) ? STATE.attendance.log : [];
   
   // Filter for current employee so records are personal & accurate
   const myLogs = currentEmpId 
     ? allLogs.filter(r => {
         const rId = String(r.employeeId || r.employee_id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return !rId || rId === currentEmpId;
+        const rName = String(r.employeeName || r.employee_name || '').toLowerCase().trim();
+        return !rId || rId === currentEmpId || (currentEmpName && rName === currentEmpName);
       })
     : allLogs;
 
-  if (myLogs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-td" style="padding:24px;text-align:center;color:#94a3b8">No attendance records logged yet for this account</td></tr>';
-    return;
+  // Generate full 30-day comprehensive attendance register (Present, Absent, Weekly Off)
+  const today = new Date();
+  const historyList = [];
+  const daysToTrack = 30; // 30-day historical ledger
+  let presentDaysCount = 0;
+  let absentDaysCount = 0;
+
+  for (let i = 0; i < daysToTrack; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const dayTs = d.getTime();
+    const dateStr = fmtDate(dayTs);
+    const dayOfWeek = d.getDay(); // 0 is Sunday
+    const isToday = (i === 0);
+
+    // Look for logged entry
+    const matchedLog = myLogs.find(l => {
+      if (l.date && l.date === dateStr) return true;
+      const lTime = Number(l.checkIn || l.check_in) || (l.created_at ? new Date(l.created_at).getTime() : 0);
+      if (lTime > 0 && isSameCalendarDay(lTime, dayTs)) return true;
+      return false;
+    });
+
+    if (matchedLog) {
+      const rawSt = String(matchedLog.status || '').toLowerCase();
+      if (rawSt === 'absent') {
+        absentDaysCount++;
+      } else if (rawSt !== 'off') {
+        presentDaysCount++;
+      }
+      historyList.push(matchedLog);
+    } else {
+      if (dayOfWeek === 0) {
+        // Sunday: Official Agency Weekly Off
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: 'Weekly Off',
+          effectiveHours: 'Off',
+          status: 'off'
+        });
+      } else {
+        // Monday through Saturday working day
+        if (isToday) {
+          if (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch') {
+            presentDaysCount++;
+            historyList.push({
+              date: dateStr,
+              employeeId: STATE.employee?.id,
+              employeeName: STATE.employee?.name,
+              checkIn: STATE.attendance.checkInTime || dayTs,
+              lunch: STATE.attendance.status === 'lunch' ? 'Ongoing' : 'None',
+              lunchDuration: '0m',
+              projectsWorked: [],
+              checkOut: '--:--',
+              workHrs: 'Working live',
+              effectiveHours: 'Working live',
+              status: 'in'
+            });
+          } else if (new Date().getHours() >= 19) {
+            // Shift deadline (7:00 PM) passed without punch in -> Marked Absent!
+            absentDaysCount++;
+            historyList.push({
+              date: dateStr,
+              employeeId: STATE.employee?.id,
+              employeeName: STATE.employee?.name,
+              checkIn: '--:--',
+              lunch: 'None',
+              lunchDuration: '0m',
+              projectsWorked: [],
+              checkOut: '--:--',
+              workHrs: '0h 0m',
+              effectiveHours: '0h 0m',
+              status: 'absent'
+            });
+          } else {
+            // Shift ongoing today, pending punch-in
+            historyList.push({
+              date: dateStr,
+              employeeId: STATE.employee?.id,
+              employeeName: STATE.employee?.name,
+              checkIn: '--:--',
+              lunch: 'None',
+              lunchDuration: '0m',
+              projectsWorked: [],
+              checkOut: '--:--',
+              workHrs: 'Pending',
+              effectiveHours: 'Pending',
+              status: 'pending'
+            });
+          }
+        } else {
+          // Past working day without punch-in -> Marked Absent!
+          absentDaysCount++;
+          historyList.push({
+            date: dateStr,
+            employeeId: STATE.employee?.id,
+            employeeName: STATE.employee?.name,
+            checkIn: '--:--',
+            lunch: 'None',
+            lunchDuration: '0m',
+            projectsWorked: [],
+            checkOut: '--:--',
+            workHrs: '0h 0m',
+            effectiveHours: '0h 0m',
+            status: 'absent'
+          });
+        }
+      }
+    }
   }
 
-  tbody.innerHTML = myLogs.map(r => {
+  // Update summary pill badges in UI if elements exist
+  const presPill = document.getElementById('att-pill-present-count');
+  if (presPill) presPill.textContent = "Present: " + presentDaysCount + " Days";
+  const absPill = document.getElementById('att-pill-absent-count');
+  if (absPill) absPill.textContent = "Absent: " + absentDaysCount + " Days";
+
+  tbody.innerHTML = historyList.map(r => {
     let checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
     let lateCheckInBadge = '';
     
@@ -2255,7 +2375,7 @@ function renderAttLog() {
       const ciD = new Date(r.checkIn);
       if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
         const mins = Math.round(((ciD.getHours() + ciD.getMinutes() / 60) - 10.5) * 60);
-        lateCheckInBadge = `<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">âš ï¸ Late (+${mins}m)</span>`;
+        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">âš ï¸ Late (+' + mins + 'm)</span>';
       }
     } else if (isLateFlag) {
       lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">âš ï¸ Late</span>';
@@ -2275,46 +2395,53 @@ function renderAttLog() {
       : (Array.isArray(r.projects_worked) && r.projects_worked.length > 0 ? r.projects_worked : null);
 
     if (projList && projList.length > 0) {
-      projectsHtml = `
-        <div style="font-size:11.5px">
-          <strong style="color:#a78bfa">${projList.length} Project${projList.length > 1 ? 's' : ''}:</strong>
-          <span style="color:#cbd5e1">${projList.map(p => (typeof p === 'object' ? `${p.name} (${p.durationStr || 'tracked'})` : p)).join(', ')}</span>
-        </div>
-      `;
+      projectsHtml = '<div style="font-size:11.5px">' +
+        '<strong style="color:#a78bfa">' + projList.length + ' Project' + (projList.length > 1 ? 's' : '') + ':</strong> ' +
+        '<span style="color:#cbd5e1">' + projList.map(p => (typeof p === 'object' ? (p.name + ' (' + (p.durationStr || 'tracked') + ')') : p)).join(', ') + '</span>' +
+      '</div>';
     } else if (r.tasksSummary || r.tasks_summary) {
-      projectsHtml = `<span style="font-size:11.5px;color:#cbd5e1">${r.tasksSummary || r.tasks_summary}</span>`;
+      projectsHtml = '<span style="font-size:11.5px;color:#cbd5e1">' + (r.tasksSummary || r.tasks_summary) + '</span>';
     }
 
-    const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
-    
-    // Status: Present or Absent
     const rawStatus = String(r.status || '').toLowerCase();
-    const isAbsent = (rawStatus === 'absent');
-    const statusLabel = isAbsent ? 'â— Absent' : 'â— Present';
-    const statusClass = isAbsent ? 'red' : 'green';
+    let statusBadge = '';
+    let workHrsBadge = '';
 
-    return `
-      <tr>
-        <td data-label="Date"><strong>${r.date || fmtDate(Date.now())}</strong></td>
-        <td data-label="Check In">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <strong>${checkInStr}</strong>${lateCheckInBadge}
-            ${r.photoUrl ? `<span title="Selfie photo verified" style="cursor:pointer;font-size:12px">ðŸ“¸</span>` : ''}
-          </div>
-        </td>
-        <td data-label="Lunch Time">
-          <div style="display:inline-flex;align-items:center;gap:4px">
-            <strong style="color:#fcd34d">${lunchDurFormatted}</strong>
-            ${isLunchLateFlag ? `<span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">âš ï¸ Late Lunch</span>` : ''}
-          </div>
-          ${reasonText ? `<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ${reasonText}">âš ï¸ ${reasonText}</div>` : ''}
-        </td>
-        <td data-label="Projects Worked">${projectsHtml}</td>
-        <td data-label="Check Out"><span>${checkOutStr}</span></td>
-        <td data-label="Effective Hours"><span class="stat-badge purple">${workHrsStr}</span></td>
-        <td data-label="Status"><span class="stat-badge ${statusClass}">${statusLabel}</span></td>
-      </tr>
-    `;
+    if (rawStatus === 'absent') {
+      statusBadge = '<span class="stat-badge red" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);font-weight:700">â— Absent</span>';
+      workHrsBadge = '<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5">0h 0m</span>';
+    } else if (rawStatus === 'off') {
+      statusBadge = '<span class="stat-badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)">â— Weekly Off</span>';
+      workHrsBadge = '<span class="stat-badge" style="background:rgba(255,255,255,0.05);color:#94a3b8">Sunday Off</span>';
+    } else if (rawStatus === 'pending') {
+      statusBadge = '<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">â— Shift In Progress</span>';
+      workHrsBadge = '<span class="stat-badge orange">Pending</span>';
+    } else {
+      statusBadge = '<span class="stat-badge green" style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-weight:700">â— Present</span>';
+      const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
+      workHrsBadge = '<span class="stat-badge purple">' + workHrsStr + '</span>';
+    }
+
+    return '<tr>' +
+      '<td data-label="Date"><strong>' + (r.date || fmtDate(Date.now())) + '</strong></td>' +
+      '<td data-label="Check In">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<strong>' + checkInStr + '</strong>' + lateCheckInBadge +
+          (r.photoUrl ? ' <span title="Selfie photo verified" style="cursor:pointer;font-size:12px">ðŸ“¸</span>' : '') +
+        '</div>' +
+      '</td>' +
+      '<td data-label="Lunch Time">' +
+        '<div style="display:inline-flex;align-items:center;gap:4px">' +
+          '<strong style="color:#fcd34d">' + lunchDurFormatted + '</strong>' +
+          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">âš ï¸ Late Lunch</span>' : '') +
+        '</div>' +
+        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">âš ï¸ ' + reasonText + '</div>' : '') +
+      '</td>' +
+      '<td data-label="Projects Worked">' + projectsHtml + '</td>' +
+      '<td data-label="Check Out"><span>' + checkOutStr + '</span></td>' +
+      '<td data-label="Effective Hours">' + workHrsBadge + '</td>' +
+      '<td data-label="Status">' + statusBadge + '</td>' +
+    '</tr>';
   }).join('');
 }
 function clearAttLog() {

@@ -638,6 +638,7 @@ const SupabaseData = {
           }
         }
       }
+      this.syncPastAbsentRecords(st);
       console.log('📦 Data successfully hydrated from Supabase Cloud!');
       persistActiveCRMState(st);
       triggerAllUIRenders();
@@ -804,17 +805,18 @@ const SupabaseData = {
       const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9]/g, '_');
       const deterministicId = entry.id || `att_${rawEmpId.replace(/[^a-z0-9]/g, '')}_${sanitizedDate}`;
 
-      const photo = entry.photoUrl || entry.photo_url || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.photoUrl) ? STATE.attendance.photoUrl : null);
-      const rawCheckIn = typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : ((typeof STATE !== 'undefined' && STATE.attendance && typeof STATE.attendance.checkInTime === 'number') ? STATE.attendance.checkInTime : Date.now()));
-      const rawLunchStart = entry.lunchStart || entry.lunch_start || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchStartTime) ? STATE.attendance.lunchStartTime : null);
-      const rawLunchEnd = entry.lunchEnd || entry.lunch_end || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchEndTime) ? STATE.attendance.lunchEndTime : null);
-      const rawCheckOut = entry.checkOut || entry.check_out || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.checkOutTime) ? STATE.attendance.checkOutTime : null);
-      const rawStatus = entry.status || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.status) ? STATE.attendance.status : (rawLunchStart && !rawLunchEnd ? 'lunch' : 'in'));
+      const isAbsent = (String(entry.status || '').toLowerCase() === 'absent');
+      const photo = isAbsent ? null : (entry.photoUrl || entry.photo_url || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.photoUrl) ? STATE.attendance.photoUrl : null));
+      const rawCheckIn = isAbsent ? null : (typeof entry.checkIn === 'number' ? entry.checkIn : (typeof entry.check_in === 'number' ? entry.check_in : ((typeof STATE !== 'undefined' && STATE.attendance && typeof STATE.attendance.checkInTime === 'number') ? STATE.attendance.checkInTime : Date.now())));
+      const rawLunchStart = isAbsent ? null : (entry.lunchStart || entry.lunch_start || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchStartTime) ? STATE.attendance.lunchStartTime : null));
+      const rawLunchEnd = isAbsent ? null : (entry.lunchEnd || entry.lunch_end || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.lunchEndTime) ? STATE.attendance.lunchEndTime : null));
+      const rawCheckOut = isAbsent ? null : (entry.checkOut || entry.check_out || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.checkOutTime) ? STATE.attendance.checkOutTime : null));
+      const rawStatus = isAbsent ? 'absent' : (entry.status || ((typeof STATE !== 'undefined' && STATE.attendance && STATE.attendance.status) ? STATE.attendance.status : (rawLunchStart && !rawLunchEnd ? 'lunch' : 'in')));
 
       // 1. Calculate check-in late status (Official shift start is 10:30 AM)
       let isLate = false;
       let lateMins = 0;
-      if (rawCheckIn) {
+      if (rawCheckIn && !isAbsent) {
         const d = new Date(rawCheckIn);
         const hourVal = d.getHours() + (d.getMinutes() / 60);
         if (hourVal > 10.5) {
@@ -948,6 +950,56 @@ const SupabaseData = {
       }
     } catch (e) {
       console.error('logAttendance exception:', e);
+    }
+  },
+
+  // Resilient Cloud Attendance Auto-Sync for Missed Working Days
+  async syncPastAbsentRecords(st) {
+    if (!SupabaseConfig.isConfigured() || !window.sbClient) return;
+    try {
+      const activeState = st || getActiveCRMState();
+      const staffList = Array.isArray(activeState.team)
+        ? activeState.team.filter(m => !m.isFounder && (m.id && String(m.id).toLowerCase().replace(/[^a-z0-9]/g, '') !== 'emp000'))
+        : [];
+      if (staffList.length === 0) return;
+
+      const today = new Date();
+      const logs = window._adminAttLogs || [];
+
+      // Check last 7 calendar working days (Monday - Saturday)
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+        if (d.getDay() === 0) continue; // Skip Sunday (Weekly Off)
+        const dStr = fmtDate(d.getTime());
+
+        for (const m of staffList) {
+          const normId = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normName = String(m.name || '').toLowerCase().trim();
+
+          const hasLog = logs.some(a => {
+            const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+            if (aId !== normId && aName !== normName) return false;
+            const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+            return (aDateStr === dStr) || isSameCalendarDay(a.check_in || a.created_at, d.getTime());
+          });
+
+          if (!hasLog) {
+            // Upsert absent record into Supabase for this missed shift
+            await this.logAttendance({
+              employeeId: m.id,
+              employeeName: m.name,
+              date: dStr,
+              status: 'absent',
+              checkIn: null,
+              checkOut: null,
+              effectiveHours: '0h 0m'
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Past absent sync notice:', e);
     }
   },
 
