@@ -495,6 +495,11 @@
             <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
             <span>Punch Check Out</span>
           </button>
+
+          <button type="button" class="att-action-btn" id="btn-reset-shift" onclick="resetTodayShift()" style="display:none;background:rgba(239,68,68,0.15);border:1px dashed rgba(239,68,68,0.4);color:#fca5a5;max-width:160px" title="Testing: Reset today's shift back to punch-in">
+            <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+            <span>Reset (Test)</span>
+          </button>
         </div>
 
         <!-- Shift Summary Banner (on checkout) -->
@@ -524,7 +529,7 @@
         <div style="display:flex;align-items:center;gap:8px" id="att-history-summary-pills">
           <span class="stat-badge green" id="att-pill-present-count">Present: 0 Days</span>
           <span class="stat-badge red" id="att-pill-absent-count" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">Absent: 0 Days</span>
-          <span style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:4px 10px;border-radius:99px">🔒 30-Day Register</span>
+          <span style="font-size:11px;color:var(--text-muted);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:4px 10px;border-radius:99px">🔒 Monthly Register (This Month)</span>
         </div>
       </div>
 

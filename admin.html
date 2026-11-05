@@ -1468,16 +1468,16 @@
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
         <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
           <button type="button" class="ts-subtab-btn active" id="att-subtab-history" onclick="switchAttendanceView('history')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
-            <span>&#128197; 30-Day History &amp; Monthly Register</span>
+            <span>📅 Monthly Attendance Register</span>
           </button>
           <button type="button" class="ts-subtab-btn" id="att-subtab-today" onclick="switchAttendanceView('today')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
-            <span>ðŸŸ¢ Today's Live Station</span>
+            <span>🟢 Today's Live Station</span>
           </button>
         </div>
 
         <div style="display:flex;align-items:center;gap:8px">
           <button type="button" class="btn-small btn-secondary" onclick="loadAdminAll()" style="display:flex;align-items:center;gap:6px">
-            <span>ðŸ”„ Sync Cloud Records</span>
+            <span>🔄 Sync Cloud Records</span>
           </button>
         </div>
       </div>
@@ -1492,22 +1492,22 @@
             <span style="font-size:11px;color:#64748b;display:block">Permanent Supabase logs</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fcd34d;display:block">âš ï¸ Late Check-Ins</span>
+            <span style="font-size:11.5px;color:#fcd34d;display:block">⏰ Late Check-Ins</span>
             <strong id="history-kpi-late-checkin" style="font-size:20px;color:#f59e0b">0</strong>
             <span style="font-size:11px;color:#fcd34d;display:block">After 10:30 AM shift start</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fcd34d;display:block">ðŸŸ¡ Lunch Schedule Exceptions</span>
+            <span style="font-size:11.5px;color:#fcd34d;display:block">🍱 Lunch Schedule Exceptions</span>
             <strong id="history-kpi-late-lunch" style="font-size:20px;color:#fbbf24">0</strong>
             <span style="font-size:11px;color:#fcd34d;display:block">&gt;60m or post-3PM</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#c4b5fd;display:block">&#128188; Deliverables Worked</span>
+            <span style="font-size:11.5px;color:#c4b5fd;display:block">💼 Deliverables Worked</span>
             <strong id="history-kpi-projects" style="font-size:20px;color:#a78bfa">0</strong>
             <span style="font-size:11px;color:#c4b5fd;display:block">Days with project work</span>
           </div>
           <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fca5a5;display:block">&#128308; Absent Days</span>
+            <span style="font-size:11.5px;color:#fca5a5;display:block">🔴 Absent Days</span>
             <strong id="history-kpi-absent" style="font-size:20px;color:#f87171">0</strong>
             <span style="font-size:11px;color:#fca5a5;display:block">Missed working shifts</span>
           </div>
@@ -1519,10 +1519,10 @@
             <!-- Preset Date Pills -->
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span style="font-size:12px;color:#94a3b8;margin-right:4px">Period:</span>
-              <button type="button" class="att-pill active" id="btn-preset-all" onclick="setHistoryDatePreset('all', this)">Past 30 Days</button>
+              <button type="button" class="att-pill active" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
               <button type="button" class="att-pill" id="btn-preset-today" onclick="setHistoryDatePreset('today', this)">Today</button>
               <button type="button" class="att-pill" id="btn-preset-yesterday" onclick="setHistoryDatePreset('yesterday', this)">Yesterday</button>
-              <button type="button" class="att-pill" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
+              <button type="button" class="att-pill" id="btn-preset-all" onclick="setHistoryDatePreset('all', this)">Past 30 Days</button>
               <button type="button" class="att-pill" id="btn-preset-last_month" onclick="setHistoryDatePreset('last_month', this)">Last Month</button>
             </div>
 
@@ -1530,7 +1530,7 @@
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:12px;color:#94a3b8">Pick Date:</span>
               <input type="date" id="admin-att-history-date-picker" onchange="onHistoryDatePickerChange(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none" />
-              <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">âœ• Clear</button>
+              <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">✕ Clear</button>
             </div>
           </div>
 
@@ -1548,11 +1548,11 @@
                 <span style="font-size:12px;color:#94a3b8">Filter:</span>
                 <select id="admin-att-history-issue-select" onchange="onHistoryIssueSelect(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:#fff;font-size:12.5px;outline:none">
                   <option value="all">All Attendance Records</option>
-                  <option value="late_checkin">âš ï¸ Late Check-In Only (Post 10:30 AM)</option>
-                  <option value="late_lunch">ðŸŸ¡ Late Lunch / Exceeded Break Only</option>
-                  <option value="worked_projects">ðŸŽ¬ Worked on Deliverables</option>
-                  <option value="present">ðŸŸ¢ Present Records Only</option>
-                  <option value="absent">ðŸ”´ Absent Records Only</option>
+                  <option value="late_checkin">⚠️ Late Check-In Only (Post 10:30 AM)</option>
+                  <option value="late_lunch">🍱 Late Lunch / Exceeded Break Only</option>
+                  <option value="worked_projects">💼 Worked on Deliverables</option>
+                  <option value="present">🟢 Present Records Only</option>
+                  <option value="absent">🔴 Absent Records Only</option>
                 </select>
               </div>
             </div>
@@ -1591,14 +1591,14 @@
       <div id="att-view-today" style="display:none">
         <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
-            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">ðŸŸ¢ Today's Live Attendance Station</h4>
+            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">🟢 Today's Live Attendance Station</h4>
             <span style="font-size:12px;color:#94a3b8">Real-time attendance pulse for today. Photos automatically preserved in permanent shift records.</span>
           </div>
           <div class="att-filter-pills" id="admin-att-today-filters">
             <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
-            <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">ðŸŸ¢ Present (<span id="att-filter-pres-cnt">0</span>)</button>
-            <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">ðŸ”´ Absent (<span id="att-filter-abs-cnt">0</span>)</button>
-            <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">ðŸŸ¡ Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
+            <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">🟢 Present (<span id="att-filter-pres-cnt">0</span>)</button>
+            <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
+            <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
           </div>
         </div>
 
@@ -3347,7 +3347,7 @@
     // ====================================================================
     // &#128197; 30-DAY HISTORICAL ATTENDANCE REGISTER & MONTHLY ARCHIVE
     // ====================================================================
-    let _historyDatePreset = 'all'; // 'all', 'today', 'yesterday', 'this_month', 'last_month', 'custom'
+    let _historyDatePreset = 'this_month'; // 'all', 'today', 'yesterday', 'this_month', 'last_month', 'custom'
     let _historySpecificDate = '';
     let _historyStaffFilter = 'all';
     let _historyIssueFilter = 'all';
@@ -3478,9 +3478,10 @@
         const targetD = new Date(_historySpecificDate);
         if (!isNaN(targetD.getTime())) dateScopeList.push(targetD);
       } else {
-        // Default: 'all' (Past 30 Days)
-        for (let i = 0; i < 30; i++) {
-          dateScopeList.push(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i));
+        // Default: 'all' or 'this_month' (Clean month-to-date: from today down to 1st of current month)
+        const curD = today.getDate();
+        for (let i = 0; i < curD; i++) {
+          dateScopeList.push(new Date(today.getFullYear(), today.getMonth(), curD - i));
         }
       }
 
@@ -3735,7 +3736,7 @@
             const d = new Date(ciTime);
             if ((d.getHours() + d.getMinutes() / 60) > 10.5) {
               const mins = Math.round(((d.getHours() + d.getMinutes() / 60) - 10.5) * 60);
-              lateBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Official shift start is 10:30 AM">âš ï¸ Late (+' + mins + 'm)</span>';
+              lateBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Official shift start is 10:30 AM">⚠️ Late (+' + mins + 'm)</span>';
             } else {
               lateBadge = '<span style="font-size:10px;color:#10b981;font-weight:600;margin-left:4px">&#10003; On-Time</span>';
             }
@@ -3747,8 +3748,8 @@
         const reason = a.late_lunch_reason || a.lateLunchReason || '';
         const isLunchLate = Boolean(a.is_lunch_late || a.isLunchLate || reason);
         let lunchHtml = '<div><div style="display:inline-flex;align-items:center;gap:4px"><strong style="color:#fcd34d">' + lunchDur + '</strong>' +
-          (isLunchLate ? '<span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or schedule exception">âš ï¸ Late Lunch</span>' : '') +
-          '</div>' + (reason ? '<div style="font-size:10.5px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reason + '">âš ï¸ "' + reason + '"</div>' : '') +
+          (isLunchLate ? '<span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or schedule exception">⚠️ Late Lunch</span>' : '') +
+          '</div>' + (reason ? '<div style="font-size:10.5px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reason + '">⚠️ "' + reason + '"</div>' : '') +
           '</div>';
 
         // Deliverables / Projects Worked
@@ -3774,13 +3775,13 @@
         const rawStatus = String(a.status || '').toLowerCase();
         let statusHtml = '';
         if (rawStatus === 'absent') {
-          statusHtml = '<span class="stat-badge red" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.35);font-weight:700">â— Absent</span>';
+          statusHtml = '<span class="stat-badge red" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.35);font-weight:700">Absent</span>';
         } else if (rawStatus === 'off') {
-          statusHtml = '<span class="stat-badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);font-weight:600">â— Weekly Off</span>';
+          statusHtml = '<span class="stat-badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);font-weight:600">Weekly Off</span>';
         } else if (rawStatus === 'pending') {
-          statusHtml = '<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">â— Shift In Progress</span>';
+          statusHtml = '<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">Shift In Progress</span>';
         } else {
-          statusHtml = '<span class="stat-badge green" style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-weight:700">â— Present</span>';
+          statusHtml = '<span class="stat-badge green" style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-weight:700">Present</span>';
         }
 
         // Selfie
@@ -4581,6 +4582,19 @@
       toast(`Team member ${emp.name} removed from roster`, 'info');
     }
 
+    
+    function viewEmpInFullAttendance(empId) {
+      closeModal('admin-emp-detail-modal');
+      switchNav('attendance');
+      switchAttendanceView('history');
+      setHistoryDatePreset('this_month');
+      const staffSel = document.getElementById('admin-att-history-staff-select');
+      if (staffSel) {
+        staffSel.value = String(empId).toLowerCase().replace(/[^a-z0-9]/g, '');
+        onHistoryStaffSelect(staffSel.value);
+      }
+    }
+
     function openAdminEmpDetail(id) {
       const state = getCRMState();
       const m = (state.team || []).find(x => x.id === id);
@@ -4713,6 +4727,124 @@
         `}
       </div>
     `;
+
+            // Generate Clean Monthly Attendance Register for this employee
+      const todayAttDate = new Date();
+      const curDateNum = todayAttDate.getDate();
+      const attLogsAll = window._adminAttLogs || [];
+      const normTargetEmpId = String(m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normTargetEmpName = String(m.name || '').toLowerCase().trim();
+
+      let empPresCount = 0;
+      let empAbsCount = 0;
+      let empLateCount = 0;
+      const empMonthRows = [];
+
+      for (let day = curDateNum; day >= 1; day--) {
+        const d = new Date(todayAttDate.getFullYear(), todayAttDate.getMonth(), day);
+        const dayTs = d.getTime();
+        const dStr = fmtDate(dayTs);
+        const dayOfWeek = d.getDay(); // 0 is Sunday
+        const isToday = (day === curDateNum);
+
+        const matched = attLogsAll.find(a => {
+          if (!a) return false;
+          const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+          if (aId !== normTargetEmpId && aName !== normTargetEmpName) return false;
+          const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+          const aTime = Number(a.check_in) || 0;
+          return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dayTs));
+        });
+
+        if (matched) {
+          const rawSt = String(matched.status || '').toLowerCase();
+          if (rawSt === 'absent') {
+            empAbsCount++;
+            empMonthRows.push({ date: dStr, status: 'Absent', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: '0h 0m', badge: 'red' });
+          } else {
+            empPresCount++;
+            const ciTime = Number(matched.check_in) || 0;
+            let lateInfo = '';
+            if (ciTime > 0) {
+              const dObj = new Date(ciTime);
+              if ((dObj.getHours() + dObj.getMinutes()/60) > 10.5) {
+                const mins = Math.round(((dObj.getHours() + dObj.getMinutes()/60) - 10.5) * 60);
+                lateInfo = ` <span style="color:#f59e0b;font-size:10px;font-weight:700">(+${mins}m)</span>`;
+                empLateCount++;
+              }
+            }
+            const ciStr = matched.check_in ? (fmt(matched.check_in) + lateInfo) : '--:--';
+            const coStr = matched.check_out ? fmt(matched.check_out) : '--:--';
+            const lStr = formatLunchDurationDisplay(matched.lunch_duration || matched.lunch, matched.lunch_start, matched.lunch_end, matched.status);
+            const hrsStr = matched.effective_hours || matched.effectiveHours || 'Completed';
+            empMonthRows.push({ date: dStr, status: 'Present', checkIn: ciStr, lunch: lStr, checkOut: coStr, hours: hrsStr, badge: 'green' });
+          }
+        } else {
+          if (dayOfWeek === 0) {
+            empMonthRows.push({ date: dStr, status: 'Sunday Off', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Off', badge: 'blue' });
+          } else if (isToday) {
+            if (todayAttDate.getHours() >= 19) {
+              empAbsCount++;
+              empMonthRows.push({ date: dStr, status: 'Absent', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: '0h 0m', badge: 'red' });
+            } else {
+              empMonthRows.push({ date: dStr, status: 'Pending', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Pending', badge: 'orange' });
+            }
+          } else {
+            empAbsCount++;
+            empMonthRows.push({ date: dStr, status: 'Absent', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: '0h 0m', badge: 'red' });
+          }
+        }
+      }
+
+      const attSectionHtml = `
+      <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <label style="font-size:11.5px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px;margin:0">
+              Monthly Attendance Ledger (This Month)
+            </label>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <span style="font-size:11px;color:#34d399;font-weight:700">● Present: ${empPresCount} Days</span>
+              <span style="font-size:11px;color:#f87171;font-weight:700">● Absent: ${empAbsCount} Days</span>
+              <span style="font-size:11px;color:#fbbf24;font-weight:700">● Late: ${empLateCount}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-small btn-secondary" onclick="viewEmpInFullAttendance('${m.id}')" style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px">
+            🔍 View in Full Attendance Register
+          </button>
+        </div>
+
+        <div style="max-height:220px;overflow-y:auto;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:rgba(0,0,0,0.2)">
+          <table style="width:100%;border-collapse:collapse;font-size:11.5px;text-align:left">
+            <thead>
+              <tr style="background:rgba(255,255,255,0.04);color:#94a3b8;border-bottom:1px solid rgba(255,255,255,0.08)">
+                <th style="padding:8px 10px">Date</th>
+                <th style="padding:8px 10px">Status</th>
+                <th style="padding:8px 10px">Check In</th>
+                <th style="padding:8px 10px">Lunch</th>
+                <th style="padding:8px 10px">Check Out</th>
+                <th style="padding:8px 10px">Effective Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${empMonthRows.map(r => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+                  <td style="padding:7px 10px;color:#fff;font-weight:600">${r.date}</td>
+                  <td style="padding:7px 10px"><span class="stat-badge ${r.badge}" style="font-size:10.5px">${r.status}</span></td>
+                  <td style="padding:7px 10px;color:#cbd5e1">${r.checkIn}</td>
+                  <td style="padding:7px 10px;color:#fcd34d">${r.lunch}</td>
+                  <td style="padding:7px 10px;color:#cbd5e1">${r.checkOut}</td>
+                  <td style="padding:7px 10px;color:#c4b5fd">${r.hours}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `;
+
+      modalBody.innerHTML += attSectionHtml;
 
       openModal('admin-emp-detail-modal');
     }

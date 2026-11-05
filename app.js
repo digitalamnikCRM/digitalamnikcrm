@@ -1740,7 +1740,14 @@ function syncAttendanceUI() {
     if (sidebarStatusText) sidebarStatusText.textContent = 'Shift Done';
 
     showAttendanceSummary();
-  } else if (att.status === 'absent' || (att.status === 'out' && new Date().getHours() >= 19)) {
+  }
+
+  const btnReset = document.getElementById('btn-reset-shift');
+  if (btnReset) {
+    btnReset.style.display = (att.status === 'done' || (STATE.employee && STATE.employee.isFounder)) ? 'inline-flex' : 'none';
+  }
+
+  if (att.status === 'absent' || (att.status === 'out' && new Date().getHours() >= 19)) {
     dot.className = 'radar-ping-dot out';
     statusText.textContent = 'Shift Ended — Marked Absent (7:00 PM Deadline Passed)';
     btnIn.disabled = true;
@@ -1773,6 +1780,134 @@ function syncAttendanceUI() {
 
     if (avatarStatusDot) avatarStatusDot.style.background = '#64748b';
     if (sidebarStatusText) sidebarStatusText.textContent = 'Offline';
+  }
+}
+
+function evaluateAutoCheckout() {
+  const att = STATE.attendance;
+  if (!att || (att.status !== 'in' && att.status !== 'lunch')) return;
+
+  const now = new Date();
+  const checkInTime = Number(att.checkInTime) || 0;
+  if (!checkInTime) return;
+
+  const isToday = isSameCalendarDay(checkInTime, Date.now());
+  const isPast7PM = isToday && now.getHours() >= 19;
+  const isPastDay = !isToday;
+
+  if (isPast7PM || isPastDay) {
+    console.log('⏰ Auto-checkout: 07:00 PM shift deadline reached or past day shift concluded');
+    clearInterval(att.elapsedInterval);
+
+    const shiftDate = new Date(checkInTime);
+    const cutoff7PM = new Date(shiftDate.getFullYear(), shiftDate.getMonth(), shiftDate.getDate(), 19, 0, 0, 0).getTime();
+    const effectiveCheckOut = Math.max(checkInTime, cutoff7PM);
+
+    let lunchMs = 0;
+    if (att.lunchStartTime && att.lunchEndTime) {
+      lunchMs = Number(att.lunchEndTime) - Number(att.lunchStartTime);
+    } else if (att.lunchStartTime) {
+      lunchMs = Math.min(60 * 60 * 1000, effectiveCheckOut - Number(att.lunchStartTime));
+    }
+    const totalMs = Math.max(0, effectiveCheckOut - checkInTime - lunchMs);
+    const durationStr = fmtDuration(totalMs);
+    const shiftDateStr = fmtDate(checkInTime);
+
+    if (isToday) {
+      att.status = 'done';
+      att.checkOutTime = effectiveCheckOut;
+      att.effectiveHours = durationStr;
+    } else {
+      att.status = 'out';
+      att.checkInTime = null;
+      att.lunchStartTime = null;
+      att.lunchEndTime = null;
+      att.checkOutTime = null;
+      att.photoUrl = null;
+      att.lateLunchReason = null;
+    }
+
+    if (!att.log) att.log = [];
+    const existing = att.log.find(l => l.date === shiftDateStr && (l.employeeId === STATE.employee?.id || l.employee_id === STATE.employee?.id));
+    if (existing) {
+      existing.checkOut = fmt(effectiveCheckOut);
+      existing.status = 'done';
+      existing.workHrs = durationStr;
+      existing.effectiveHours = durationStr;
+    } else {
+      att.log.unshift({
+        id: 'att-' + uid(),
+        employeeId: STATE.employee?.id,
+        employeeName: STATE.employee?.name,
+        date: shiftDateStr,
+        checkIn: fmt(checkInTime),
+        lunch: lunchMs > 0 ? `${Math.round(lunchMs/60000)}m` : 'None',
+        checkOut: fmt(effectiveCheckOut),
+        workHrs: durationStr,
+        status: 'done',
+        effectiveHours: durationStr
+      });
+    }
+
+    save();
+    if (typeof SupabaseData !== 'undefined') {
+      SupabaseData.logAttendance({
+        employeeId: STATE.employee?.id,
+        employeeName: STATE.employee?.name,
+        date: shiftDateStr,
+        checkIn: checkInTime,
+        lunchStart: att.lunchStartTime,
+        lunchEnd: att.lunchEndTime,
+        checkOut: effectiveCheckOut,
+        effectiveHours: durationStr,
+        status: 'done'
+      });
+    }
+    syncAttendanceUI();
+    renderAttLog();
+  }
+}
+
+function resetTodayShift() {
+  if (!confirm('Are you sure you want to reset today\'s attendance shift for testing? This will set state back to ready-to-punch-in.')) return;
+  const todayDateStr = fmtDate(Date.now());
+  const empId = STATE.employee?.id;
+  const normEmpId = String(empId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  clearInterval(STATE.attendance.elapsedInterval);
+  STATE.attendance.status = 'out';
+  STATE.attendance.checkInTime = null;
+  STATE.attendance.lunchStartTime = null;
+  STATE.attendance.lunchEndTime = null;
+  STATE.attendance.checkOutTime = null;
+  STATE.attendance.photoUrl = null;
+  STATE.attendance.lateLunchReason = null;
+
+  try {
+    localStorage.removeItem(`da_att_${normEmpId}_${todayDateStr}`);
+  } catch (e) {}
+
+  if (Array.isArray(STATE.attendance.log)) {
+    STATE.attendance.log = STATE.attendance.log.filter(l => !(l.date === todayDateStr && (l.employeeId === empId || l.employee_id === empId)));
+  }
+
+  save();
+
+  if (window.sbClient && normEmpId) {
+    const detId = `att_${normEmpId}_${todayDateStr.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    window.sbClient.from('attendance_logs').delete().eq('id', detId).then(() => {
+      console.log('Today attendance log reset from Supabase');
+      if (Array.isArray(window._adminAttLogs)) {
+        window._adminAttLogs = window._adminAttLogs.filter(a => a.id !== detId);
+      }
+      renderAttLog();
+      syncAttendanceUI();
+      toast('Shift reset to Ready to Punch In!', 'success');
+    });
+  } else {
+    renderAttLog();
+    syncAttendanceUI();
+    toast('Shift reset to Ready to Punch In!', 'success');
   }
 }
 
@@ -2245,19 +2380,21 @@ function renderAttLog() {
       })
     : allLogs;
 
-  // Generate full 30-day comprehensive attendance register (Present, Absent, Weekly Off)
+  // Clean attendance register for THIS MONTH (Day 1 to today)
   const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const currentDate = today.getDate(); // e.g. 5 on Nov 5
   const historyList = [];
-  const daysToTrack = 30; // 30-day historical ledger
   let presentDaysCount = 0;
   let absentDaysCount = 0;
 
-  for (let i = 0; i < daysToTrack; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+  for (let day = currentDate; day >= 1; day--) {
+    const d = new Date(currentYear, currentMonth, day);
     const dayTs = d.getTime();
     const dateStr = fmtDate(dayTs);
     const dayOfWeek = d.getDay(); // 0 is Sunday
-    const isToday = (i === 0);
+    const isToday = (day === currentDate);
 
     // Look for logged entry
     const matchedLog = myLogs.find(l => {
@@ -2378,10 +2515,10 @@ function renderAttLog() {
       const ciD = new Date(r.checkIn);
       if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
         const mins = Math.round(((ciD.getHours() + ciD.getMinutes() / 60) - 10.5) * 60);
-        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">⚠️ï¸ Late (+' + mins + 'm)</span>';
+        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">⏰ Late (+' + mins + 'm)</span>';
       }
     } else if (isLateFlag) {
-      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">⚠️ï¸ Late</span>';
+      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">⏰ Late</span>';
     }
 
     const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
@@ -2411,16 +2548,16 @@ function renderAttLog() {
     let workHrsBadge = '';
 
     if (rawStatus === 'absent') {
-      statusBadge = '<span class="stat-badge red" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);font-weight:700">â— Absent</span>';
+      statusBadge = '<span class="stat-badge red" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);font-weight:700">Absent</span>';
       workHrsBadge = '<span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5">0h 0m</span>';
     } else if (rawStatus === 'off') {
-      statusBadge = '<span class="stat-badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)">â— Weekly Off</span>';
+      statusBadge = '<span class="stat-badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)">Weekly Off</span>';
       workHrsBadge = '<span class="stat-badge" style="background:rgba(255,255,255,0.05);color:#94a3b8">Sunday Off</span>';
     } else if (rawStatus === 'pending') {
-      statusBadge = '<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">â— Shift In Progress</span>';
+      statusBadge = '<span class="stat-badge orange" style="background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)">Shift In Progress</span>';
       workHrsBadge = '<span class="stat-badge orange">Pending</span>';
     } else {
-      statusBadge = '<span class="stat-badge green" style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-weight:700">â— Present</span>';
+      statusBadge = '<span class="stat-badge green" style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);font-weight:700">Present</span>';
       const workHrsStr = (r.workHrs && r.workHrs !== 'undefined') ? r.workHrs : (r.effectiveHours && r.effectiveHours !== 'undefined' ? r.effectiveHours : (r.status === 'in' ? 'Working live' : '0h 0m'));
       workHrsBadge = '<span class="stat-badge purple">' + workHrsStr + '</span>';
     }
@@ -2436,9 +2573,9 @@ function renderAttLog() {
       '<td data-label="Lunch Time">' +
         '<div style="display:inline-flex;align-items:center;gap:4px">' +
           '<strong style="color:#fcd34d">' + lunchDurFormatted + '</strong>' +
-          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">⚠️ï¸ Late Lunch</span>' : '') +
+          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">⏰ Late Lunch</span>' : '') +
         '</div>' +
-        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">⚠️ï¸ ' + reasonText + '</div>' : '') +
+        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">⏰ ' + reasonText + '</div>' : '') +
       '</td>' +
       '<td data-label="Projects Worked">' + projectsHtml + '</td>' +
       '<td data-label="Check Out"><span>' + checkOutStr + '</span></td>' +
@@ -3002,6 +3139,11 @@ function deleteProject() {
 
 function clearAllProjects() {
   if (!confirm('Are you sure you want to remove all deliverables from your workspace?')) return;
+  // Periodic check for 7:00 PM auto check-out
+  setInterval(() => {
+    evaluateAutoCheckout();
+  }, 30000);
+
   if (STATE.activeProjectTimer) {
     stopProjectWork(STATE.activeProjectTimer.projectId, true);
   }
@@ -3141,6 +3283,11 @@ function stopProjectWork(id, isSwitching = false) {
 }
 
 function stopActiveProjectWork() {
+  // Periodic check for 7:00 PM auto check-out
+  setInterval(() => {
+    evaluateAutoCheckout();
+  }, 30000);
+
   if (STATE.activeProjectTimer) {
     stopProjectWork(STATE.activeProjectTimer.projectId);
   }
@@ -3151,6 +3298,11 @@ function syncActiveTaskTopbar() {
   const nameEl = document.getElementById('topbar-active-task-name');
   const timeEl = document.getElementById('topbar-active-task-timer');
   if (!bar) return;
+
+  // Periodic check for 7:00 PM auto check-out
+  setInterval(() => {
+    evaluateAutoCheckout();
+  }, 30000);
 
   if (STATE.activeProjectTimer) {
     const proj = STATE.projects.find(p => p.id === STATE.activeProjectTimer.projectId);
@@ -4742,6 +4894,7 @@ function closeModalOutside(e, id) {
 function init() {
   checkEmployeeLogin();
   load();
+  evaluateAutoCheckout();
   evaluateAutoAbsent();
   syncProfileUI();
   syncAttendanceUI();
@@ -4762,6 +4915,11 @@ function init() {
   }
 
   // Restore active project timer ticker if one was saved as active
+  // Periodic check for 7:00 PM auto check-out
+  setInterval(() => {
+    evaluateAutoCheckout();
+  }, 30000);
+
   if (STATE.activeProjectTimer) {
     updateProjectTimerTicker();
     syncActiveTaskTopbar();

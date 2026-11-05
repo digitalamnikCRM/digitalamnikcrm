@@ -326,7 +326,17 @@ const SupabaseData = {
           priority: p.priority,
           status: p.status,
           deadline: p.deadline,
-          assigned: Array.isArray(p.assigned) ? p.assigned : [],
+          assigned: (() => {
+            if (Array.isArray(p.assigned)) return p.assigned;
+            if (typeof p.assigned === 'string') {
+              try {
+                const parsed = JSON.parse(p.assigned);
+                if (Array.isArray(parsed)) return parsed;
+              } catch(e) {}
+              return p.assigned.split(',').map(s => s.trim()).filter(Boolean);
+            }
+            return [];
+          })(),
           desc: p.description,
           totalTimeSpent: Number(p.total_time_spent) || 0,
           sessions: Array.isArray(p.sessions) ? p.sessions : [],
@@ -645,7 +655,7 @@ const SupabaseData = {
           }
         }
       }
-      this.syncPastAbsentRecords(st);
+      // Past absent records backfill removed per user specification
       console.log('📦 Data successfully hydrated from Supabase Cloud!');
       persistActiveCRMState(st);
       triggerAllUIRenders();
