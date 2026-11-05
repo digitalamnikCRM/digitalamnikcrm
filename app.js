@@ -1740,16 +1740,9 @@ function syncAttendanceUI() {
     if (sidebarStatusText) sidebarStatusText.textContent = 'Shift Done';
 
     showAttendanceSummary();
-  }
-
-  const btnReset = document.getElementById('btn-reset-shift');
-  if (btnReset) {
-    btnReset.style.display = (att.status === 'done' || (STATE.employee && STATE.employee.isFounder)) ? 'inline-flex' : 'none';
-  }
-
-  if (att.status === 'absent' || (att.status === 'out' && new Date().getHours() >= 19)) {
+  } else if (att.status === 'absent' || (att.status === 'out' && new Date().getHours() >= 19)) {
     dot.className = 'radar-ping-dot out';
-    statusText.textContent = 'Shift Ended — Marked Absent (7:00 PM Deadline Passed)';
+    statusText.textContent = 'Shift Ended - Marked Absent (7:00 PM Deadline Passed)';
     btnIn.disabled = true;
     btnLunch.disabled = true;
     btnOut.disabled = true;
@@ -1776,10 +1769,18 @@ function syncAttendanceUI() {
     const b = document.getElementById('dash-status-badge');
     b.textContent = 'Pending';
     b.className = 'stat-badge orange';
+    b.style.background = '';
+    b.style.color = '';
+    b.style.border = '';
     document.getElementById('dash-status-sub').textContent = 'Shift active: Click to Punch In with photo';
 
     if (avatarStatusDot) avatarStatusDot.style.background = '#64748b';
     if (sidebarStatusText) sidebarStatusText.textContent = 'Offline';
+  }
+
+  const btnReset = document.getElementById('btn-reset-shift');
+  if (btnReset) {
+    btnReset.style.display = (att.status === 'done' || (STATE.employee && STATE.employee.isFounder)) ? 'inline-flex' : 'none';
   }
 }
 
@@ -2404,6 +2405,69 @@ function renderAttLog() {
       return false;
     });
 
+    if (isToday) {
+      const liveCheckIn = STATE.attendance?.checkInTime || (matchedLog && (matchedLog.checkIn || matchedLog.check_in));
+      const liveStatus = STATE.attendance?.status || (matchedLog && matchedLog.status);
+      const isLiveActive = (liveStatus === 'in' || liveStatus === 'lunch' || liveStatus === 'done' || (liveCheckIn && liveStatus !== 'absent'));
+
+      if (isLiveActive) {
+        presentDaysCount++;
+        historyList.push({
+          id: matchedLog?.id || ('att-today-' + (STATE.employee?.id || 'emp')),
+          date: dateStr,
+          employeeId: STATE.employee?.id || matchedLog?.employeeId,
+          employeeName: STATE.employee?.name || matchedLog?.employeeName,
+          checkIn: liveCheckIn || dayTs,
+          lunch: (liveStatus === 'lunch') ? 'Ongoing' : (matchedLog?.lunch || (STATE.attendance?.lunchStartTime ? 'Taken' : 'None')),
+          lunchDuration: matchedLog?.lunchDuration || matchedLog?.lunch_duration || '0m',
+          lunchStart: STATE.attendance?.lunchStartTime || matchedLog?.lunchStart,
+          lunchEnd: STATE.attendance?.lunchEndTime || matchedLog?.lunchEnd,
+          projectsWorked: matchedLog?.projectsWorked || matchedLog?.projects_worked || [],
+          checkOut: (liveStatus === 'done') ? (STATE.attendance?.checkOutTime || matchedLog?.checkOut || '--:--') : '--:--',
+          workHrs: (liveStatus === 'done') ? (STATE.attendance?.effectiveHours || matchedLog?.effectiveHours || 'Done') : 'Working live',
+          effectiveHours: (liveStatus === 'done') ? (STATE.attendance?.effectiveHours || matchedLog?.effectiveHours || 'Done') : 'Working live',
+          status: liveStatus === 'done' ? 'done' : 'in',
+          photoUrl: STATE.attendance?.photoUrl || matchedLog?.photoUrl || matchedLog?.photo_url || null,
+          isLate: matchedLog?.isLate || matchedLog?.is_late,
+          lateLunchReason: STATE.attendance?.lateLunchReason || matchedLog?.lateLunchReason || matchedLog?.late_lunch_reason || null
+        });
+        continue;
+      } else if (new Date().getHours() >= 19) {
+        // Shift deadline (7:00 PM) passed without punch in -> Marked Absent!
+        absentDaysCount++;
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: '0h 0m',
+          effectiveHours: '0h 0m',
+          status: 'absent'
+        });
+        continue;
+      } else {
+        // Shift ongoing today, pending punch-in
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: 'Pending',
+          effectiveHours: 'Pending',
+          status: 'pending'
+        });
+        continue;
+      }
+    }
+
     if (matchedLog) {
       const rawSt = String(matchedLog.status || '').toLowerCase();
       if (rawSt === 'absent') {
@@ -2429,72 +2493,21 @@ function renderAttLog() {
           status: 'off'
         });
       } else {
-        // Monday through Saturday working day
-        if (isToday) {
-          if (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch') {
-            presentDaysCount++;
-            historyList.push({
-              date: dateStr,
-              employeeId: STATE.employee?.id,
-              employeeName: STATE.employee?.name,
-              checkIn: STATE.attendance.checkInTime || dayTs,
-              lunch: STATE.attendance.status === 'lunch' ? 'Ongoing' : 'None',
-              lunchDuration: '0m',
-              projectsWorked: [],
-              checkOut: '--:--',
-              workHrs: 'Working live',
-              effectiveHours: 'Working live',
-              status: 'in'
-            });
-          } else if (new Date().getHours() >= 19) {
-            // Shift deadline (7:00 PM) passed without punch in -> Marked Absent!
-            absentDaysCount++;
-            historyList.push({
-              date: dateStr,
-              employeeId: STATE.employee?.id,
-              employeeName: STATE.employee?.name,
-              checkIn: '--:--',
-              lunch: 'None',
-              lunchDuration: '0m',
-              projectsWorked: [],
-              checkOut: '--:--',
-              workHrs: '0h 0m',
-              effectiveHours: '0h 0m',
-              status: 'absent'
-            });
-          } else {
-            // Shift ongoing today, pending punch-in
-            historyList.push({
-              date: dateStr,
-              employeeId: STATE.employee?.id,
-              employeeName: STATE.employee?.name,
-              checkIn: '--:--',
-              lunch: 'None',
-              lunchDuration: '0m',
-              projectsWorked: [],
-              checkOut: '--:--',
-              workHrs: 'Pending',
-              effectiveHours: 'Pending',
-              status: 'pending'
-            });
-          }
-        } else {
-          // Past working day without punch-in -> Marked Absent!
-          absentDaysCount++;
-          historyList.push({
-            date: dateStr,
-            employeeId: STATE.employee?.id,
-            employeeName: STATE.employee?.name,
-            checkIn: '--:--',
-            lunch: 'None',
-            lunchDuration: '0m',
-            projectsWorked: [],
-            checkOut: '--:--',
-            workHrs: '0h 0m',
-            effectiveHours: '0h 0m',
-            status: 'absent'
-          });
-        }
+        // Past working day without punch-in -> Marked Absent!
+        absentDaysCount++;
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: '0h 0m',
+          effectiveHours: '0h 0m',
+          status: 'absent'
+        });
       }
     }
   }
@@ -2506,22 +2519,46 @@ function renderAttLog() {
   if (absPill) absPill.textContent = "Absent: " + absentDaysCount + " Days";
 
   tbody.innerHTML = historyList.map(r => {
-    let checkInStr = typeof r.checkIn === 'number' ? fmt(r.checkIn) : (r.checkIn || '--:--');
-    let lateCheckInBadge = '';
+    const rawCI = r.checkIn || r.check_in;
+    let checkInStr = "--:--";
+    if (rawCI) {
+      if (typeof rawCI === "number") {
+        checkInStr = fmt(rawCI);
+      } else if (typeof rawCI === "string") {
+        if (/^\d+$/.test(rawCI.trim())) {
+          checkInStr = fmt(Number(rawCI.trim()));
+        } else {
+          checkInStr = rawCI;
+        }
+      }
+    }
     
-    // Check if late (either flag or checkIn timestamp > 10:30 AM)
+    let lateCheckInBadge = "";
+    const ciVal = (typeof rawCI === "string" && /^\d+$/.test(rawCI.trim())) ? Number(rawCI.trim()) : rawCI;
     const isLateFlag = r.isLate || r.is_late;
-    if (typeof r.checkIn === 'number') {
-      const ciD = new Date(r.checkIn);
+    if (typeof ciVal === "number" && ciVal > 0) {
+      const ciD = new Date(ciVal);
       if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
         const mins = Math.round(((ciD.getHours() + ciD.getMinutes() / 60) - 10.5) * 60);
-        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">⏰ Late (+' + mins + 'm)</span>';
+        lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Check-in after 10:30 AM official shift start">&#9200; Late (+' + mins + 'm)</span>';
       }
     } else if (isLateFlag) {
-      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">⏰ Late</span>';
+      lateCheckInBadge = '<span style="font-size:10px;color:#f59e0b;font-weight:700;margin-left:4px;background:rgba(245,158,11,0.15);padding:2px 6px;border-radius:4px" title="Late Check-In">&#9200; Late</span>';
     }
 
-    const checkOutStr = typeof r.checkOut === 'number' ? fmt(r.checkOut) : (r.checkOut || '--:--');
+    const rawCO = r.checkOut || r.check_out;
+    let checkOutStr = "--:--";
+    if (rawCO) {
+      if (typeof rawCO === "number") {
+        checkOutStr = fmt(rawCO);
+      } else if (typeof rawCO === "string") {
+        if (/^\d+$/.test(rawCO.trim())) {
+          checkOutStr = fmt(Number(rawCO.trim()));
+        } else {
+          checkOutStr = rawCO;
+        }
+      }
+    }
     
     // Format lunch duration in hours and minutes
     const lunchDurFormatted = formatLunchDurationDisplay(r.lunch || r.lunchDuration, r.lunchStart || r.lunchStartTime, r.lunchEnd || r.lunchEndTime, r.status);
@@ -2573,9 +2610,9 @@ function renderAttLog() {
       '<td data-label="Lunch Time">' +
         '<div style="display:inline-flex;align-items:center;gap:4px">' +
           '<strong style="color:#fcd34d">' + lunchDurFormatted + '</strong>' +
-          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">⏰ Late Lunch</span>' : '') +
+          (isLunchLateFlag ? ' <span style="font-size:9.5px;color:#f59e0b;font-weight:700;background:rgba(245,158,11,0.15);padding:1px 5px;border-radius:4px" title="Exceeded 60m or outside schedule">&#9200; Late Lunch</span>' : '') +
         '</div>' +
-        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">⏰ ' + reasonText + '</div>' : '') +
+        (reasonText ? '<div style="font-size:10px;color:var(--amber-400);margin-top:2px" title="Protocol Justification: ' + reasonText + '">&#9200; ' + reasonText + '</div>' : '') +
       '</td>' +
       '<td data-label="Projects Worked">' + projectsHtml + '</td>' +
       '<td data-label="Check Out"><span>' + checkOutStr + '</span></td>' +
@@ -4838,12 +4875,23 @@ function renderActivity() {
   if (!tl) return;
 
   const todayDateStr = fmtDate(Date.now());
+  const curEmpName = (STATE.employee && STATE.employee.name) ? STATE.employee.name.trim().toLowerCase() : '';
+  const isMgr = isManagerRole();
 
-  // DAILY REFRESH: Only display activities that occurred TODAY
+  // DAILY REFRESH: Only display activities that occurred TODAY and relevant to this user
   const todayActivities = (STATE.activityLog || []).filter(a => {
     if (!a.time && !a.date) return false;
     const aDateStr = a.date || fmtDate(a.time);
-    return aDateStr === todayDateStr;
+    if (aDateStr !== todayDateStr) return false;
+    if (isMgr) return true; // Founder/Manager sees entire audit log
+    
+    // Regular specialists only see their own activities or general system notes
+    const txt = (a.text || '').toLowerCase();
+    const otherMembers = (STATE.team || []).filter(m => m.name && m.name.trim().toLowerCase() !== curEmpName);
+    const mentionsOther = otherMembers.some(m => txt.includes(m.name.trim().toLowerCase()));
+    const mentionsMe = curEmpName && txt.includes(curEmpName);
+    if (mentionsOther && !mentionsMe) return false;
+    return true;
   });
 
   if (todayActivities.length === 0) {
