@@ -3639,8 +3639,10 @@ select option:checked {
 
   @media (max-width: 600px) {
     .floating-quiet-mascot {
-      bottom: 16px;
-      right: 16px;
+      bottom: 12px !important;
+      right: 12px !important;
+      transform: scale(0.8) !important;
+      transform-origin: bottom right !important;
     }
 
     .fq-mascot-avatar-wrap {
@@ -4276,25 +4278,38 @@ select option:checked {
     }
 
     .hero-cockpit {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 20px;
-      padding: 26px 24px;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      gap: 14px !important;
+      padding: 20px 18px !important;
+      min-height: auto !important;
+      height: auto !important;
     }
 
     .cockpit-content {
-      max-width: 100%;
-      width: 100%;
+      max-width: 100% !important;
+      width: 100% !important;
+      flex: 0 0 auto !important;
+      min-height: auto !important;
+      height: auto !important;
     }
 
     .cockpit-quote-free {
-      width: 100%;
-      max-width: 100%;
-      margin: 8px 0 0 0;
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 0 0 auto !important;
+      margin: 6px 0 0 0 !important;
+      padding: 12px 14px !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      border-radius: 10px !important;
+      min-height: auto !important;
+      height: auto !important;
     }
 
     .cockpit-visual {
-      display: none;
+      display: none !important;
     }
 
     .stats-grid {
@@ -4870,40 +4885,84 @@ select option:checked {
       overflow-x: hidden;
     }
 
-    /* Topbar Header Wrap */
+    /* Topbar Header Sleek Mobile Bar */
     .topbar {
-      height: auto;
-      min-height: 60px;
-      padding: 10px 14px;
-      flex-wrap: wrap;
-      gap: 10px;
+      height: 56px !important;
+      min-height: 56px !important;
+      padding: 0 12px !important;
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      align-items: center !important;
+      justify-content: space-between !important;
     }
 
     .menu-btn {
-      margin-right: 8px;
-      width: 36px;
-      height: 36px;
+      margin-right: 4px !important;
+      width: 36px !important;
+      height: 36px !important;
+      flex-shrink: 0 !important;
     }
 
     .topbar-left {
-      flex: 1 1 auto;
-      min-width: 140px;
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
     }
 
     .page-title {
-      font-size: 16px;
+      font-size: 15px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     .page-date {
-      font-size: 10px;
+      display: none !important;
     }
 
     .topbar-right {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      gap: 6px !important;
+      justify-content: flex-end !important;
+      flex-shrink: 0 !important;
+    }
+
+    .owner-identity-block {
+      display: none !important;
+    }
+
+    .owner-crest-medallion {
+      width: 32px !important;
+      height: 32px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .live-clock-pill {
+      display: none !important;
+    }
+
+    .focus-audio-capsule {
+      padding: 2px 4px !important;
+      gap: 4px !important;
+    }
+
+    .ambient-audio-btn {
+      padding: 4px 6px !important;
+      font-size: 10.5px !important;
+    }
+
+    .focus-sound-select {
+      max-width: 75px !important;
+      font-size: 10px !important;
+      padding: 3px 10px 3px 4px !important;
+    }
+
+    .notif-btn {
+      width: 32px !important;
+      height: 32px !important;
+      flex-shrink: 0 !important;
     }
 
     .topbar-owner-showcase {
@@ -4981,58 +5040,80 @@ select option:checked {
 
     /* Hero Cockpit Section */
     .hero-cockpit {
-      padding: 20px 16px;
-      margin-bottom: 20px;
-      border-radius: var(--radius-lg);
-      flex-direction: column;
-      align-items: stretch;
-      gap: 16px;
+      padding: 16px 14px !important;
+      margin-bottom: 16px !important;
+      border-radius: var(--radius-lg) !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      gap: 10px !important;
+      min-height: auto !important;
+      height: auto !important;
     }
 
     .cockpit-content {
-      max-width: 100%;
-      width: 100%;
+      max-width: 100% !important;
+      width: 100% !important;
+      flex: 0 0 auto !important;
+      min-height: auto !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     .welcome-greet {
-      font-size: 20px;
+      font-size: 18px !important;
+      margin-bottom: 4px !important;
     }
 
     .welcome-name {
-      font-size: 24px;
-      word-break: break-word;
+      font-size: 22px !important;
+      word-break: break-word !important;
+      margin-bottom: 6px !important;
     }
 
     .welcome-role-row {
-      margin-bottom: 14px;
-      gap: 8px;
+      margin-bottom: 8px !important;
+      gap: 6px !important;
     }
 
     .cockpit-shift-hud {
-      padding: 10px 14px;
+      padding: 8px 12px !important;
+      margin-top: 6px !important;
     }
     .shift-hud-header {
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 8px !important;
+      margin-bottom: 5px !important;
     }
     .shift-hud-label {
-      font-size: 11px;
-      gap: 5px;
+      font-size: 11px !important;
+      gap: 4px !important;
     }
     .shift-hud-label strong {
-      font-size: 10.5px;
-      padding: 2px 6px;
+      font-size: 10.5px !important;
+      padding: 2px 6px !important;
     }
     .shift-hud-val {
-      font-size: 10.5px;
-      padding: 2px 6px;
-      margin-left: auto;
+      font-size: 10.5px !important;
+      padding: 2px 6px !important;
+      margin-left: auto !important;
     }
 
     .cockpit-quote-free {
-      margin: 8px 0 0 0;
-      width: 100%;
-      max-width: 100%;
+      flex: 0 0 auto !important;
+      margin: 6px 0 0 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 10px 12px !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      border-radius: 10px !important;
+      min-height: auto !important;
+      height: auto !important;
+    }
+
+    .cockpit-visual {
+      display: none !important;
     }
 
     .quote-free-content {
