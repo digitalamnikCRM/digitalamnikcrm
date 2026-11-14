@@ -926,16 +926,14 @@ function renderRoleNotice() {
 function isProjectAssignedTo(p, emp) {
   if (!p) return false;
   if (!emp) emp = STATE.employee;
-  if (!emp) return true;
+  if (!emp) return false;
 
-  if (emp.isFounder || emp.id === 'EMP-000') return true;
+  // Founder/Executive Owner (Amaan Khan) has full visibility & control
+  const normId = String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (emp.isFounder || normId === 'emp000' || /amaan/i.test(emp.name || '')) return true;
 
-  const empId = String(emp.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const empId = normId;
   const empName = String(emp.name || '').toLowerCase().trim();
-  const empRole = String(emp.role || '').toLowerCase().trim();
-  const empDomains = (Array.isArray(emp.domains) && emp.domains.length > 0 ? emp.domains : [emp.role])
-    .filter(Boolean)
-    .map(d => String(d).toLowerCase().trim());
 
   let assignedArr = [];
   if (Array.isArray(p.assigned)) {
@@ -944,24 +942,20 @@ function isProjectAssignedTo(p, emp) {
     assignedArr = [String(p.assigned).toLowerCase().trim()];
   }
   const assignedToStr = String(p.assignedTo || '').toLowerCase();
-  const pService = String(p.service || p.serviceDomain || '').toLowerCase().trim();
 
-  // 1. Direct ID match (e.g. "emp001")
+  // 1. Direct ID match (e.g. "emp003")
   const matchId = (empId && assignedArr.some(a => a.replace(/[^a-z0-9]/g, '') === empId)) ||
                   (empId && assignedToStr.replace(/[^a-z0-9]/g, '').includes(empId));
 
   // 2. Direct Name match (case-insensitive)
-  const matchName = (empName && assignedArr.some(a => a === empName || empName.includes(a) || a.includes(empName))) ||
-                    (empName && (assignedToStr.includes(empName) || empName.includes(assignedToStr)));
+  const matchName = (empName && assignedArr.some(a => a === empName || (a.length > 2 && (empName.includes(a) || a.includes(empName))))) ||
+                    (empName && (assignedToStr.includes(empName) || (empName.length > 2 && assignedToStr.includes(empName))));
 
-  // 3. Domain or Role match
-  const matchRole = (empRole && assignedArr.includes(empRole)) ||
-                    empDomains.some(d => assignedArr.includes(d) || assignedToStr.includes(d));
+  // 3. Creator of the task
+  const isCreator = (p.createdBy && empName && p.createdBy.toLowerCase().trim() === empName) ||
+                    (p.creatorId && empId && p.creatorId.toLowerCase().replace(/[^a-z0-9]/g, '') === empId);
 
-  // 4. Service Domain match
-  const matchService = pService && (pService === empRole || empDomains.includes(pService));
-
-  return Boolean(matchId || matchName || matchRole || matchService);
+  return Boolean(matchId || matchName || isCreator);
 }
 window.isProjectAssignedTo = isProjectAssignedTo;
 
@@ -2987,7 +2981,7 @@ function renderProjects() {
           ${deadlineWarning(p.deadline, p.status)}
           <span class="proj-status-pill ${statusClass(p.status)}">${p.status || 'Assigned'}</span>
 
-          ${(p.status === 'Assigned') ? `
+          ${(p.status === 'Assigned' && (isProjectAssignedTo(p, STATE.employee) || isMgr)) ? `
             <button class="btn-small" onclick="acceptDeliverable('${p.id}', event)" style="font-size:11px;padding:4px 10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;box-shadow:0 0 10px rgba(16,185,129,0.35);cursor:pointer;white-space:nowrap" title="Accept deliverable and start working">
               ✓ Accept
             </button>
@@ -2995,18 +2989,36 @@ function renderProjects() {
 
           <div class="proj-timer-compact" onclick="event.stopPropagation()">
             <span class="proj-timer-time" id="proj-clock-${p.id}">${timeDisplay}</span>
-            ${!isActive ? `
+            ${p.status === 'Completed' ? `
+              <span class="btn-timer-icon done-pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;padding:4px 10px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:4px" title="Deliverable Completed">
+                ✓ Done
+              </span>
+            ` : (p.status === 'Cancelled' ? `
+              <span class="btn-timer-icon cancelled-pill" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.35);font-weight:600;padding:4px 10px;border-radius:6px;font-size:11px">
+                Cancelled
+              </span>
+            ` : (isActive ? `
+              <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop Timer">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                <span>Stop</span>
+              </button>
+            ` : ((isProjectAssignedTo(p, STATE.employee) || isMgr) ? `
               <button class="btn-timer-icon start" onclick="startProjectWork('${p.id}')" title="Start Timer">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 <span>${p.status === 'Assigned' ? 'Accept & Start' : 'Start'}</span>
               </button>
             ` : `
-              <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop Timer">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
-                <span>Stop</span>
-              </button>
-            `}
+              <span style="font-size:11px;color:#94a3b8;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)" title="Assigned to ${p.assignedTo || 'Specialist'}">
+                🔒 Assigned
+              </span>
+            `)))}
           </div>
+
+          ${((isProjectAssignedTo(p, STATE.employee) || isMgr) && p.status !== 'Completed' && p.status !== 'Cancelled') ? `
+            <button class="btn-small btn-complete-task" onclick="quickCompleteProject('${p.id}', event)" style="font-size:11px;padding:4px 8px;background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.3);border-radius:6px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px" title="Mark deliverable as Completed">
+              ✓ Complete
+            </button>
+          ` : ''}
 
           <span class="proj-row-chevron" title="Click to open deliverable details">›</span>
         </div>
@@ -3107,7 +3119,42 @@ function openProjectDetail(id) {
 
   const btnWrap = document.getElementById('proj-detail-timer-btn-wrap');
   if (btnWrap) {
-    if (!isActive) {
+    const isCompleted = p.status === 'Completed';
+    const isCancelled = p.status === 'Cancelled';
+    const isAssigned = isProjectAssignedTo(p, STATE.employee);
+    const isMgr = isManagerRole();
+    const canIWork = isAssigned || isMgr;
+
+    if (isCompleted) {
+      btnWrap.innerHTML = `
+        <span class="stat-badge green" style="padding:6px 14px;font-size:12px;font-weight:700">✓ Deliverable Completed</span>
+        ${canIWork ? `
+          <button class="btn-small" onclick="reopenProject('${p.id}')" style="font-size:11.5px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;border-radius:6px;cursor:pointer">
+            ↺ Reopen Deliverable
+          </button>
+        ` : ''}
+      `;
+    } else if (isCancelled) {
+      btnWrap.innerHTML = `
+        <span class="stat-badge" style="padding:6px 14px;font-size:12px;font-weight:600;background:rgba(100,116,139,0.15);color:#94a3b8">Cancelled</span>
+      `;
+    } else if (!canIWork) {
+      btnWrap.innerHTML = `
+        <span style="font-size:12px;color:var(--text-muted);padding:6px 14px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)">
+          🔒 Assigned to ${p.assignedTo || 'Specialist'}
+        </span>
+      `;
+    } else if (isActive) {
+      btnWrap.innerHTML = `
+        <button class="proj-timer-btn btn-red" onclick="stopProjectWork('${p.id}');openProjectDetail('${p.id}')">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
+          <span>Stop Work</span>
+        </button>
+        <button class="proj-timer-btn btn-green" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981">
+          <span>✓ Mark Completed</span>
+        </button>
+      `;
+    } else {
       btnWrap.innerHTML = `
         ${(p.status === 'Assigned') ? `
           <button class="proj-timer-btn" onclick="acceptDeliverable('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981;color:#fff;box-shadow:0 0 12px rgba(16,185,129,0.35)">
@@ -3118,12 +3165,8 @@ function openProjectDetail(id) {
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
           <span>${p.status === 'Assigned' ? 'Accept & Start Work' : 'Start Work'}</span>
         </button>
-      `;
-    } else {
-      btnWrap.innerHTML = `
-        <button class="proj-timer-btn btn-red" onclick="stopProjectWork('${p.id}');openProjectDetail('${p.id}')">
-          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
-          <span>Stop Work</span>
+        <button class="proj-timer-btn" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.3);color:#34d399">
+          <span>✓ Mark Completed</span>
         </button>
       `;
     }
@@ -3198,6 +3241,66 @@ function populateTimerSelect() {}
 // ========================
 let _projectTimerInterval = null;
 
+function quickCompleteProject(id, e) {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+
+  const isAssigned = isProjectAssignedTo(p, STATE.employee);
+  const isMgr = isManagerRole();
+  if (!isAssigned && !isMgr) {
+    const assignedWho = p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'another specialist');
+    toast(`⚠️ Access Denied: This deliverable is assigned to ${assignedWho}.`, 'error');
+    return;
+  }
+
+  if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === id) {
+    stopProjectWork(id, true);
+  }
+
+  p.status = 'Completed';
+  p.completedAt = Date.now();
+  p.completedDate = fmtDate(Date.now());
+  p.completedBy = STATE.employee.name;
+  if (Array.isArray(p.sessions)) {
+    p.sessions = p.sessions.filter(s => !(s && s.isActive));
+  }
+
+  triggerConfetti();
+  renderProjects();
+  updateDashCounts();
+  addActivity(`Completed deliverable: "${p.name}"`, 'green');
+  toast(`🎉 Deliverable "${p.name}" marked as Completed!`, 'success');
+  save();
+
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(p);
+  }
+}
+window.quickCompleteProject = quickCompleteProject;
+
+function reopenProject(id) {
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+  const isMgr = isManagerRole();
+  if (!isMgr && !isProjectAssignedTo(p, STATE.employee)) {
+    toast('⚠️ Access Denied: Only assigned specialist or Founder can reopen this deliverable.', 'error');
+    return;
+  }
+  p.status = 'In Progress';
+  p.completedAt = null;
+  p.completedDate = null;
+  p.completedBy = null;
+  toast(`Deliverable "${p.name}" reopened as In Progress`, 'info');
+  save();
+  renderProjects();
+  if (STATE.viewingProjectId === id) openProjectDetail(id);
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(p);
+  }
+}
+window.reopenProject = reopenProject;
+
 function startProjectWork(id) {
   if (STATE.attendance.status !== 'in') {
     toast('⚠️ Please Punch Check-In in Attendance before starting work', 'error');
@@ -3206,6 +3309,25 @@ function startProjectWork(id) {
 
   const proj = STATE.projects.find(p => p.id === id);
   if (!proj) return;
+
+  // 1. Guard: Completed or cancelled deliverables cannot be started
+  if (proj.status === 'Completed') {
+    toast('✓ This deliverable has already been completed!', 'info');
+    return;
+  }
+  if (proj.status === 'Cancelled') {
+    toast('⚠️ This deliverable has been cancelled.', 'error');
+    return;
+  }
+
+  // 2. Strict Security: Specialists cannot start other specialists' deliverables
+  const isAssigned = isProjectAssignedTo(proj, STATE.employee);
+  const isMgr = isManagerRole();
+  if (!isAssigned && !isMgr) {
+    const assignedWho = proj.assignedTo || (Array.isArray(proj.assigned) ? proj.assigned.join(', ') : 'another specialist');
+    toast(`⚠️ Access Denied: This deliverable is assigned to ${assignedWho}. You cannot start someone else's project!`, 'error');
+    return;
+  }
 
   // If another project is running, stop it and log its time first
   if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId !== id) {
@@ -3222,11 +3344,6 @@ function startProjectWork(id) {
     proj.status = 'In Progress';
     proj.acceptedBy = STATE.employee.name;
     proj.acceptedAt = now;
-    if (!proj.assigned || !proj.assigned.includes(STATE.employee.name)) {
-      if (!Array.isArray(proj.assigned)) proj.assigned = [];
-      proj.assigned.push(STATE.employee.name);
-    }
-    proj.assignedTo = proj.assigned.join(', ');
   }
 
   // Active work indicator in sessions array for real-time executive admin pulse
