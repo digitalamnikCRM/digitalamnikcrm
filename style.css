@@ -89,7 +89,7 @@ select option:checked {
     --text-accent: #818cf8;
 
     /* Dimensions & Physics */
-    --sidebar-w: 285px;
+    --sidebar-w: 245px;
     --topbar-h: 64px;
     --radius-sm: 6px;
     --radius-md: 10px;
@@ -5540,6 +5540,20 @@ html, body {
   width: 100% !important;
 }
 
+@media (max-width: 1440px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
 /* Responsive Timesheets Overview Grid */
 .timesheet-overview-grid {
   display: grid !important;
@@ -5557,24 +5571,29 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ================= 1. LAPTOPS / MID DESKTOPS (<= 1366px) ================= */
-@media (max-width: 1366px) {
+/* ================= 1. LAPTOPS / MID DESKTOPS (<= 1440px) ================= */
+@media (max-width: 1440px) {
   .topbar {
-    padding: 0 18px !important;
-    gap: 10px !important;
+    padding: 0 16px !important;
+    gap: 8px !important;
   }
-  .owner-prestige-subtitle {
+  .owner-prestige-subtitle,
+  .page-date-str {
     display: none !important;
   }
   .page-title {
-    font-size: 17px !important;
+    font-size: 16px !important;
   }
-  .page-date-str {
+  .content {
+    padding: 20px 20px 60px !important;
+  }
+  .admin-topbar-actions-wrap button {
+    padding: 6px 9px !important;
     font-size: 11.5px !important;
   }
   .focus-sound-select {
-    max-width: 130px !important;
-    font-size: 11px !important;
+    max-width: 120px !important;
+    font-size: 10.5px !important;
   }
 }
 

@@ -2485,39 +2485,6 @@ function renderAttLog() {
         presentDaysCount++;
       }
       historyList.push(matchedLog);
-    } else {
-      if (dayOfWeek === 0) {
-        // Sunday: Official Agency Weekly Off
-        historyList.push({
-          date: dateStr,
-          employeeId: STATE.employee?.id,
-          employeeName: STATE.employee?.name,
-          checkIn: '--:--',
-          lunch: 'None',
-          lunchDuration: '0m',
-          projectsWorked: [],
-          checkOut: '--:--',
-          workHrs: 'Weekly Off',
-          effectiveHours: 'Off',
-          status: 'off'
-        });
-      } else {
-        // Past working day without punch-in -> Marked Absent!
-        absentDaysCount++;
-        historyList.push({
-          date: dateStr,
-          employeeId: STATE.employee?.id,
-          employeeName: STATE.employee?.name,
-          checkIn: '--:--',
-          lunch: 'None',
-          lunchDuration: '0m',
-          projectsWorked: [],
-          checkOut: '--:--',
-          workHrs: '0h 0m',
-          effectiveHours: '0h 0m',
-          status: 'absent'
-        });
-      }
     }
   }
 
