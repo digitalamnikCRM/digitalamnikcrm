@@ -1168,713 +1168,643 @@
     </div>
   </div>
 
+  
   <!-- ===================== MAIN AUTHENTICATED ADMIN CONSOLE ===================== -->
-  <div class="admin-viewport" id="admin-console-app" style="display:none">
+  <div class="admin-app-layout" id="admin-console-app" style="display:none">
 
-    <!-- Topbar -->
-    <header class="admin-topbar-nav">
-      <div class="admin-brand-left">
-        <img src="logo.png" alt="Digital Amnik" onerror="this.style.display='none'" />
-        <div class="admin-badge-owner">
-          <span>👑</span>
-          <span>Amaan Khan — Agency Founder &amp; Owner</span>
+    <!-- ===================== EXECUTIVE SIDEBAR ===================== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <img src="logo.png?v=3" alt="Digital Amnik" class="logo-img"
+               style="width:100%;max-width:240px;height:auto;max-height:80px;object-fit:contain;display:block;"
+               onerror="this.style.display='none';document.getElementById('admin-logo-fallback').style.display='flex'" />
+          <div id="admin-logo-fallback" class="logo-text-fallback" style="display:none">
+            <span class="logo-da">Digital<span>Amnik</span></span>
+          </div>
         </div>
       </div>
-      <div class="admin-topbar-actions">
-        <button class="btn-portal-back" onclick="openChangePasswordModal()" title="Change Admin Password"
-          style="cursor:pointer">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path
-              d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-          </svg>
-          <span>Change Password</span>
-        </button>
-        <a href="index.html" class="btn-portal-back">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-          </svg>
-          <span>Employee Workspace</span>
+
+      <!-- Founder & Owner Profile Card -->
+      <div class="sidebar-employee-card" style="background:linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(124, 58, 237, 0.1) 100%);border-color:rgba(245, 158, 11, 0.35)">
+        <div class="emp-avatar-wrapper">
+          <div class="emp-avatar" onclick="openAdminProfileModal()" style="cursor:pointer;background:linear-gradient(135deg, #f59e0b, #7c3aed);color:#fff;font-weight:800;border:2px solid #fbbf24" title="Click to edit admin profile">👑</div>
+          <span class="avatar-status-dot" style="background:#10b981;box-shadow:0 0 8px #10b981" title="Executive Command Active"></span>
+        </div>
+        <div class="emp-info">
+          <div class="emp-name-row">
+            <span class="emp-name" style="color:#fff;font-weight:700">Amaan Khan</span>
+          </div>
+          <div class="emp-meta-row">
+            <span class="emp-id" style="color:#fbbf24;font-weight:600">Agency Founder</span>
+            <span class="emp-bullet">·</span>
+            <span class="emp-status-text" style="color:#34d399">Executive</span>
+          </div>
+          <div class="emp-role-row">
+            <span class="emp-role-tag" style="background:rgba(245, 158, 11, 0.18);border-color:rgba(245, 158, 11, 0.4);color:#fbbf24">
+              <span>👑</span>
+              <span>Owner Access</span>
+            </span>
+            <button class="edit-profile-btn" onclick="openAdminProfileModal()" title="Edit Admin Profile" style="color:var(--violet-400);background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);margin-left:auto">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <button class="edit-profile-btn" onclick="lockAdminConsole()" title="Lock Admin Console" style="color:#f87171">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="sidebar-nav">
+        <div class="nav-category-label">OPERATIONS</div>
+        <a href="javascript:void(0)" class="nav-item admin-tab-btn active" id="tab-btn-employees" onclick="switchAdminTab('employees')">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+          </div>
+          <span class="nav-label">Team Specialists</span>
+          <span class="nav-badge" id="admin-tab-emp-count">0</span>
         </a>
-        <button class="btn-lock-console" onclick="lockAdminConsole()">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path
-              d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-          </svg>
-          <span>Lock Console</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Section Header -->
-    <div class="section-header" style="margin-bottom:24px">
-      <div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <h2 style="font-family:'Outfit';font-size:26px;color:#fff;margin:0">Agency Operations Command Center</h2>
-          <span class="stat-badge orange" style="font-size:11px;padding:3px 9px;">👑 Executive Control</span>
-        </div>
-        <span class="section-sub" style="color:#94a3b8;font-size:13.5px;margin-top:4px;display:block">Master dashboard
-          for agency client accounts, team rosters, tracked billable time &amp; live deliverable operations.</span>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="btn-primary btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);box-shadow:0 0 16px rgba(139,92,246,0.35);gap:6px">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-          </svg>
-          <span>Add Assignment</span>
-        </button>
-        <button class="btn-primary btn-glow" onclick="openAddClientModal()">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-          </svg>
-          <span>Add Client</span>
-        </button>
-        <button class="btn-secondary" onclick="openAddEmployeeModal()"
-          style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path
-              d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
-          <span>Add Team Member</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Executive KPIs -->
-    <div class="admin-kpi-grid">
-      <div class="admin-kpi-card cyan" onclick="switchAdminTab('employees')" style="cursor:pointer" title="View recruited staff specialists">
-        <div class="kpi-icon-box">👥</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Employees</span>
-          <strong class="kpi-val" id="admin-kpi-team">0</strong>
-          <span class="kpi-sub" id="admin-kpi-team-active">0 in studio • 1 Owner</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card emerald" onclick="switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('present')" style="cursor:pointer" title="Click to view employees present today">
-        <div class="kpi-icon-box">🟢</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Present Today</span>
-          <strong class="kpi-val" id="admin-kpi-present" style="color:#34d399">0</strong>
-          <span class="kpi-sub">Checked-in &amp; Active</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card rose" onclick="switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('absent')" style="cursor:pointer" title="Click to view employees absent today">
-        <div class="kpi-icon-box">🔴</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Absent Today</span>
-          <strong class="kpi-val" id="admin-kpi-absent" style="color:#f87171">0</strong>
-          <span class="kpi-sub">Not punched in yet</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card amber" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to see who is working live on projects">
-        <div class="kpi-icon-box">⚡</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Active Assignment</span>
-          <strong class="kpi-val" id="admin-kpi-live-work" style="color:#fbbf24">0</strong>
-          <span class="kpi-sub">Running project timers</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card purple" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to inspect completed tasks today">
-        <div class="kpi-icon-box">✅</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Completed Today</span>
-          <strong class="kpi-val" id="admin-kpi-completed-today" style="color:#c4b5fd">0</strong>
-          <span class="kpi-sub">Assignments done</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card rose" onclick="switchAdminTab('timesheets'); filterPendingAdminProjects()" style="cursor:pointer;border-color:rgba(239,68,68,0.4);background:linear-gradient(135deg,rgba(239,68,68,0.08) 0%,rgba(19,22,33,0.9) 100%)" title="Click to view pending/overdue assignments">
-        <div class="kpi-icon-box" style="background:rgba(239,68,68,0.2);color:#ef4444">⚠️</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Pending Assignments</span>
-          <strong class="kpi-val" id="admin-kpi-pending-assignments" style="color:#ef4444;text-shadow:0 0 16px rgba(239,68,68,0.5)">0</strong>
-          <span class="kpi-sub" style="color:#fca5a5">Overdue past target date</span>
-        </div>
-      </div>
-
-      <div class="admin-kpi-card purple" onclick="switchAdminTab('clients')" style="cursor:pointer" title="View managed client accounts">
-        <div class="kpi-icon-box">🏢</div>
-        <div class="kpi-info">
-          <span class="kpi-label">Client Accounts</span>
-          <strong class="kpi-val" id="admin-kpi-clients">0</strong>
-          <span class="kpi-sub">Managed brand partners</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Admin Tab Switcher -->
-    <div class="admin-nav-tabs">
-      <button class="admin-tab-btn active" id="tab-btn-clients" onclick="switchAdminTab('clients')">
-        <span>🏢 Clients Directory</span>
-        <span class="admin-tab-count" id="admin-tab-client-count">0</span>
-      </button>
-      <button class="admin-tab-btn" id="tab-btn-employees" onclick="switchAdminTab('employees')">
-        <span>👥 Staff &amp; Team Roster</span>
-        <span class="admin-tab-count" id="admin-tab-emp-count">0</span>
-      </button>
-      <button class="admin-tab-btn" id="tab-btn-attendance" onclick="switchAdminTab('attendance')">
-        <span>&#128197; Attendance &amp; Shift Register</span>
-        <span class="admin-tab-count" id="admin-tab-att-count">0</span>
-      </button>
-      <button class="admin-tab-btn" id="tab-btn-timesheets" onclick="switchAdminTab('timesheets')">
-        <span>⏱️ Project Hours &amp; Assignments</span>
-        <span class="admin-tab-count" id="admin-tab-proj-count">0</span>
-      </button>
-      <button class="admin-tab-btn" id="tab-btn-calendars" onclick="switchAdminTab('calendars')">
-        <span>🗓️ Content Calendars &amp; PDFs</span>
-        <span class="admin-tab-count" id="admin-tab-cal-count">0</span>
-      </button>
-    </div>
-
-    <!-- TAB 1: CLIENTS DIRECTORY -->
-    <div class="admin-pane active" id="admin-pane-clients">
-      <div class="filter-bar" style="margin-bottom:16px">
-        <div class="search-input-box" style="max-width:350px">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path
-              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <input type="text" class="search-input" id="admin-client-search"
-            placeholder="Search clients by name, industry..." oninput="renderAdminClients()" />
-        </div>
-      </div>
-
-      <div class="glass-table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Client / Brand</th>
-              <th>Industry Domain</th>
-              <th>Active Projects</th>
-              <th>Calendars</th>
-              <th>Account Status</th>
-              <th style="text-align:right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="admin-clients-tbody">
-            <!-- Rendered by JS -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- TAB 2: EMPLOYEES & TEAM ROSTER -->
-    <div class="admin-pane" id="admin-pane-employees">
-
-      <!-- Agency Executive Leadership & Owner Profile -->
-      <div class="admin-founder-card">
-        <div class="founder-card-content">
-          <div class="founder-avatar-box">
-            <span class="founder-crown-icon">👑</span>
-            <div class="founder-avatar-img">AK</div>
+        <a href="javascript:void(0)" class="nav-item admin-tab-btn" id="tab-btn-attendance" onclick="switchAdminTab('attendance')">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
           </div>
-          <div class="founder-info-box">
-            <div class="founder-name-row">
-              <h3 class="founder-name">Amaan Khan</h3>
-              <span class="founder-role-badge">👑 Agency Founder &amp; Executive Owner</span>
-              <span class="founder-supreme-badge">Supreme Agency Authority</span>
-            </div>
-            <p class="founder-bio">
-              Founder &amp; sole proprietor of Digital Amnik. Holds complete executive authority over agency clients,
-              creative deliverables, team management, and Supabase cloud operations.
-            </p>
-            <div class="founder-quick-actions">
-              <div class="founder-status-chip">
-                <span class="live-dot-green"></span>
-                <span>Executive Command Active</span>
-              </div>
-              <div class="founder-status-chip">
-                <span>☁️ Cloud Database Master</span>
-              </div>
-              <button type="button" class="btn-founder-key" onclick="openAdminProfileModal()"
-                style="background:rgba(6,182,212,0.18);border:1px solid rgba(6,182,212,0.4);color:#67e8f9"
-                title="Edit Admin Profile &amp; Update Executive Details">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                </svg>
-                <span>Edit Profile</span>
-              </button>
-              <button type="button" class="btn-founder-key" onclick="openChangePasswordModal()"
-                title="Change Admin Master Key">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                  <path
-                    d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-                </svg>
-                <span>Change Master Key</span>
-              </button>
-            </div>
+          <span class="nav-label">Attendance Register</span>
+          <span class="nav-badge" id="admin-tab-att-count">0</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item admin-tab-btn" id="tab-btn-timesheets" onclick="switchAdminTab('timesheets')">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+          </div>
+          <span class="nav-label">Deliverables &amp; Time</span>
+          <span class="nav-badge" id="admin-tab-proj-count">0</span>
+        </a>
+
+        <div class="nav-category-label" style="margin-top:16px">CLIENTS &amp; CONTENT</div>
+        <a href="javascript:void(0)" class="nav-item admin-tab-btn" id="tab-btn-clients" onclick="switchAdminTab('clients')">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+          </div>
+          <span class="nav-label">Client Accounts</span>
+          <span class="nav-badge" id="admin-tab-client-count">0</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item admin-tab-btn" id="tab-btn-calendars" onclick="switchAdminTab('calendars')">
+          <div class="nav-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/></svg>
+          </div>
+          <span class="nav-label">Content Calendars</span>
+          <span class="nav-badge" id="admin-tab-cal-count">0</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+          <a href="index.html" class="btn-portal-back" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;font-size:12px;border-radius:8px;text-decoration:none">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <span>Employee Workspace</span>
+          </a>
+        </div>
+        <div class="footer-credit-card">
+          <div class="credit-glow"></div>
+          <div class="credit-header">
+            <span class="credit-icon">⚡</span>
+            <span class="credit-title">Digital Amnik OS</span>
+          </div>
+          <div class="credit-author">
+            <span class="credit-by-label">Engineered by</span>
+            <strong class="credit-author-name">Mohammad Ilhan</strong>
+          </div>
+          <div class="credit-author" style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
+            <span class="credit-by-label">Conceptualised by</span>
+            <strong class="credit-author-name">Salman Sahir</strong>
           </div>
         </div>
       </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
-      <!-- Section Heading for Hired Agency Staff -->
-      <div class="staff-section-header">
-        <div class="staff-header-text">
-          <h4>Hired Agency Staff &amp; Specialists</h4>
-          <p>Recruited team members for video editing, thumbnail design, and campaign execution</p>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button type="button" class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg,#06b6d4,#7c3aed)">+ Create Deliverable</button>
-          <button type="button" class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Team Member</button>
-        </div>
-      </div>
+    <!-- ===================== MAIN CONTENT WRAP ===================== -->
+    <div class="main-wrap">
 
-      <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div class="search-input-box" style="max-width:350px;width:100%">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path
-              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <input type="text" class="search-input" id="admin-emp-search"
-            placeholder="Search hired staff by name, domain, ID (e.g. emp001)..." oninput="renderAdminEmployees()" />
+      <!-- Executive Topbar -->
+      <header class="topbar">
+        <button class="menu-btn" onclick="toggleSidebar()" title="Toggle Navigation">
+          <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="topbar-left">
+          <div class="topbar-title-block">
+            <h1 class="page-title" style="font-size:18px;margin:0">Operations Command Center</h1>
+            <span class="page-date-str" style="font-size:12px;color:var(--text-muted)">Master Executive Control • Agency Administration</span>
+          </div>
         </div>
-        <div class="att-filter-pills" id="admin-roster-att-filters">
-          <button type="button" class="att-pill active" onclick="setRosterAttFilter('all', this)">All Staff (<span id="roster-filter-all-cnt">0</span>)</button>
-          <button type="button" class="att-pill green" onclick="setRosterAttFilter('present', this)">🟢 Present Today (<span id="roster-filter-pres-cnt">0</span>)</button>
-          <button type="button" class="att-pill red" onclick="setRosterAttFilter('absent', this)">🔴 Absent (<span id="roster-filter-abs-cnt">0</span>)</button>
-          <button type="button" class="att-pill orange" onclick="setRosterAttFilter('lunch', this)">🟡 On Lunch (<span id="roster-filter-lunch-cnt">0</span>)</button>
+        <div class="topbar-right">
+          <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);gap:5px;font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <span>+ Deliverable</span>
+          </button>
+          <button class="btn-secondary btn-small" onclick="openAddClientModal()" style="gap:5px;font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <span>+ Client</span>
+          </button>
+          <button class="btn-secondary btn-small" onclick="openAddEmployeeModal()" style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;gap:5px;font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span>+ Specialist</span>
+          </button>
+          <button class="btn-ghost-danger btn-small" onclick="lockAdminConsole()" title="Lock Console" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);color:#fca5a5;gap:5px;cursor:pointer">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            <span>Lock</span>
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div class="glass-table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Specialist / Staff</th>
-              <th>Employee ID</th>
-              <th>Assigned Domains</th>
-              <th>Shift Timing</th>
-              <th>Today's Attendance</th>
-              <th>Activity</th>
-              <th style="text-align:right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="admin-roster-tbody">
-            <!-- Rendered by JS -->
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <!-- Main Content Container -->
+      <main class="content">
+
+        <!-- ===================== EXECUTIVE 4-METRIC STRIP ===================== -->
+        <div class="admin-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+          <!-- Card 1: Team Specialists -->
+          <div class="admin-kpi-card cyan" onclick="switchAdminTab('employees')" style="cursor:pointer" title="View recruited staff specialists">
+            <div class="kpi-icon-box">👥</div>
+            <div class="kpi-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="kpi-label">Team Specialists</span>
+                <span class="live-badge-count" style="font-size:10px;padding:1px 7px">Hired Staff</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+                <strong class="kpi-val" id="admin-kpi-team" style="font-size:26px">0</strong>
+                <span style="font-size:12px;color:var(--text-muted)">Specialists</span>
+              </div>
+              <span class="kpi-sub" id="admin-kpi-team-active" style="font-size:11.5px;color:#38bdf8;margin-top:2px">0 in studio • 1 Owner</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Today's Attendance -->
+          <div class="admin-kpi-card emerald" onclick="switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('present')" style="cursor:pointer" title="Click to view employees present today">
+            <div class="kpi-icon-box">🟢</div>
+            <div class="kpi-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="kpi-label">Today's Attendance</span>
+                <span style="font-size:10.5px;color:#34d399;font-weight:600">Shift 10:30-7:00</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px">
+                <div style="display:flex;align-items:baseline;gap:4px">
+                  <strong class="kpi-val" id="admin-kpi-present" style="font-size:26px;color:#34d399">0</strong>
+                  <span style="font-size:11.5px;color:#34d399">Present</span>
+                </div>
+                <span style="color:rgba(255,255,255,0.2)">/</span>
+                <div style="display:flex;align-items:baseline;gap:4px" onclick="event.stopPropagation();switchAdminTab('attendance'); switchAttendanceView('today'); setAttFilter('absent')">
+                  <strong class="kpi-val" id="admin-kpi-absent" style="font-size:20px;color:#f87171">0</strong>
+                  <span style="font-size:11.5px;color:#f87171">Absent</span>
+                </div>
+              </div>
+              <span class="kpi-sub" style="font-size:11.5px;color:#94a3b8;margin-top:2px">Daily verified check-ins</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Active Deliverables -->
+          <div class="admin-kpi-card amber" onclick="switchAdminTab('timesheets')" style="cursor:pointer" title="Click to see who is working live on projects">
+            <div class="kpi-icon-box">⚡</div>
+            <div class="kpi-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="kpi-label">Deliverables</span>
+                <span class="live-pulse-dot-ring"><span class="live-pulse-dot"></span></span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px">
+                <div style="display:flex;align-items:baseline;gap:4px">
+                  <strong class="kpi-val" id="admin-kpi-live-work" style="font-size:26px;color:#fbbf24">0</strong>
+                  <span style="font-size:11.5px;color:#fbbf24">Active Clocks</span>
+                </div>
+                <span style="color:rgba(255,255,255,0.2)">/</span>
+                <div style="display:flex;align-items:baseline;gap:4px">
+                  <strong class="kpi-val" id="admin-kpi-completed-today" style="font-size:20px;color:#c4b5fd">0</strong>
+                  <span style="font-size:11.5px;color:#c4b5fd">Done</span>
+                </div>
+              </div>
+              <span class="kpi-sub" style="font-size:11.5px;color:#94a3b8;margin-top:2px">Tracked project work sessions</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Client Accounts -->
+          <div class="admin-kpi-card purple" onclick="switchAdminTab('clients')" style="cursor:pointer" title="View managed client accounts">
+            <div class="kpi-icon-box">🏢</div>
+            <div class="kpi-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="kpi-label">Client Accounts</span>
+                <span style="font-size:10.5px;color:#a78bfa;font-weight:600">Enterprise</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px">
+                <div style="display:flex;align-items:baseline;gap:4px">
+                  <strong class="kpi-val" id="admin-kpi-clients" style="font-size:26px;color:#a78bfa">0</strong>
+                  <span style="font-size:11.5px;color:#c4b5fd">Clients</span>
+                </div>
+                <div style="display:inline-flex;align-items:baseline;gap:4px;margin-left:auto" onclick="event.stopPropagation();switchAdminTab('timesheets'); filterPendingAdminProjects()">
+                  <span style="font-size:11px;color:#fca5a5">Overdue:</span>
+                  <strong class="kpi-val" id="admin-kpi-pending-assignments" style="font-size:14px;color:#ef4444">0</strong>
+                </div>
+              </div>
+              <span class="kpi-sub" style="font-size:11.5px;color:#94a3b8;margin-top:2px">Managed brand partners</span>
+            </div>
+          </div>
+        </div>
 
         <!-- =========================================================
-         TAB: ATTENDANCE & SHIFT REGISTER (FULL 30-DAY & MONTHLY ARCHIVE)
-         ========================================================= -->
-    <div class="admin-pane" id="admin-pane-attendance">
-      
-      <!-- Sub-Navigation Switcher -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
-        <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
-          <button type="button" class="ts-subtab-btn active" id="att-subtab-history" onclick="switchAttendanceView('history')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
-            <span>📅 Monthly Attendance Register</span>
-          </button>
-          <button type="button" class="ts-subtab-btn" id="att-subtab-today" onclick="switchAttendanceView('today')" style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
-            <span>🟢 Today's Live Station</span>
-          </button>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:8px">
-          <button type="button" class="btn-small btn-secondary" onclick="loadAdminAll()" style="display:flex;align-items:center;gap:6px">
-            <span>🔄 Sync Cloud Records</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- VIEW A: 30-DAY HISTORICAL ATTENDANCE REGISTER -->
-      <div id="att-view-history">
-        <!-- KPI Strip for History -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px;margin-bottom:16px">
-          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#94a3b8;display:block">Total Records in View</span>
-            <strong id="history-kpi-total" style="font-size:20px;color:#fff">0</strong>
-            <span style="font-size:11px;color:#64748b;display:block">Permanent Supabase logs</span>
-          </div>
-          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fcd34d;display:block">⏰ Late Check-Ins</span>
-            <strong id="history-kpi-late-checkin" style="font-size:20px;color:#f59e0b">0</strong>
-            <span style="font-size:11px;color:#fcd34d;display:block">After 10:30 AM shift start</span>
-          </div>
-          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fcd34d;display:block">🍱 Lunch Schedule Exceptions</span>
-            <strong id="history-kpi-late-lunch" style="font-size:20px;color:#fbbf24">0</strong>
-            <span style="font-size:11px;color:#fcd34d;display:block">&gt;60m or post-3PM</span>
-          </div>
-          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#c4b5fd;display:block">💼 Deliverables Worked</span>
-            <strong id="history-kpi-projects" style="font-size:20px;color:#a78bfa">0</strong>
-            <span style="font-size:11px;color:#c4b5fd;display:block">Days with project work</span>
-          </div>
-          <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:12px 16px">
-            <span style="font-size:11.5px;color:#fca5a5;display:block">🔴 Absent Days</span>
-            <strong id="history-kpi-absent" style="font-size:20px;color:#f87171">0</strong>
-            <span style="font-size:11px;color:#fca5a5;display:block">Missed working shifts</span>
-          </div>
-        </div>
-
-        <!-- Filter Controls Bar -->
-        <div style="background:rgba(15,23,42,0.75);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px;margin-bottom:18px;display:flex;flex-direction:column;gap:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <!-- Preset Date Pills -->
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font-size:12px;color:#94a3b8;margin-right:4px">Period:</span>
-              <button type="button" class="att-pill active" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
-              <button type="button" class="att-pill" id="btn-preset-today" onclick="setHistoryDatePreset('today', this)">Today</button>
-              <button type="button" class="att-pill" id="btn-preset-yesterday" onclick="setHistoryDatePreset('yesterday', this)">Yesterday</button>
-              <button type="button" class="att-pill" id="btn-preset-all" onclick="setHistoryDatePreset('all', this)">Past 30 Days</button>
-              <button type="button" class="att-pill" id="btn-preset-last_month" onclick="setHistoryDatePreset('last_month', this)">Last Month</button>
+             TAB 1: STAFF & SPECIALISTS DIRECTORY (CLEAN ROSTER)
+             ========================================================= -->
+        <div class="admin-pane active" id="admin-pane-employees">
+          <div class="section-header" style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3 style="margin:0;font-size:20px;color:#fff;font-family:'Outfit',sans-serif">Agency Staff &amp; Specialists</h3>
+              <span style="font-size:12.5px;color:#94a3b8">Active agency video editors, designers, thumbnail artists &amp; developers</span>
             </div>
-
-            <!-- Specific Date Picker -->
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:12px;color:#94a3b8">Pick Date:</span>
-              <input type="date" id="admin-att-history-date-picker" onchange="onHistoryDatePickerChange(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none" />
-              <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">✕ Clear</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button type="button" class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg,#06b6d4,#7c3aed)">+ Assign Deliverable</button>
+              <button type="button" class="btn-primary btn-small" onclick="openAddEmployeeModal()">+ Add Specialist</button>
             </div>
           </div>
 
-          <!-- Secondary Filters: Staff Specialist, Issue / Flag, Search -->
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:12px;color:#94a3b8">Staff:</span>
-                <select id="admin-att-history-staff-select" onchange="onHistoryStaffSelect(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:#fff;font-size:12.5px;outline:none">
-                  <option value="all">All Specialists (Entire Team)</option>
-                </select>
-              </div>
-
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:12px;color:#94a3b8">Filter:</span>
-                <select id="admin-att-history-issue-select" onchange="onHistoryIssueSelect(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 12px;color:#fff;font-size:12.5px;outline:none">
-                  <option value="all">All Attendance Records</option>
-                  <option value="late_checkin">⚠️ Late Check-In Only (Post 10:30 AM)</option>
-                  <option value="late_lunch">🍱 Late Lunch / Exceeded Break Only</option>
-                  <option value="worked_projects">💼 Worked on Deliverables</option>
-                  <option value="present">🟢 Present Records Only</option>
-                  <option value="absent">🔴 Absent Records Only</option>
-                </select>
-              </div>
+          <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div class="search-input-box" style="max-width:320px;width:100%">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+              </svg>
+              <input type="text" class="search-input" id="admin-emp-search" placeholder="Search staff by name, role, ID..." oninput="renderAdminEmployees()" />
             </div>
-
-            <div class="search-input-box" style="max-width:280px;width:100%">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <input type="text" class="search-input" id="admin-att-history-search" placeholder="Search by name, date..." oninput="onHistorySearchInput(this.value)" />
+            <div class="att-filter-pills" id="admin-roster-att-filters">
+              <button type="button" class="att-pill active" onclick="setRosterAttFilter('all', this)">All Staff (<span id="roster-filter-all-cnt">0</span>)</button>
+              <button type="button" class="att-pill green" onclick="setRosterAttFilter('present', this)">🟢 In Studio (<span id="roster-filter-pres-cnt">0</span>)</button>
+              <button type="button" class="att-pill red" onclick="setRosterAttFilter('absent', this)">🔴 Absent (<span id="roster-filter-abs-cnt">0</span>)</button>
+              <button type="button" class="att-pill orange" onclick="setRosterAttFilter('lunch', this)">🟡 On Break (<span id="roster-filter-lunch-cnt">0</span>)</button>
             </div>
           </div>
-        </div>
 
-        <!-- Historical Register Table -->
-        <div class="glass-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Staff Specialist</th>
-                <th>Punch In &amp; Late Status</th>
-                <th>Lunch Break &amp; Protocol</th>
-                <th>Deliverables / Projects Worked</th>
-                <th>Punch Out</th>
-                <th>Effective Work</th>
-                <th>Shift Status</th>
-                <th style="text-align:center">Selfie</th>
-              </tr>
-            </thead>
-            <tbody id="admin-att-history-tbody">
-              <!-- Rendered by renderAdminAttendanceHistory() -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- VIEW B: TODAY'S LIVE PRESENCE STATION -->
-      <div id="att-view-today" style="display:none">
-        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">🟢 Today's Live Attendance Station</h4>
-            <span style="font-size:12px;color:#94a3b8">Real-time attendance pulse for today. Photos automatically preserved in permanent shift records.</span>
-          </div>
-          <div class="att-filter-pills" id="admin-att-today-filters">
-            <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
-            <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">🟢 Present (<span id="att-filter-pres-cnt">0</span>)</button>
-            <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
-            <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
+          <div class="glass-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Specialist / Staff</th>
+                  <th>Employee ID</th>
+                  <th>Assigned Domains</th>
+                  <th>Shift Timing</th>
+                  <th>Today's Attendance</th>
+                  <th>Activity</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-roster-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div class="glass-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Staff Specialist</th>
-                <th>Employee ID</th>
-                <th>Today's Presence</th>
-                <th>Snapshot</th>
-                <th>Punch In</th>
-                <th>Lunch Break</th>
-                <th>Activity</th>
-                <th>Punch Out</th>
-                <th>Effective Hours</th>
-              </tr>
-            </thead>
-            <tbody id="admin-attendance-tbody">
-              <!-- Rendered by renderAdminAttendanceTable() -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- TAB 3: PROJECT HOURS & TIMESHEETS -->
-    <div class="admin-pane" id="admin-pane-timesheets">
-
-      <!-- =========================================================
-           TOP SUMMARY CARDS (2-COLUMN EXECUTIVE OVERVIEW)
-           ========================================================= -->
-      <div class="timesheet-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:16px;margin-bottom:24px">
-        
-        <!-- CARD 1: LIVE WORK STATION -->
-        <div class="live-pulse-section" style="margin-bottom:0;background:linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(16,185,129,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span class="live-pulse-dot-ring">
-                <span class="live-pulse-dot"></span>
-              </span>
+        <!-- =========================================================
+             TAB 2: ATTENDANCE REGISTER (UNCLUTTERED & SPACIOUS)
+             ========================================================= -->
+        <div class="admin-pane" id="admin-pane-attendance">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px">
               <div>
-                <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station</h3>
-                <span style="font-size:11.5px;color:#94a3b8">Specialists actively running project clocks</span>
+                <h3 style="margin:0;font-size:20px;color:#fff;font-family:'Outfit',sans-serif">📅 Attendance &amp; Shift Register</h3>
+                <span style="font-size:12.5px;color:#94a3b8">Verified daily check-ins, shift hours, lunch breaks &amp; monthly attendance</span>
               </div>
             </div>
-            <span class="live-badge-count" id="admin-live-workers-count" style="font-size:11.5px;padding:3px 10px">0 Working Now</span>
-          </div>
-          <div id="admin-live-work-container" style="flex:1">
-            <!-- Rendered dynamically by JS -->
-          </div>
-        </div>
 
-        <!-- CARD 2: TODAY'S COMPLETED DELIVERABLES -->
-        <div class="today-completed-section" style="margin-bottom:0;background:linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(124,58,237,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
             <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:26px;height:26px;border-radius:7px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:center;font-size:13px">
-                ✅
+              <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);gap:4px">
+                <button type="button" class="ts-subtab-btn active" id="att-subtab-history" onclick="switchAttendanceView('history')" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer">
+                  <span>📅 Monthly Register</span>
+                </button>
+                <button type="button" class="ts-subtab-btn" id="att-subtab-today" onclick="switchAttendanceView('today')" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer">
+                  <span>🟢 Today's Live Station</span>
+                </button>
               </div>
-              <div>
-                <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Concluded Today</h3>
-                <span style="font-size:11.5px;color:#94a3b8">Finished tasks &amp; logged work sessions</span>
-              </div>
-            </div>
-            <span class="stat-badge green" id="admin-today-completed-summary" style="font-size:11.5px;padding:3px 10px">0 Done Today</span>
-          </div>
-          <div id="admin-today-completed-container" style="flex:1">
-            <!-- Rendered dynamically by JS -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- =========================================================
-           EXECUTIVE SUB-NAVIGATION SWITCHER (CLEAN FOCUSED WORKSPACE)
-           ========================================================= -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
-        
-        <!-- Clean Sub-Tabs -->
-        <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);gap:4px">
-          <button type="button" class="ts-subtab-btn active" id="ts-subtab-deliverables" onclick="switchTimesheetSection('deliverables')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer;transition:all 0.2s">
-            <span>⏱️ Deliverables &amp; Projects</span>
-          </button>
-          <button type="button" class="ts-subtab-btn" id="ts-subtab-attendance" onclick="switchTimesheetSection('attendance')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
-            <span>📸 Daily Attendance Table</span>
-          </button>
-          <button type="button" class="ts-subtab-btn" id="ts-subtab-activity" onclick="switchTimesheetSection('activity')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer;transition:all 0.2s">
-            <span>⚡ Live Activity Stream</span>
-          </button>
-        </div>
-
-        <!-- Quick Action on Top Right -->
-        <div id="ts-top-action-bar">
-          <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            <span>+ Create Deliverable</span>
-          </button>
-        </div>
-
-      </div>
-
-      <!-- =========================================================
-           VIEW 1: DELIVERABLES & TIMESHEETS (PRIMARY DEFAULT VIEW)
-           ========================================================= -->
-      <div class="ts-section-view" id="ts-view-deliverables">
-        <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div class="search-input-box" style="max-width:350px">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-            </svg>
-            <input type="text" class="search-input" id="admin-timesheet-search" placeholder="Search deliverables, clients..." oninput="renderAdminProjectsTime()" />
-          </div>
-          <span style="font-size:12px;color:#94a3b8">Executive oversight of agency deliverables &amp; work hours</span>
-        </div>
-
-        <div class="glass-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Deliverable / Project</th>
-                <th>Client</th>
-                <th>Assigned Domain</th>
-                <th>Status</th>
-                <th>Total Work Tracked</th>
-                <th>Sessions Count</th>
-                <th>Live State</th>
-              </tr>
-            </thead>
-            <tbody id="admin-timesheets-tbody">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- =========================================================
-           VIEW 2: STAFF DAILY ATTENDANCE VERIFICATION
-           ========================================================= -->
-      <div class="ts-section-view" id="ts-view-attendance" style="display:none">
-        <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">📸 Staff Daily Attendance Verification</h4>
-            <span style="font-size:12px;color:#94a3b8">Check-in photos and shift hours. Photo records auto-purged after 7 days to preserve storage.</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="att-filter-pills" id="admin-att-filters">
-              <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
-              <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">&#128994; Present (<span id="att-filter-pres-cnt">0</span>)</button>
-              <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">&#128308; Absent (<span id="att-filter-abs-cnt">0</span>)</button>
-              <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">&#127857; Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn-small btn-secondary" onclick="loadAdminAll()" style="gap:6px">
-                <span>🔄 Refresh All</span>
-              </button>
-              <button class="btn-small btn-ghost-danger" onclick="adminClearAttendanceLogs()" style="border:1px solid rgba(239,68,68,0.4);color:#fca5a5" title="Clear all agency attendance logs (Admin Only)">
-                <span>🗑️ Clear Attendance Logs</span>
+              <button type="button" class="btn-small btn-secondary" onclick="loadAdminAll()" style="display:flex;align-items:center;gap:6px">
+                <span>🔄 Sync Cloud</span>
               </button>
             </div>
           </div>
-        </div>
 
-        <div class="glass-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Staff Specialist</th>
-                <th>Employee ID</th>
-                <th>Today's Presence</th>
-                <th>Snapshot</th>
-                <th>Punch In</th>
-                <th>Lunch Break</th>
-                <th>Activity</th>
-                <th>Punch Out</th>
-                <th>Effective Hours</th>
-              </tr>
-            </thead>
-            <tbody id="admin-attendance-tbody">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <!-- Hidden storage for JS KPI counters to prevent DOM errors -->
+          <div style="display:none">
+            <span id="history-kpi-total">0</span>
+            <span id="history-kpi-late-checkin">0</span>
+            <span id="history-kpi-late-lunch">0</span>
+            <span id="history-kpi-projects">0</span>
+            <span id="history-kpi-absent">0</span>
+          </div>
 
-      <!-- =========================================================
-           VIEW 3: LIVE AGENCY ACTIVITY STREAM
-           ========================================================= -->
-      <div class="ts-section-view" id="ts-view-activity" style="display:none">
-        <div style="background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 22px;backdrop-filter:blur(16px)">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:16px">
-                ⚡
+          <!-- VIEW A: 30-DAY / MONTHLY HISTORICAL REGISTER -->
+          <div id="att-view-history">
+            <!-- Sleek Unified Filter Controls Bar -->
+            <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:12px;color:#94a3b8">Specialist:</span>
+                  <select id="admin-att-history-staff-select" onchange="onHistoryStaffSelect(this.value)" class="form-select" style="padding:6px 12px;font-size:12.5px;border-radius:8px;background:#131722;border:1px solid rgba(255,255,255,0.15);color:#fff">
+                    <option value="all">All Specialists (Entire Team)</option>
+                  </select>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:4px">
+                  <button type="button" class="att-pill active" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
+                  <button type="button" class="att-pill" id="btn-preset-today" onclick="setHistoryDatePreset('today', this)">Today</button>
+                  <button type="button" class="att-pill" id="btn-preset-yesterday" onclick="setHistoryDatePreset('yesterday', this)">Yesterday</button>
+                  <button type="button" class="att-pill" id="btn-preset-all" onclick="setHistoryDatePreset('all', this)">Past 30 Days</button>
+                  <button type="button" class="att-pill" id="btn-preset-last_month" onclick="setHistoryDatePreset('last_month', this)">Last Month</button>
+                </div>
               </div>
+
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <select id="admin-att-history-issue-select" onchange="onHistoryIssueSelect(this.value)" class="form-select" style="padding:6px 12px;font-size:12.5px;border-radius:8px;background:#131722;border:1px solid rgba(255,255,255,0.15);color:#fff">
+                  <option value="all">All Records</option>
+                  <option value="present">🟢 Present Only</option>
+                  <option value="absent">🔴 Absent Only</option>
+                  <option value="late_checkin">⚠️ Late Check-In</option>
+                  <option value="late_lunch">🍱 Lunch Exceptions</option>
+                  <option value="worked_projects">💼 Worked Deliverables</option>
+                </select>
+
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input type="date" id="admin-att-history-date-picker" onchange="onHistoryDatePickerChange(this.value)" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none" />
+                  <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">✕</button>
+                </div>
+
+                <div class="search-input-box" style="max-width:220px">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                  <input type="text" class="search-input" id="admin-att-history-search" placeholder="Search logs..." oninput="onHistorySearchInput(this.value)" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Historical Register Table -->
+            <div class="glass-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Staff Specialist</th>
+                    <th>Punch In &amp; Late Status</th>
+                    <th>Lunch Break &amp; Protocol</th>
+                    <th>Deliverables / Projects Worked</th>
+                    <th>Punch Out</th>
+                    <th>Effective Work</th>
+                    <th>Shift Status</th>
+                    <th>Selfie</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-att-history-tbody">
+                  <!-- Rendered dynamically by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- VIEW B: TODAY'S LIVE STATION -->
+          <div id="att-view-today" style="display:none">
+            <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
               <div>
-                <h4 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Live Agency Activity Stream</h4>
-                <span style="font-size:12px;color:#94a3b8">Real-time cloud audit stream of agency actions, check-ins, lunch breaks &amp; deliverables today</span>
+                <h4 style="margin:0 0 4px 0;font-size:16px;color:#fff;font-family:'Outfit',sans-serif">📸 Live Shift Verification &amp; Check-In Snaps</h4>
+                <span style="font-size:12px;color:#94a3b8">Real-time shift verification, live work timers &amp; employee check-in photos</span>
+              </div>
+              <div class="att-filter-pills" id="admin-att-filters">
+                <button type="button" class="att-pill active" onclick="setAttFilter('all', this)">All Staff (<span id="att-filter-all-cnt">0</span>)</button>
+                <button type="button" class="att-pill green" onclick="setAttFilter('present', this)">🟢 Present (<span id="att-filter-pres-cnt">0</span>)</button>
+                <button type="button" class="att-pill red" onclick="setAttFilter('absent', this)">🔴 Absent (<span id="att-filter-abs-cnt">0</span>)</button>
+                <button type="button" class="att-pill orange" onclick="setAttFilter('lunch', this)">🟡 Lunch (<span id="att-filter-lunch-cnt">0</span>)</button>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="stat-badge green" style="font-size:11px;padding:3px 8px"><span class="timer-pulse-circle"></span> Cloud Synced</span>
-              <button type="button" class="btn-small btn-secondary" onclick="loadAdminActivities()" style="font-size:11px;padding:4px 12px">🔄 Refresh Stream</button>
+
+            <div class="glass-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Staff Specialist</th>
+                    <th>Employee ID</th>
+                    <th>Today's Presence</th>
+                    <th>Snapshot</th>
+                    <th>Punch In</th>
+                    <th>Lunch Break</th>
+                    <th>Activity</th>
+                    <th>Punch Out</th>
+                    <th>Effective Hours</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-attendance-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
             </div>
           </div>
-          <div id="admin-activity-timeline" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
-            <!-- Rendered live from Supabase activity_logs -->
+        </div>
+
+        <!-- =========================================================
+             TAB 3: DELIVERABLES & WORK TIMESHEETS
+             ========================================================= -->
+        <div class="admin-pane" id="admin-pane-timesheets">
+          <!-- Top Summary Cards (Live Work & Concluded Today) -->
+          <div class="timesheet-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:16px;margin-bottom:20px">
+            <!-- Card 1: Live Work Station -->
+            <div class="live-pulse-section" style="background:linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(16,185,129,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span class="live-pulse-dot-ring"><span class="live-pulse-dot"></span></span>
+                  <div>
+                    <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">⚡ Live Project Work Station</h3>
+                    <span style="font-size:11.5px;color:#94a3b8">Specialists actively running project clocks</span>
+                  </div>
+                </div>
+                <span class="live-badge-count" id="admin-live-workers-count" style="font-size:11.5px;padding:3px 10px">0 Working Now</span>
+              </div>
+              <div id="admin-live-work-container" style="flex:1">
+                <!-- Rendered dynamically by JS -->
+              </div>
+            </div>
+
+            <!-- Card 2: Today's Completed Deliverables -->
+            <div class="today-completed-section" style="background:linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(124,58,237,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:26px;height:26px;border-radius:7px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:center;font-size:13px">
+                    ✅
+                  </div>
+                  <div>
+                    <h3 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Concluded Today</h3>
+                    <span style="font-size:11.5px;color:#94a3b8">Finished tasks &amp; logged work sessions</span>
+                  </div>
+                </div>
+                <span class="stat-badge green" id="admin-today-completed-summary" style="font-size:11.5px;padding:3px 10px">0 Done Today</span>
+              </div>
+              <div id="admin-today-completed-container" style="flex:1">
+                <!-- Rendered dynamically by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Navigation Switcher -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08)">
+            <div class="timesheet-sub-tabs" style="display:inline-flex;background:rgba(15,23,42,0.85);padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);gap:4px">
+              <button type="button" class="ts-subtab-btn active" id="ts-subtab-deliverables" onclick="switchTimesheetSection('deliverables')" style="display:flex;align-items:center;gap:8px;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;color:#fff;background:linear-gradient(135deg,#7c3aed,#6366f1);border:none;cursor:pointer">
+                <span>⏱️ Deliverables &amp; Projects</span>
+              </button>
+              <button type="button" class="ts-subtab-btn" id="ts-subtab-activity" onclick="switchTimesheetSection('activity')" style="display:flex;align-items:center;gap:8px;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:600;color:#94a3b8;background:transparent;border:none;cursor:pointer">
+                <span>⚡ Live Activity Stream</span>
+              </button>
+            </div>
+            <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="gap:6px">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+              <span>+ Create Deliverable</span>
+            </button>
+          </div>
+
+          <!-- VIEW 1: DELIVERABLES TABLE -->
+          <div class="ts-section-view" id="ts-view-deliverables">
+            <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+              <div class="search-input-box" style="max-width:320px;width:100%">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+                <input type="text" class="search-input" id="admin-timesheet-search" placeholder="Search deliverables, clients..." oninput="renderAdminProjectsTime()" />
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Executive oversight of agency deliverables &amp; work hours</span>
+            </div>
+
+            <div class="glass-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Deliverable / Project</th>
+                    <th>Client</th>
+                    <th>Assigned Domain</th>
+                    <th>Status</th>
+                    <th>Total Work Tracked</th>
+                    <th>Sessions Count</th>
+                    <th>Live State</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-timesheets-tbody">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- VIEW 2: LIVE AGENCY ACTIVITY STREAM -->
+          <div class="ts-section-view" id="ts-view-activity" style="display:none">
+            <div style="background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 22px;backdrop-filter:blur(16px)">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center;font-size:16px">
+                    ⚡
+                  </div>
+                  <div>
+                    <h4 style="margin:0;font-size:15px;color:#fff;font-family:'Outfit',sans-serif">Live Agency Activity Stream</h4>
+                    <span style="font-size:12px;color:#94a3b8">Real-time cloud audit stream of agency actions, check-ins, lunch breaks &amp; deliverables today</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="stat-badge green" style="font-size:11px;padding:3px 8px"><span class="timer-pulse-circle"></span> Cloud Synced</span>
+                  <button type="button" class="btn-small btn-secondary" onclick="loadAdminActivities()" style="font-size:11px;padding:4px 12px">🔄 Refresh</button>
+                </div>
+              </div>
+              <div id="admin-activity-timeline" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:4px">
+                <!-- Rendered live from Supabase activity_logs -->
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
+        <!-- =========================================================
+             TAB 4: CLIENT DIRECTORY
+             ========================================================= -->
+        <div class="admin-pane" id="admin-pane-clients">
+          <div class="section-header" style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3 style="margin:0;font-size:20px;color:#fff;font-family:'Outfit',sans-serif">Client Directory &amp; Accounts</h3>
+              <span style="font-size:12.5px;color:#94a3b8">Managed client brands, corporate accounts, deliverables and active retainers</span>
+            </div>
+            <button class="btn-primary btn-glow" onclick="openAddClientModal()">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
+              <span>Add Client</span>
+            </button>
+          </div>
+
+          <div class="filter-bar" style="margin-bottom:16px">
+            <div class="search-input-box" style="max-width:320px;width:100%">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+              </svg>
+              <input type="text" class="search-input" id="admin-client-search" placeholder="Search clients by name, industry..." oninput="renderAdminClients()" />
+            </div>
+          </div>
+
+          <div class="glass-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Client / Brand</th>
+                  <th>Industry Domain</th>
+                  <th>Active Projects</th>
+                  <th>Calendars</th>
+                  <th>Account Status</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-clients-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =========================================================
+             TAB 5: CONTENT CALENDARS & PDFS
+             ========================================================= -->
+        <div class="admin-pane" id="admin-pane-calendars">
+          <div class="section-header" style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3 style="margin:0;font-size:20px;color:#fff;font-family:'Outfit',sans-serif">Content Calendars &amp; Campaign Schedules</h3>
+              <span style="font-size:12.5px;color:#94a3b8">Client monthly social media posting grids, creative roadmaps &amp; campaign schedules</span>
+            </div>
+            <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
+              </svg>
+              <span>+ Upload Calendar</span>
+            </button>
+          </div>
+
+          <div class="filter-bar" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div class="filter-chips" id="admin-cal-filter-chips">
+                <button class="filter-btn active" onclick="filterAdminCalendars('all', this)">All Calendars</button>
+                <button class="filter-btn" onclick="filterAdminCalendars('current', this)">Current Month</button>
+              </div>
+              <div class="cal-client-select-wrap" style="display:inline-flex;align-items:center;gap:6px">
+                <label for="admin-cal-client-select" style="font-size:12px;color:#94a3b8;font-weight:600">Client:</label>
+                <select class="form-select" id="admin-cal-client-select" onchange="filterAdminCalendarsByClient(this.value)" style="min-width:180px;padding:6px 12px;font-size:12.5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#fff;cursor:pointer">
+                  <option value="all">🏢 All Client Calendars</option>
+                </select>
+              </div>
+              <div class="search-input-box" style="max-width:260px">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+                <input type="text" class="search-input" id="admin-cal-search" placeholder="Search calendars..." oninput="renderAdminCalendars()" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendars Grid -->
+          <div class="calendars-grid" id="admin-calendars-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+      </main>
     </div>
-
-    <!-- TAB 4: CONTENT CALENDARS & PDFS -->
-    <div class="admin-pane" id="admin-pane-calendars">
-      <div class="filter-bar"
-        style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div class="filter-chips" id="admin-cal-filter-chips">
-            <button class="filter-btn active" onclick="filterAdminCalendars('all', this)">All Calendars</button>
-            <button class="filter-btn" onclick="filterAdminCalendars('current', this)">Current Month</button>
-          </div>
-          <div class="cal-client-select-wrap" style="display:inline-flex;align-items:center;gap:6px">
-            <label for="admin-cal-client-select" style="font-size:12px;color:#94a3b8;font-weight:600">Client:</label>
-            <select class="form-select" id="admin-cal-client-select" onchange="filterAdminCalendarsByClient(this.value)" style="min-width:180px;padding:6px 12px;font-size:12.5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#fff;cursor:pointer">
-              <option value="all">🏢 All Client Calendars</option>
-            </select>
-          </div>
-          <div class="search-input-box" style="max-width:300px">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path
-                d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-            </svg>
-            <input type="text" class="search-input" id="admin-cal-search"
-              placeholder="Search by client, month, title..." oninput="renderAdminCalendars()" />
-          </div>
-        </div>
-        <button class="btn-primary btn-glow" onclick="openCalendarUploadModal()">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path
-              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
-          </svg>
-          <span>+ Upload Client Calendar</span>
-        </button>
-      </div>
-
-      <!-- Calendars Grid -->
-      <div class="calendars-grid" id="admin-calendars-grid">
-        <!-- Rendered by JS -->
-      </div>
-    </div>
-
-    <!-- Executive Admin Footer Credit Bar -->
-    <footer class="admin-footer-credits" style="margin-top:40px;padding:22px 0 30px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;color:#94a3b8;font-size:12.5px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.3));border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;font-size:13px">⚡</span>
-        <div>
-          <strong style="color:#fff;font-family:'Outfit',sans-serif;font-size:13.5px">Digital Amnik OS</strong>
-          <span style="display:block;font-size:11px;color:#64748b">Executive Agency Operating System &amp; Enterprise CRM</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="color:#64748b">Engineered by</span>
-          <strong style="color:#e2e8f0;font-weight:700">Mohammad Ilhan</strong>
-        </div>
-        <span style="color:rgba(255,255,255,0.15)">•</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="color:#64748b">Conceptualised By</span>
-          <strong style="color:#e2e8f0;font-weight:700">Salman Sahir</strong>
-        </div>
-      </div>
-    </footer>
 
   </div>
 
@@ -2365,6 +2295,12 @@
 
   <!-- ===================== JAVASCRIPT CONTROLLER ===================== -->
   <script>
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.toggle('open');
+      if (bd) bd.classList.toggle('open');
+    }
     /* =========================================================
        ADMIN AUTHENTICATION & OPERATIONS CONTROLLER (DYNAMIC DB)
        ========================================================= */
@@ -4096,14 +4032,19 @@
     }
 
     function switchAdminTab(tabName) {
-      document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-btn, .nav-item').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.admin-pane').forEach(p => p.classList.remove('active'));
 
-      const btn = document.getElementById(`tab-btn-${tabName}`);
-      const pane = document.getElementById(`admin-pane-${tabName}`);
+      const btns = document.querySelectorAll('[id="tab-btn-' + tabName + '"]');
+      btns.forEach(b => b.classList.add('active'));
 
-      if (btn) btn.classList.add('active');
+      const pane = document.getElementById('admin-pane-' + tabName);
       if (pane) pane.classList.add('active');
+
+      if (window.innerWidth <= 768) {
+        document.getElementById('sidebar')?.classList.remove('open');
+        document.getElementById('sidebar-backdrop')?.classList.remove('open');
+      }
 
       if (tabName === 'clients') renderAdminClients();
       if (tabName === 'employees') {
@@ -4112,11 +4053,11 @@
       }
       if (tabName === 'attendance') {
         renderAdminAttendanceHistory();
-        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
+        renderAdminAttendanceTable();
         loadAdminAttendanceLogs();
       }
       if (tabName === 'timesheets') {
-        renderAdminAttendanceTable(); renderAdminAttendanceHistory();
+        renderAdminAttendanceTable();
         renderAdminProjectsTime();
         loadAdminAttendanceLogs();
       }
