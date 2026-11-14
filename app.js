@@ -2890,18 +2890,7 @@ function renderProjects() {
   const search = (document.getElementById('proj-search')?.value || '').toLowerCase();
   const isMgr = isManagerRole();
 
-  let list = STATE.projects;
-
-  // Regular specialists ONLY see projects assigned to them or created by them
-  if (!isMgr) {
-    const currentEmp = STATE.employee;
-    list = list.filter(p => {
-      const isAssigned = isProjectAssignedTo(p, currentEmp);
-      const isCreator = (p.createdBy && currentEmp?.name && p.createdBy.toLowerCase() === currentEmp.name.toLowerCase()) ||
-                        (p.creatorId && currentEmp?.id && p.creatorId.toLowerCase() === currentEmp.id.toLowerCase());
-      return isAssigned || isCreator;
-    });
-  }
+  let list = STATE.projects || [];
 
   if (_activeFilter === 'my') {
     list = list.filter(p => isProjectAssignedTo(p, STATE.employee));
