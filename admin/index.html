@@ -1298,22 +1298,22 @@
             <span class="page-date-str" style="font-size:12px;color:var(--text-muted)">Master Executive Control • Agency Administration</span>
           </div>
         </div>
-        <div class="topbar-right">
-          <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);gap:5px;font-size:12px;padding:6px 12px">
+        <div class="topbar-right admin-topbar-actions-wrap">
+          <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);gap:5px;font-size:12px;padding:6px 12px" title="New Deliverable">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            <span>+ Deliverable</span>
+            <span class="btn-label">+ Deliverable</span>
           </button>
-          <button class="btn-secondary btn-small" onclick="openAddClientModal()" style="gap:5px;font-size:12px;padding:6px 12px">
+          <button class="btn-secondary btn-small" onclick="openAddClientModal()" style="gap:5px;font-size:12px;padding:6px 12px" title="New Client Account">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            <span>+ Client</span>
+            <span class="btn-label">+ Client</span>
           </button>
-          <button class="btn-secondary btn-small" onclick="openAddEmployeeModal()" style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;gap:5px;font-size:12px;padding:6px 12px">
+          <button class="btn-secondary btn-small" onclick="openAddEmployeeModal()" style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;gap:5px;font-size:12px;padding:6px 12px" title="Onboard Specialist">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <span>+ Specialist</span>
+            <span class="btn-label">+ Specialist</span>
           </button>
           <button class="btn-ghost-danger btn-small" onclick="lockAdminConsole()" title="Lock Console" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);color:#fca5a5;gap:5px;cursor:pointer">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-            <span>Lock</span>
+            <span class="btn-label">Lock</span>
           </button>
         </div>
       </header>
@@ -1322,7 +1322,7 @@
       <main class="content">
 
         <!-- ===================== EXECUTIVE 4-METRIC STRIP ===================== -->
-        <div class="admin-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="admin-kpi-grid">
           <!-- Card 1: Team Specialists -->
           <div class="admin-kpi-card cyan" onclick="switchAdminTab('employees')" style="cursor:pointer" title="View recruited staff specialists">
             <div class="kpi-icon-box">👥</div>
@@ -1497,8 +1497,8 @@
           <!-- VIEW A: 30-DAY / MONTHLY HISTORICAL REGISTER -->
           <div id="att-view-history">
             <!-- Sleek Unified Filter Controls Bar -->
-            <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <div class="admin-filter-bar">
+              <div class="filter-row-top" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
                 <div style="display:flex;align-items:center;gap:6px">
                   <span style="font-size:12px;color:#94a3b8">Specialist:</span>
                   <select id="admin-att-history-staff-select" onchange="onHistoryStaffSelect(this.value)" class="form-select" style="padding:6px 12px;font-size:12.5px;border-radius:8px;background:#131722;border:1px solid rgba(255,255,255,0.15);color:#fff">
@@ -1506,7 +1506,7 @@
                   </select>
                 </div>
 
-                <div style="display:flex;align-items:center;gap:4px">
+                <div class="filter-pills-scroll" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
                   <button type="button" class="att-pill active" id="btn-preset-this_month" onclick="setHistoryDatePreset('this_month', this)">This Month</button>
                   <button type="button" class="att-pill" id="btn-preset-today" onclick="setHistoryDatePreset('today', this)">Today</button>
                   <button type="button" class="att-pill" id="btn-preset-yesterday" onclick="setHistoryDatePreset('yesterday', this)">Yesterday</button>
@@ -1515,7 +1515,7 @@
                 </div>
               </div>
 
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="filter-row-bottom" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                 <select id="admin-att-history-issue-select" onchange="onHistoryIssueSelect(this.value)" class="form-select" style="padding:6px 12px;font-size:12.5px;border-radius:8px;background:#131722;border:1px solid rgba(255,255,255,0.15);color:#fff">
                   <option value="all">All Records</option>
                   <option value="present">🟢 Present Only</option>
@@ -1530,7 +1530,7 @@
                   <button type="button" class="btn-small btn-secondary" onclick="resetHistoryDatePicker()" style="font-size:11px;padding:5px 8px" title="Clear specific date filter">✕</button>
                 </div>
 
-                <div class="search-input-box" style="max-width:220px">
+                <div class="search-input-box" style="max-width:240px;flex:1 1 180px">
                   <svg viewBox="0 0 24 24" width="14" height="14"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                   <input type="text" class="search-input" id="admin-att-history-search" placeholder="Search logs..." oninput="onHistorySearchInput(this.value)" />
                 </div>
@@ -1603,7 +1603,7 @@
              ========================================================= -->
         <div class="admin-pane" id="admin-pane-timesheets">
           <!-- Top Summary Cards (Live Work & Concluded Today) -->
-          <div class="timesheet-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:16px;margin-bottom:20px">
+          <div class="timesheet-overview-grid">
             <!-- Card 1: Live Work Station -->
             <div class="live-pulse-section" style="background:linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(15,23,42,0.6) 100%);border:1px solid rgba(16,185,129,0.22);border-radius:14px;padding:16px 18px;backdrop-filter:blur(16px);display:flex;flex-direction:column">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)">
