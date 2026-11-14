@@ -8,13 +8,13 @@
 // ========================
 const DOMAIN_ROLES = [
   { label: 'Video Editor', icon: '🎬', isManager: false, desc: 'Reels, YouTube, Long & Short form edits' },
+  { label: 'Thumbnail Designer', icon: '🎨', isManager: false, desc: 'High-CTR YouTube & social media thumbnails' },
   { label: 'Social Media Management', icon: '📱', isManager: true, desc: 'Strategy, client campaigns & project delegation' },
-  { label: 'Graphic Design', icon: '🎨', isManager: false, desc: 'Thumbnails, banners, social posts' },
+  { label: 'Graphic Design', icon: '🖼️', isManager: false, desc: 'Brand assets, banners, carousels' },
   { label: 'Paid Ads Specialist', icon: '💰', isManager: false, desc: 'Meta Ads, Google PPC campaigns, ROAS' },
   { label: 'SEO Specialist', icon: '🔍', isManager: false, desc: 'Search rankings, keywords, audit reports' },
   { label: 'Content Creator / Writer', icon: '✍️', isManager: false, desc: 'Scripts, captions, creative copy' },
   { label: 'Web Developer', icon: '💻', isManager: false, desc: 'Landing pages, web applications, tech' },
-  { label: 'Admin', icon: '🗂️', isManager: true, desc: 'Operations, client assignments & tasks' },
 ];
 
 // ========================

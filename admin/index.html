@@ -1271,13 +1271,13 @@
             <span class="credit-icon">⚡</span>
             <span class="credit-title">Digital Amnik OS</span>
           </div>
-          <div class="credit-author">
-            <span class="credit-by-label">Engineered by</span>
-            <strong class="credit-author-name">Mohammad Ilhan</strong>
+                    <div class="credit-author">
+            <span class="credit-by-label">Agency Founder & Owner</span>
+            <strong class="credit-author-name">Amaan Khan 👑</strong>
           </div>
           <div class="credit-author" style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
-            <span class="credit-by-label">Conceptualised by</span>
-            <strong class="credit-author-name">Salman Sahir</strong>
+            <span class="credit-by-label">Architecture</span>
+            <strong class="credit-author-name">Digital Amnik Studio</strong>
           </div>
         </div>
       </div>
@@ -1879,21 +1879,14 @@
         <div class="form-group">
           <label class="form-label">Domain Specialties (Click to select 1 or more) <span class="req">*</span></label>
           <div class="domain-pills-wrap" id="new-emp-domains-wrap">
-            <span class="domain-pill active" data-domain="Video Editor" onclick="toggleDomainPill(this)">🎬 Video
-              Editor</span>
-            <span class="domain-pill" data-domain="Social Media Management" onclick="toggleDomainPill(this)">📱 Social
-              Media Management</span>
-            <span class="domain-pill" data-domain="Graphic Design" onclick="toggleDomainPill(this)">🎨 Graphic
-              Design</span>
-            <span class="domain-pill" data-domain="Paid Ads Specialist" onclick="toggleDomainPill(this)">💰 Paid Ads
-              Specialist</span>
-            <span class="domain-pill" data-domain="SEO Specialist" onclick="toggleDomainPill(this)">🔍 SEO
-              Specialist</span>
-            <span class="domain-pill" data-domain="Content Creator / Writer" onclick="toggleDomainPill(this)">✍️ Content
-              Creator / Writer</span>
-            <span class="domain-pill" data-domain="Web Developer" onclick="toggleDomainPill(this)">💻 Web
-              Developer</span>
-            <span class="domain-pill" data-domain="Admin" onclick="toggleDomainPill(this)">🗂️ Admin (Operations)</span>
+            <span class="domain-pill active" data-domain="Video Editor" onclick="toggleDomainPill(this)">🎬 Video Editor</span>
+            <span class="domain-pill" data-domain="Thumbnail Designer" onclick="toggleDomainPill(this)">🎨 Thumbnail Designer</span>
+            <span class="domain-pill" data-domain="Social Media Management" onclick="toggleDomainPill(this)">📱 Social Media Management</span>
+            <span class="domain-pill" data-domain="Graphic Design" onclick="toggleDomainPill(this)">🖼️ Graphic Design</span>
+            <span class="domain-pill" data-domain="Paid Ads Specialist" onclick="toggleDomainPill(this)">💰 Paid Ads Specialist</span>
+            <span class="domain-pill" data-domain="SEO Specialist" onclick="toggleDomainPill(this)">🔍 SEO Specialist</span>
+            <span class="domain-pill" data-domain="Content Creator / Writer" onclick="toggleDomainPill(this)">✍️ Content Creator / Writer</span>
+            <span class="domain-pill" data-domain="Web Developer" onclick="toggleDomainPill(this)">💻 Web Developer</span>
           </div>
         </div>
         <div class="form-row">
@@ -4216,10 +4209,11 @@
 
     // TAB 2: EMPLOYEES
     const ROLE_ICONS = {
-      'Admin': '🗂️',
+      'Admin': '👑',
       'Video Editor': '🎬',
+      'Thumbnail Designer': '🎨',
       'Social Media Management': '📱',
-      'Graphic Design': '🎨',
+      'Graphic Design': '🖼️',
       'Paid Ads Specialist': '💰',
       'SEO Specialist': '🔍',
       'Content Creator / Writer': '✍️',
@@ -4555,13 +4549,13 @@
 
       const allAvailableDomains = [
         'Video Editor',
+        'Thumbnail Designer',
         'Social Media Management',
         'Graphic Design',
         'Paid Ads Specialist',
         'SEO Specialist',
         'Content Creator / Writer',
-        'Web Developer',
-        'Admin'
+        'Web Developer'
       ];
 
       const domainTogglesHtml = allAvailableDomains.map(d => {
@@ -4600,7 +4594,7 @@
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Specialist Full Name <span class="req">*</span></label>
-            <input type="text" class="form-input" id="admin-detail-emp-name" value="${m.name.replace(/"/g, '&quot;')}" placeholder="e.g. Mohammad Ilhan" />
+            <input type="text" class="form-input" id="admin-detail-emp-name" value="${m.name.replace(/"/g, '&quot;')}" placeholder="e.g. Specialist Name" />
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Shift Window</label>
