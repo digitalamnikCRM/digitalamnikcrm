@@ -653,6 +653,19 @@ const SupabaseData = {
             st.employee.avatar = matched.photoUrl;
             st.employee.photoUrl = matched.photoUrl;
           }
+        } else if (empNorm !== 'emp000' && !st.employee.isFounder) {
+          // Employee has been deleted from Supabase agency records! Invalidate local session & show login modal
+          console.log(`🔒 Employee ${empNorm} no longer exists in Supabase. Invalidating session.`);
+          localStorage.removeItem('da_logged_in_emp');
+          localStorage.removeItem('da_logged_in_emp_data');
+          st.attendance = { status: 'out', log: [] };
+          st.activeProjectTimer = null;
+          const overlay = document.getElementById('emp-login-overlay');
+          if (overlay) {
+            overlay.classList.add('show');
+            overlay.style.display = 'flex';
+          }
+          document.body.style.overflow = 'hidden';
         }
       }
       // Past absent records backfill removed per user specification

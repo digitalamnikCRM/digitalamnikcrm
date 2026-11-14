@@ -964,6 +964,8 @@ function checkEmployeeLogin() {
   const loggedInId = localStorage.getItem('da_logged_in_emp');
 
   if (loggedInId) {
+    const normId = loggedInId.toLowerCase().replace(/[^a-z0-9]/g, '');
+
     // 1. Check cached session object in localStorage
     let cachedEmp = null;
     try {
@@ -971,7 +973,20 @@ function checkEmployeeLogin() {
       if (raw) cachedEmp = JSON.parse(raw);
     } catch (e) {}
 
-    const member = (STATE.team || []).find(m => (m.id || '').toLowerCase() === loggedInId.toLowerCase());
+    const member = (STATE.team || []).find(m => (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normId);
+
+    // If team has loaded and this employee was deleted from backend records, invalidate session
+    if (Array.isArray(STATE.team) && STATE.team.length > 0 && !member && normId !== 'emp000') {
+      localStorage.removeItem('da_logged_in_emp');
+      localStorage.removeItem('da_logged_in_emp_data');
+      if (overlay) {
+        overlay.classList.add('show');
+        overlay.style.display = 'flex';
+      }
+      document.body.style.overflow = 'hidden';
+      return;
+    }
+
     const activeObj = member || cachedEmp;
 
     if (activeObj) {
