@@ -1250,12 +1250,13 @@
       <p class="auth-sub">Authentication required. Enter the executive security master key to access client accounts,
         team roster, and agency timesheets.</p>
 
-      <form onsubmit="event.preventDefault(); handleAdminLogin(event); return false;">
+      <form onsubmit="event.preventDefault(); handleAdminLogin(event); return false;" action="javascript:void(0);">
         <div class="auth-input-group">
           <label class="auth-label">Executive Master Passcode</label>
           <div class="auth-input-wrap" style="position:relative;display:flex;align-items:center">
             <input type="password" class="auth-input" id="admin-pass-input" placeholder="Enter Executive Master Key"
-              autocomplete="current-password" autofocus style="padding-right:44px" />
+              autocomplete="current-password" autofocus style="padding-right:44px"
+              onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleAdminLogin(event); }" />
             <button type="button" onclick="toggleAdminPassVisibility()" title="Show/Hide Key"
               style="position:absolute;right:10px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:4px">
               👁️
@@ -1263,7 +1264,7 @@
           </div>
         </div>
 
-        <button type="submit" class="auth-submit-btn" id="auth-btn">
+        <button type="button" class="auth-submit-btn" id="auth-btn" onclick="handleAdminLogin(event)">
           <span>Authenticate Console</span>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
@@ -3659,7 +3660,6 @@
                 }
               }
             }
-          }
         });
       });
 
