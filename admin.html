@@ -28,12 +28,16 @@
     }
 
     .admin-app-layout {
-      display: flex !important;
+      display: none;
       width: 100% !important;
       max-width: 100vw !important;
       min-height: 100vh !important;
       overflow-x: hidden !important;
       position: relative !important;
+    }
+
+    .admin-app-layout.active {
+      display: flex !important;
     }
 
     .main-wrap {
@@ -2584,7 +2588,10 @@
         gate.classList.remove('hidden');
         gate.style.display = 'flex';
       }
-      if (app) app.style.display = 'none';
+      if (app) {
+        app.style.display = 'none';
+        app.classList.remove('active');
+      }
       const passInput = document.getElementById('admin-pass-input');
       if (passInput) {
         passInput.value = '';
@@ -2600,7 +2607,8 @@
         gate.style.display = 'none';
       }
       if (app) {
-        app.style.display = 'block';
+        app.style.display = 'flex';
+        app.classList.add('active');
       }
 
       initAdminData();
@@ -3568,7 +3576,7 @@
             combinedLedger.push(matched);
           } else {
             // No log found for this day
-            if (dayOfWeek === 0) {
+            if (dayOfWeek === 0 && isTodayDay) {
               // Sunday: Weekly Off
               combinedLedger.push({
                 id: 'off_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
@@ -3594,13 +3602,7 @@
                 tasks_summary: '',
                 created_at: new Date(dTs).toISOString()
               });
-            } else {
-              // Working Day (Monday to Saturday)
-              if (isPastDay) {
-                // User requirement: "aaj se hi sbka data start ho rha hai to pichla mt dikhana ab aaj se start krege."
-                // Only real logged records from attLogs are displayed; do NOT synthesize fake past absent records!
-              }
-              } else if (isTodayDay) {
+            } else if (isTodayDay) {
                 const currentHour = new Date().getHours();
                 if (currentHour >= 19) {
                   // Today past 7:00 PM deadline without punch in -> ABSENT!
@@ -4800,7 +4802,7 @@
             empMonthRows.push({ date: dStr, status: 'Present', checkIn: ciStr, lunch: lStr, checkOut: coStr, hours: hrsStr, badge: 'green' });
           }
         } else {
-          if (dayOfWeek === 0) {
+          if (dayOfWeek === 0 && isToday) {
             empMonthRows.push({ date: dStr, status: 'Sunday Off', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Off', badge: 'blue' });
           } else if (isToday) {
             if (todayAttDate.getHours() >= 19) {
