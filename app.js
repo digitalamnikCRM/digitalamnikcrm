@@ -2927,6 +2927,7 @@ function renderProjects() {
     const liveElapsed = isActive ? (Date.now() - STATE.activeProjectTimer.startTime) : 0;
     const timeDisplay = isActive ? fmtHHMMSS(liveElapsed) : (p.totalTimeSpent ? fmtDuration(p.totalTimeSpent) : '0h 0m');
     const isPending = p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled';
+    const isOriginalWorker = (p.acceptedBy && p.acceptedBy === STATE.employee.name) || (p.completedBy && p.completedBy === STATE.employee.name);
 
     return `
       <div class="proj-list-row ${p.priority} ${isActive ? 'is-active' : ''} ${isPending ? 'is-pending-overdue' : ''}" 
@@ -2961,22 +2962,35 @@ function renderProjects() {
           <div class="proj-timer-compact" onclick="event.stopPropagation()">
             <span class="proj-timer-time" id="proj-clock-${p.id}">${timeDisplay}</span>
             ${p.status === 'Completed' ? `
-              <span class="btn-timer-icon done-pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;padding:4px 10px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:4px" title="Deliverable Completed">
-                ✓ Done
-              </span>
+              <div style="display:inline-flex;align-items:center;gap:4px">
+                <span class="btn-timer-icon done-pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;padding:4px 8px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:3px" title="Deliverable Completed">
+                  ✓ Done
+                </span>
+                ${((isProjectAssignedTo(p, STATE.employee) || isOriginalWorker || isMgr)) ? `
+                  <button class="btn-timer-icon changes" onclick="startProjectChanges('${p.id}', event)" title="Client requested changes: Start tracking revision work on this project">
+                    <span>✏️ Changes</span>
+                  </button>
+                ` : ''}
+              </div>
             ` : (p.status === 'Cancelled' ? `
               <span class="btn-timer-icon cancelled-pill" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.35);font-weight:600;padding:4px 10px;border-radius:6px;font-size:11px">
                 Cancelled
               </span>
             ` : (isActive ? `
-              <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop Timer">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
-                <span>Stop</span>
-              </button>
-            ` : ((isProjectAssignedTo(p, STATE.employee) || isMgr) ? `
-              <button class="btn-timer-icon start" onclick="startProjectWork('${p.id}')" title="Start Timer">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span>${p.status === 'Assigned' ? 'Accept & Start' : 'Start'}</span>
+              <div style="display:inline-flex;align-items:center;gap:4px">
+                <button class="btn-timer-icon pause" onclick="pauseProjectWork('${p.id}', event)" title="Pause Timer (Bich me koi kaam aa gaya to pause karein)">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                  <span>Pause</span>
+                </button>
+                <button class="btn-timer-icon stop" onclick="stopProjectWork('${p.id}')" title="Stop & Log Session">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                  <span>Stop</span>
+                </button>
+              </div>
+            ` : ((isProjectAssignedTo(p, STATE.employee) || isOriginalWorker || isMgr) ? `
+              <button class="btn-timer-icon ${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'resume' : 'start'}" onclick="startProjectWork('${p.id}')" title="${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume Timer' : 'Start Timer'}">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <span>${p.isPaused ? 'Resume' : ((p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume' : (p.status === 'Assigned' ? 'Accept & Start' : 'Start'))}</span>
               </button>
             ` : `
               <span style="font-size:11px;color:#94a3b8;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)" title="Assigned to ${p.assignedTo || 'Specialist'}">
@@ -3100,6 +3114,9 @@ function openProjectDetail(id) {
       btnWrap.innerHTML = `
         <span class="stat-badge green" style="padding:6px 14px;font-size:12px;font-weight:700">✓ Deliverable Completed</span>
         ${canIWork ? `
+          <button class="btn-small" onclick="startProjectChanges('${p.id}');openProjectDetail('${p.id}')" style="font-size:11.5px;padding:6px 12px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;border-radius:6px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:4px">
+            ✏️ Start Changes / Resume Work
+          </button>
           <button class="btn-small" onclick="reopenProject('${p.id}')" style="font-size:11.5px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;border-radius:6px;cursor:pointer">
             ↺ Reopen Deliverable
           </button>
@@ -3117,6 +3134,10 @@ function openProjectDetail(id) {
       `;
     } else if (isActive) {
       btnWrap.innerHTML = `
+        <button class="proj-timer-btn" onclick="pauseProjectWork('${p.id}');openProjectDetail('${p.id}')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);color:#fbbf24">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <span>Pause Work</span>
+        </button>
         <button class="proj-timer-btn btn-red" onclick="stopProjectWork('${p.id}');openProjectDetail('${p.id}')">
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
           <span>Stop Work</span>
@@ -3134,7 +3155,7 @@ function openProjectDetail(id) {
         ` : ''}
         <button class="proj-timer-btn btn-green" onclick="startProjectWork('${p.id}');openProjectDetail('${p.id}')">
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-          <span>${p.status === 'Assigned' ? 'Accept & Start Work' : 'Start Work'}</span>
+          <span>${p.isPaused ? '▶ Resume Work' : ((p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? '▶ Resume Work' : (p.status === 'Assigned' ? 'Accept & Start Work' : 'Start Work'))}</span>
         </button>
         <button class="proj-timer-btn" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.3);color:#34d399">
           <span>✓ Mark Completed</span>
@@ -3218,8 +3239,10 @@ function quickCompleteProject(id, e) {
   if (!p) return;
 
   const isAssigned = isProjectAssignedTo(p, STATE.employee);
+  const isOriginalWorker = (p.acceptedBy && p.acceptedBy === STATE.employee.name) ||
+                           (p.completedBy && p.completedBy === STATE.employee.name);
   const isMgr = isManagerRole();
-  if (!isAssigned && !isMgr) {
+  if (!isAssigned && !isOriginalWorker && !isMgr) {
     const assignedWho = p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'another specialist');
     toast(`⚠️ Access Denied: This deliverable is assigned to ${assignedWho}.`, 'error');
     return;
@@ -3233,6 +3256,8 @@ function quickCompleteProject(id, e) {
   p.completedAt = Date.now();
   p.completedDate = fmtDate(Date.now());
   p.completedBy = STATE.employee.name;
+  p.isPaused = false;
+  p.isChanges = false;
   if (Array.isArray(p.sessions)) {
     p.sessions = p.sessions.filter(s => !(s && s.isActive));
   }
@@ -3247,6 +3272,9 @@ function quickCompleteProject(id, e) {
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.upsertProject(p);
   }
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
+  }
 }
 window.quickCompleteProject = quickCompleteProject;
 
@@ -3254,15 +3282,19 @@ function reopenProject(id) {
   const p = STATE.projects.find(x => x.id === id);
   if (!p) return;
   const isMgr = isManagerRole();
-  if (!isMgr && !isProjectAssignedTo(p, STATE.employee)) {
+  const isOriginalWorker = (p.acceptedBy && p.acceptedBy === STATE.employee.name) ||
+                           (p.completedBy && p.completedBy === STATE.employee.name);
+  if (!isMgr && !isProjectAssignedTo(p, STATE.employee) && !isOriginalWorker) {
     toast('⚠️ Access Denied: Only assigned specialist or Founder can reopen this deliverable.', 'error');
     return;
   }
   p.status = 'In Progress';
+  p.isChanges = true;
+  p.isPaused = true;
   p.completedAt = null;
   p.completedDate = null;
   p.completedBy = null;
-  toast(`Deliverable "${p.name}" reopened as In Progress`, 'info');
+  toast(`Deliverable "${p.name}" reopened for revisions/changes. Click "Resume" whenever you are ready!`, 'info');
   save();
   renderProjects();
   if (STATE.viewingProjectId === id) openProjectDetail(id);
@@ -3271,6 +3303,149 @@ function reopenProject(id) {
   }
 }
 window.reopenProject = reopenProject;
+
+function startProjectChanges(id, e) {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+
+  if (STATE.attendance.status !== 'in') {
+    toast('⚠️ Please Punch Check-In in Attendance before starting work on changes', 'error');
+    return;
+  }
+
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) return;
+
+  const isAssigned = isProjectAssignedTo(p, STATE.employee);
+  const isOriginalWorker = (p.acceptedBy && p.acceptedBy === STATE.employee.name) ||
+                           (p.completedBy && p.completedBy === STATE.employee.name);
+  const isMgr = isManagerRole();
+
+  if (!isAssigned && !isOriginalWorker && !isMgr) {
+    const workerName = p.completedBy || p.acceptedBy || p.assignedTo || 'Assigned Specialist';
+    toast(`⚠️ Access Denied: This deliverable belongs to ${workerName}. Only they (or Founder) can start revisions/changes!`, 'error');
+    return;
+  }
+
+  // If another project is running, pause it first so time is safely logged
+  if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId !== id) {
+    pauseProjectWork(STATE.activeProjectTimer.projectId);
+  }
+
+  // Reopen project for revisions/changes - all prior time & sessions preserved
+  p.status = 'In Progress';
+  p.isChanges = true;
+  p.isPaused = false;
+  p.completedAt = null;
+  p.completedDate = null;
+  p.completedBy = null;
+
+  const now = Date.now();
+  STATE.activeProjectTimer = {
+    projectId: id,
+    startTime: now,
+  };
+
+  if (!Array.isArray(p.sessions)) p.sessions = [];
+  p.sessions = p.sessions.filter(s => !(s && s.isActive && (s.userId === STATE.employee.id || s.user === STATE.employee.name)));
+  p.sessions.unshift({
+    id: 'act_' + uid(),
+    isActive: true,
+    isChanges: true,
+    userId: STATE.employee.id,
+    userName: STATE.employee.name,
+    userRole: STATE.employee.role,
+    projectId: p.id,
+    projectName: p.name,
+    date: fmtDate(now),
+    start: fmt(now),
+    startTime: now
+  });
+
+  updateProjectTimerTicker();
+  renderProjects();
+  syncActiveTaskTopbar();
+  updateAdminKpis();
+  renderAdminProjectsTime();
+  renderAdminEmployees();
+  addActivity(`Resumed work for client changes on: "${p.name}"`, 'orange');
+  toast(`✏️ Changes started for "${p.name}". Previous work preserved, timer now ticking! ⏱️`, 'success');
+  save();
+
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.upsertProject(p);
+  }
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
+  }
+}
+window.startProjectChanges = startProjectChanges;
+
+function pauseProjectWork(id, e) {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  if (!STATE.activeProjectTimer || STATE.activeProjectTimer.projectId !== id) return;
+
+  const duration = Math.max(0, Date.now() - STATE.activeProjectTimer.startTime);
+  const proj = STATE.projects.find(p => p.id === id);
+
+  if (proj) {
+    proj.totalTimeSpent = (proj.totalTimeSpent || 0) + duration;
+    proj.isPaused = true;
+    if (!proj.sessions) proj.sessions = [];
+    // Clear out active live session marker
+    proj.sessions = proj.sessions.filter(s => !(s && s.isActive && (s.userId === STATE.employee.id || s.user === STATE.employee.name)));
+
+    const session = {
+      id: uid(),
+      projectId: proj.id,
+      projectName: proj.name,
+      date: fmtDate(Date.now()),
+      start: fmt(STATE.activeProjectTimer.startTime),
+      end: fmt(Date.now()),
+      durationMs: duration,
+      durationStr: fmtDuration(duration),
+      user: STATE.employee.name,
+      userId: STATE.employee.id,
+      isPausedSession: true,
+      completedToday: true,
+      completedAt: Date.now()
+    };
+    proj.sessions.unshift(session);
+    if (!STATE.timeLogs) STATE.timeLogs = [];
+    STATE.timeLogs.unshift(session);
+
+    if (typeof SupabaseData !== 'undefined') {
+      SupabaseData.logTime(session);
+    }
+
+    toast(`⏸️ Work paused on "${proj.name}" (${fmtDuration(duration)} logged). Click "Resume" whenever you are ready!`, 'info');
+    addActivity(`Paused work on "${proj.name}" (${fmtDuration(duration)})`, 'orange');
+  }
+
+  clearInterval(_projectTimerInterval);
+  _projectTimerInterval = null;
+  STATE.activeProjectTimer = null;
+
+  renderProjects();
+  syncActiveTaskTopbar();
+  updateAdminKpis();
+  renderAdminProjectsTime();
+  renderAdminEmployees();
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
+  }
+  save();
+  if (typeof SupabaseData !== 'undefined' && proj) {
+    SupabaseData.upsertProject(proj);
+  }
+}
+window.pauseProjectWork = pauseProjectWork;
+
+function pauseActiveProjectWork() {
+  if (STATE.activeProjectTimer) {
+    pauseProjectWork(STATE.activeProjectTimer.projectId);
+  }
+}
+window.pauseActiveProjectWork = pauseActiveProjectWork;
 
 function startProjectWork(id) {
   if (STATE.attendance.status !== 'in') {
@@ -3281,9 +3456,9 @@ function startProjectWork(id) {
   const proj = STATE.projects.find(p => p.id === id);
   if (!proj) return;
 
-  // 1. Guard: Completed or cancelled deliverables cannot be started
+  // 1. Guard: Completed deliverable routes to changes workflow
   if (proj.status === 'Completed') {
-    toast('✓ This deliverable has already been completed!', 'info');
+    startProjectChanges(id);
     return;
   }
   if (proj.status === 'Cancelled') {
@@ -3293,16 +3468,18 @@ function startProjectWork(id) {
 
   // 2. Strict Security: Specialists cannot start other specialists' deliverables
   const isAssigned = isProjectAssignedTo(proj, STATE.employee);
+  const isOriginalWorker = (proj.acceptedBy && proj.acceptedBy === STATE.employee.name) ||
+                           (proj.completedBy && proj.completedBy === STATE.employee.name);
   const isMgr = isManagerRole();
-  if (!isAssigned && !isMgr) {
+  if (!isAssigned && !isOriginalWorker && !isMgr) {
     const assignedWho = proj.assignedTo || (Array.isArray(proj.assigned) ? proj.assigned.join(', ') : 'another specialist');
     toast(`⚠️ Access Denied: This deliverable is assigned to ${assignedWho}. You cannot start someone else's project!`, 'error');
     return;
   }
 
-  // If another project is running, stop it and log its time first
+  // If another project is running, pause it first so time is safely logged
   if (STATE.activeProjectTimer && STATE.activeProjectTimer.projectId !== id) {
-    stopProjectWork(STATE.activeProjectTimer.projectId, true);
+    pauseProjectWork(STATE.activeProjectTimer.projectId);
   }
 
   const now = Date.now();
@@ -3311,11 +3488,15 @@ function startProjectWork(id) {
     startTime: now,
   };
 
+  const wasPaused = !!proj.isPaused;
+  const hadPreviousTime = (proj.totalTimeSpent || 0) > 0 || (proj.sessions && proj.sessions.length > 0);
+
   if (proj.status === 'Assigned') {
     proj.status = 'In Progress';
     proj.acceptedBy = STATE.employee.name;
     proj.acceptedAt = now;
   }
+  proj.isPaused = false;
 
   // Active work indicator in sessions array for real-time executive admin pulse
   if (!Array.isArray(proj.sessions)) proj.sessions = [];
@@ -3339,13 +3520,22 @@ function startProjectWork(id) {
   updateAdminKpis();
   renderAdminProjectsTime();
   renderAdminEmployees();
-  addActivity(`Started work on: "${proj.name}"`, 'green');
-  toast(`▶ Work session active on: ${proj.name}`, 'success');
+
+  if (wasPaused || hadPreviousTime) {
+    addActivity(`Resumed work on: "${proj.name}"`, 'green');
+    toast(`▶ Work session resumed on: ${proj.name} (Continuing tracked time)`, 'success');
+  } else {
+    addActivity(`Started work on: "${proj.name}"`, 'green');
+    toast(`▶ Work session active on: ${proj.name}`, 'success');
+  }
   save();
 
   // Instant broadcast to Supabase Cloud so Admin immediately sees live work
   if (typeof SupabaseData !== 'undefined') {
     SupabaseData.upsertProject(proj);
+  }
+  if (STATE.viewingProjectId === id) {
+    openProjectDetail(id);
   }
 }
 
@@ -3357,6 +3547,7 @@ function stopProjectWork(id, isSwitching = false) {
 
   if (proj) {
     proj.totalTimeSpent = (proj.totalTimeSpent || 0) + duration;
+    proj.isPaused = false;
     if (!proj.sessions) proj.sessions = [];
     // Clear out active live session marker
     proj.sessions = proj.sessions.filter(s => !(s && s.isActive && (s.userId === STATE.employee.id || s.user === STATE.employee.name)));

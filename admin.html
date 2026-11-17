@@ -5047,6 +5047,10 @@
         `;
         } else if (p.status === 'Completed') {
           liveStateBadge = `<span class="stat-badge green" style="font-size:11px;padding:3px 8px">✅ Completed</span>`;
+        } else if (p.isPaused) {
+          liveStateBadge = `<span class="stat-badge orange" style="font-size:11px;padding:3px 8px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3)">⏸️ Paused</span>`;
+        } else if (p.isChanges) {
+          liveStateBadge = `<span class="stat-badge orange" style="font-size:11px;padding:3px 8px;background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.45)">✏️ Changes</span>`;
         } else {
           liveStateBadge = `<span class="stat-badge purple" style="font-size:11px;padding:3px 8px">⏸️ Standby</span>`;
         }
@@ -5295,9 +5299,16 @@
 
       if (modalFooter) {
         modalFooter.innerHTML = `
-        <button class="btn-icon danger" onclick="deleteAdminProject('${p.id}')" title="Delete Deliverable" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer">
-          🗑️ Delete Deliverable
-        </button>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${p.status === 'Completed' ? `
+            <button class="btn-small" onclick="adminReopenForChanges('${p.id}')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700">
+              ✏️ Request Changes / Reopen
+            </button>
+          ` : ''}
+          <button class="btn-icon danger" onclick="deleteAdminProject('${p.id}')" title="Delete Deliverable" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer">
+            🗑️ Delete Deliverable
+          </button>
+        </div>
         <button class="btn-ghost" onclick="closeModal('admin-project-detail-modal')">Close</button>
       `;
       }
@@ -5327,6 +5338,41 @@
       updateAdminKpis();
       renderAdminProjectsTime();
       toast(`Deliverable "${p.name}" deleted`, 'info');
+    }
+
+    async function adminReopenForChanges(id) {
+      const state = getCRMState();
+      const p = (state.projects || []).find(x => x.id === id);
+      if (!p) return;
+      if (!confirm(`Mark "${p.name}" as needing revisions/changes? Assigned specialist can resume working on it.`)) return;
+
+      p.status = 'In Progress';
+      p.isChanges = true;
+      p.isPaused = true;
+      p.completedAt = null;
+      p.completedDate = null;
+      p.completedBy = null;
+
+      saveCRMState(state);
+      if (window.sbClient) {
+        try {
+          await window.sbClient.from('projects').update({
+            status: 'In Progress',
+            is_changes: true,
+            is_paused: true,
+            completed_at: null,
+            completed_date: null,
+            completed_by: null
+          }).eq('id', id);
+        } catch (err) {
+          console.warn('Supabase update error:', err);
+        }
+      }
+
+      closeModal('admin-project-detail-modal');
+      updateAdminKpis();
+      renderAdminProjectsTime();
+      toast(`✏️ Deliverable "${p.name}" marked for Changes! Specialist can resume.`, 'success');
     }
 
     function startAdminLiveTicker() {
