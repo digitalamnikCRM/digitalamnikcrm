@@ -2017,7 +2017,7 @@ function startAttElapsed() {
 }
 
 // ========================
-// CHECK-IN SELFIE & CAMERA VERIFICATION ENGINE (COMPRESSED + 7-DAY RETENTION)
+// CHECK-IN SELFIE & CAMERA VERIFICATION ENGINE (COMPRESSED + 30-DAY RETENTION)
 // ========================
 function compressImage(fileOrDataUrl, maxWidth = 640, quality = 0.65) {
   return new Promise((resolve, reject) => {

@@ -3859,9 +3859,19 @@
 
         // Selfie
         const photoUrl = a.photo_url || a.photoUrl || null;
+        const cleanEmpName = String(empName || 'Specialist').replace(/'/g, "\\'");
+        const cleanRole = String(empRole || 'Specialist').replace(/'/g, "\\'");
+        const cleanTime = String(checkInStr || '--:--').replace(/'/g, "\\'");
         let photoHtml = '<span style="color:#64748b">&mdash;</span>';
         if (photoUrl) {
-          photoHtml = '<button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview(\'' + empName + '\', \'' + photoUrl + '\', \'' + checkInStr + '\', \'' + empRole + '\')" style="font-size:11px;padding:3px 8px">&#128247; Inspect</button>';
+          photoHtml = '<button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview(\'' + cleanEmpName + '\', \'' + photoUrl + '\', \'' + cleanTime + '\', \'' + cleanRole + '\')" style="font-size:11px;padding:3px 8px;cursor:pointer">&#128247; Inspect</button>';
+        } else if (a.status === 'in' || a.status === 'done' || a.check_in) {
+          const isOlderThan30Days = a.created_at && (Date.now() - new Date(a.created_at).getTime() > 30 * 86400000);
+          if (isOlderThan30Days) {
+            photoHtml = '<span style="font-size:10px;color:#94a3b8">Archived (30d+)</span>';
+          } else {
+            photoHtml = '<span style="font-size:11px;color:#64748b">No Snapshot</span>';
+          }
         }
 
         return '<tr>' +
@@ -3952,11 +3962,12 @@
       }
 
       tbody.innerHTML = displayList.map(({ member: m, todayAtt, isPresent, isLunch, activeProj }) => {
-        let checkInStr = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
+        const rawCheckInTime = todayAtt && todayAtt.check_in ? fmt(todayAtt.check_in) : '--:--';
+        let checkInDisplay = rawCheckInTime;
         if (todayAtt && todayAtt.check_in) {
           const ciD = new Date(todayAtt.check_in);
           if (!isNaN(ciD.getTime()) && (ciD.getHours() + ciD.getMinutes() / 60) > 10.5) {
-            checkInStr += ' <span style="font-size:10px;color:#f59e0b;font-weight:600" title="Checked in after 10:30 AM official shift start">⚠️ Late</span>';
+            checkInDisplay += ' <span style="font-size:10px;color:#f59e0b;font-weight:600" title="Checked in after 10:30 AM official shift start">⚠️ Late</span>';
           }
         }
         
@@ -3991,6 +4002,22 @@
           liveStatusHtml = `<span style="color:#64748b;font-size:11.5px;font-weight:600">⚪ Not Punched In</span>`;
         }
 
+        const cleanEmpName = (m.name || '').replace(/'/g, "\\'");
+        const cleanRole = (m.role || 'Specialist').replace(/'/g, "\\'");
+        let photoCellHtml = '<span style="font-size:11px;color:#64748b">—</span>';
+        if (photoUrl) {
+          photoCellHtml = `
+            <div style="display:inline-flex;align-items:center;gap:6px">
+              <img src="${photoUrl}" alt="Photo" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1.5px solid #10b981;cursor:pointer" onclick="openAdminPhotoPreview('${cleanEmpName}', '${photoUrl}', '${rawCheckInTime}', '${cleanRole}')" />
+              <button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview('${cleanEmpName}', '${photoUrl}', '${rawCheckInTime}', '${cleanRole}')" style="font-size:10.5px;padding:2px 8px;cursor:pointer">
+                📷 Inspect
+              </button>
+            </div>
+          `;
+        } else if (isPresent) {
+          photoCellHtml = `<span style="font-size:11px;color:#94a3b8">No Snapshot</span>`;
+        }
+
         return `
         <tr>
           <td data-label="Staff Specialist">
@@ -4013,27 +4040,16 @@
             ` : `
               <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
                 <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent / Pending</span>
-                <button type="button" class="btn-small" onclick="adminMarkStaffPresent('${m.id}', '${m.name.replace(/'/g, "\\'")}')" style="font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;border-radius:4px;cursor:pointer;font-weight:700" title="Verify check-in & mark Present for today">
+                <button type="button" class="btn-small" onclick="adminMarkStaffPresent('${m.id}', '${cleanEmpName}')" style="font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;border-radius:4px;cursor:pointer;font-weight:700" title="Verify check-in & mark Present for today">
                   ✓ Mark Present
                 </button>
               </div>
             `}
           </td>
           <td data-label="Snapshot Selfie">
-            ${photoUrl ? `
-              <div style="display:inline-flex;align-items:center;gap:6px">
-                <img src="${photoUrl}" alt="Photo" style="width:34px;height:34px;border-radius:6px;object-fit:cover;border:1.5px solid #10b981;cursor:pointer" onclick="openAdminPhotoPreview('${m.name}', '${photoUrl}', '${checkInStr}', '${m.role}')" />
-                <button type="button" class="btn-small btn-secondary" onclick="openAdminPhotoPreview('${m.name}', '${photoUrl}', '${checkInStr}', '${m.role}')" style="font-size:10.5px;padding:2px 8px">
-                  📷 Inspect
-                </button>
-              </div>
-            ` : (isPresent ? `
-              <span style="font-size:11px;color:#94a3b8">Archived (7d+)</span>
-            ` : `
-              <span style="font-size:11px;color:#64748b">—</span>
-            `)}
+            ${photoCellHtml}
           </td>
-          <td data-label="Punch In"><strong>${checkInStr}</strong></td>
+          <td data-label="Punch In"><strong>${checkInDisplay}</strong></td>
           <td data-label="Lunch Break">${lunchDurHtml}</td>
           <td data-label="Activity">${liveStatusHtml}</td>
           <td data-label="Punch Out"><span>${checkOutStr}</span></td>

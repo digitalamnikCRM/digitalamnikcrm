@@ -484,7 +484,7 @@ const SupabaseData = {
         console.warn('Activity fetch warning:', actE);
       }
 
-      // Background Maintenance: Auto-purge check-in photos older than 7 days
+      // Background Maintenance: Auto-purge check-in photos older than 30 days (1 month)
       this.purgeOldPhotos();
 
       // 7. RESTORE ACTIVE LOGGED-IN EMPLOYEE ATTENDANCE SESSION FROM SUPABASE CLOUD

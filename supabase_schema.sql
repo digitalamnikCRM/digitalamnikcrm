@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS public.attendance_logs (
     effective_hours TEXT DEFAULT '0h 0m',
     late_lunch_reason TEXT DEFAULT NULL,
     status TEXT DEFAULT 'done', -- 'in', 'lunch', 'done', 'out', 'absent'
-    photo_url TEXT DEFAULT NULL, -- Check-in verification photo (auto-purged after 7 days)
+    photo_url TEXT DEFAULT NULL, -- Check-in verification photo (auto-purged after 30 days / 1 month)
     is_late BOOLEAN DEFAULT FALSE, -- Check-in after official 10:30 AM shift start
     late_minutes INTEGER DEFAULT 0, -- Minutes late after shift start
     lunch_duration TEXT DEFAULT '0m', -- Total duration of lunch break
@@ -194,15 +194,15 @@ VALUES ('EMP-000', 'Amaan Khan', 'Admin', '09:30 AM – 07:30 PM', 'amnik2026', 
 ON CONFLICT (id) DO NOTHING;
 
 -- ====================================================================
--- 12. 7-DAY PHOTO RETENTION AUTO-PURGE FUNCTION
--- Clears heavy photos older than 7 days, preserves attendance 'Present' record forever!
+-- 12. 30-DAY (1 MONTH) PHOTO RETENTION AUTO-PURGE FUNCTION
+-- Clears heavy photos older than 30 days (1 month), preserves attendance 'Present' record forever!
 -- ====================================================================
 CREATE OR REPLACE FUNCTION public.purge_old_attendance_photos()
 RETURNS void AS $$
 BEGIN
     UPDATE public.attendance_logs
     SET photo_url = NULL
-    WHERE created_at < NOW() - INTERVAL '7 days'
+    WHERE created_at < NOW() - INTERVAL '30 days'
       AND photo_url IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql;
