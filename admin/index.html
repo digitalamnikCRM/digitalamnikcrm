@@ -2356,8 +2356,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Deadline</label>
-            <input type="date" class="form-input" id="admin-proj-deadline" />
+            <label class="form-label">Delivery Deadline <span style="color:#ef4444;font-weight:700">* (Compulsory)</span></label>
+            <input type="date" class="form-input" id="admin-proj-deadline" required />
           </div>
         </div>
         <div class="form-group">
@@ -2711,6 +2711,32 @@
       if (tsVal && typeof tsVal === 'string' && /^\d+$/.test(tsVal.trim()) && isSameCalendarDay(Number(tsVal.trim()), Date.now())) return true;
       return false;
     }
+
+    function isProjectOverdue(p) {
+      if (!p || !p.deadline) return false;
+      const s = String(p.status || '').toLowerCase();
+      if (s === 'completed' || s === 'delivered' || s === 'done' || s === 'cancelled') {
+        return false;
+      }
+      const dlStr = String(p.deadline).trim();
+      if (!dlStr) return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let dlDate = null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dlStr)) {
+        const parts = dlStr.split('-');
+        dlDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      } else {
+        dlDate = new Date(dlStr);
+      }
+      if (!dlDate || isNaN(dlDate.getTime())) return false;
+      dlDate.setHours(0, 0, 0, 0);
+
+      return dlDate.getTime() < today.getTime();
+    }
+    window.isProjectOverdue = isProjectOverdue;
 
     function formatLunchDurationDisplay(lunchVal, lunchStart, lunchEnd, status) {
       if (lunchStart && lunchEnd) {
@@ -4189,10 +4215,7 @@
       if (tabProj) tabProj.textContent = (state.projects || []).length;
 
       // 8. Pending Assignments (Overdue beyond deadline date)
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const pendingAssignmentsCount = (state.projects || []).filter(p =>
-        p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled'
-      ).length;
+      const pendingAssignmentsCount = (state.projects || []).filter(p => isProjectOverdue(p)).length;
       const kpiPending = document.getElementById('admin-kpi-pending-assignments');
       if (kpiPending) {
         kpiPending.textContent = pendingAssignmentsCount;
@@ -5201,8 +5224,7 @@
           liveStateBadge = `<span class="stat-badge purple" style="font-size:11px;padding:3px 8px">⏸️ Standby</span>`;
         }
 
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const isPending = p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled';
+        const isPending = isProjectOverdue(p);
 
         return `
         <tr class="clickable-row ${isPending ? 'is-pending-overdue' : ''}" 
@@ -5214,7 +5236,7 @@
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 <span style="font-size:11.5px;color:#94a3b8">👤 Assigned: ${p.assignedTo || (Array.isArray(p.assigned) ? p.assigned.join(', ') : 'Unassigned')}</span>
                 ${p.deadline ? `<span style="font-size:11px;color:#cbd5e1">📅 Due: ${p.deadline}</span>` : ''}
-                ${isPending ? `<span class="stat-badge red" style="background:rgba(239,68,68,0.25);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-size:10px;font-weight:800;letter-spacing:0.5px">⚠️ PENDING OVERDUE</span>` : ''}
+                ${isPending ? `<span class="stat-badge red" style="background:rgba(239,68,68,0.25);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-size:10px;font-weight:800;letter-spacing:0.5px">⚠️ OVERDUE DEADLINE</span>` : ''}
               </div>
             </div>
           </td>
@@ -5225,8 +5247,8 @@
             <span style="font-size:12px;color:#cbd5e1">🎨 ${p.serviceDomain || p.service || 'Video Editing'}</span>
           </td>
           <td data-label="Status">
-            <span class="stat-badge ${p.status === 'Completed' ? 'green' : (p.status === 'In Progress' ? 'cyan' : 'orange')}" style="font-size:11px;padding:3px 8px">
-              ${p.status || 'Assigned'}
+            <span class="stat-badge ${(p.status === 'Completed' || p.status === 'Delivered') ? 'green' : (p.status === 'In Progress' ? 'cyan' : 'orange')}" style="font-size:11px;padding:3px 8px">
+              ${(p.status === 'Completed' || p.status === 'Delivered') ? 'Delivered' : (p.status || 'Assigned')}
             </span>
           </td>
           <td data-label="Billable Hours">
@@ -5236,8 +5258,15 @@
             <span style="font-size:12px;color:#94a3b8">${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'}</span>
           </td>
           <td data-label="Live State">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:6px">
               ${liveStateBadge}
+              ${(p.status !== 'Completed' && p.status !== 'Delivered') ? `
+                <button type="button" class="btn-small" onclick="adminMarkProjectDelivered('${p.id}', event)" style="font-size:10.5px;padding:3px 8px;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;border-radius:5px;cursor:pointer;font-weight:700" title="Deliver Deliverable (Remove from Overdue)">
+                  🚀 Deliver
+                </button>
+              ` : `
+                <span style="font-size:10.5px;color:#34d399;font-weight:700">✓ Delivered</span>
+              `}
               <span style="font-size:11px;color:#a78bfa;font-weight:600">Inspect ›</span>
             </div>
           </td>
@@ -5316,7 +5345,12 @@
       const client = document.getElementById('admin-proj-client')?.value || 'General Agency';
       const service = document.getElementById('admin-proj-service')?.value || 'Video Editing';
       const priority = document.getElementById('admin-proj-priority')?.value || 'Medium';
-      const deadline = document.getElementById('admin-proj-deadline')?.value || '';
+      const deadline = (document.getElementById('admin-proj-deadline')?.value || '').trim();
+      if (!deadline) {
+        toast('⚠️ Delivery Deadline Date is compulsory! Please select a project delivery deadline.', 'error');
+        document.getElementById('admin-proj-deadline')?.focus();
+        return;
+      }
       const desc = (document.getElementById('admin-proj-desc')?.value || '').trim();
 
       const activePill = document.querySelector('#admin-proj-assign-wrap .domain-pill.active');
@@ -5446,11 +5480,15 @@
       if (modalFooter) {
         modalFooter.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px">
-          ${p.status === 'Completed' ? `
+          ${(p.status !== 'Completed' && p.status !== 'Delivered') ? `
+            <button class="btn-small" onclick="adminMarkProjectDelivered('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;box-shadow:0 0 10px rgba(16,185,129,0.3)">
+              🚀 Deliver / Mark Completed
+            </button>
+          ` : `
             <button class="btn-small" onclick="adminReopenForChanges('${p.id}')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700">
               ✏️ Request Changes / Reopen
             </button>
-          ` : ''}
+          `}
           <button class="btn-icon danger" onclick="deleteAdminProject('${p.id}')" title="Delete Deliverable" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer">
             🗑️ Delete Deliverable
           </button>
@@ -5461,6 +5499,54 @@
 
       openModal('admin-project-detail-modal');
     }
+
+    async function adminMarkProjectDelivered(id, e) {
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+      const state = getCRMState();
+      const p = (state.projects || []).find(x => x.id === id);
+      if (!p) return;
+
+      p.status = 'Completed';
+      p.completedAt = Date.now();
+      p.completedDate = fmtDate(Date.now());
+      p.completedBy = 'Amaan Khan (Admin)';
+      p.isPaused = false;
+      p.isChanges = false;
+      if (Array.isArray(p.sessions)) {
+        p.sessions = p.sessions.filter(s => !(s && s.isActive));
+      }
+
+      saveCRMState(state);
+      if (window.sbClient) {
+        try {
+          await window.sbClient.from('projects').upsert({
+            id: p.id,
+            name: p.name,
+            client: p.client,
+            priority: p.priority,
+            service: p.service,
+            service_domain: p.serviceDomain || p.service,
+            deadline: p.deadline,
+            description: p.desc || '',
+            assigned_to: p.assignedTo || '',
+            status: 'Completed',
+            total_time_spent: p.totalTimeSpent || 0,
+            sessions: p.sessions || [],
+            completed_at: new Date(p.completedAt).toISOString()
+          });
+        } catch (err) {
+          console.warn('Supabase mark delivered error:', err);
+        }
+      }
+
+      toast(`🚀 Deliverable "${p.name}" marked as Delivered! Removed from Overdue.`, 'success');
+      renderAdminProjectsTime();
+      updateAdminKpis();
+      if (typeof openAdminProjectDetail === 'function' && document.getElementById('admin-project-detail-modal')?.classList.contains('active')) {
+        openAdminProjectDetail(id);
+      }
+    }
+    window.adminMarkProjectDelivered = adminMarkProjectDelivered;
 
     async function deleteAdminProject(id) {
       const state = getCRMState();

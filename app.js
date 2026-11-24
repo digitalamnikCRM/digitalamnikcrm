@@ -2851,7 +2851,12 @@ function saveProject() {
   const client = (document.getElementById('proj-client')?.value || '').trim() || 'Internal Agency';
   const service = document.getElementById('proj-service')?.value || (STATE.employee?.role || 'Video Editing');
   const priority = document.getElementById('proj-priority')?.value || 'Medium';
-  const deadline = document.getElementById('proj-deadline')?.value || '';
+  const deadline = (document.getElementById('proj-deadline')?.value || '').trim();
+  if (!deadline) {
+    toast('⚠️ Delivery Deadline Date is compulsory! Please select a project delivery deadline.', 'error');
+    document.getElementById('proj-deadline')?.focus();
+    return;
+  }
   const desc = (document.getElementById('proj-desc')?.value || '').trim();
 
   // If created as a self-task by specialist, status starts as 'In Progress' ready to execute; if delegated by manager, 'Assigned'
@@ -2907,6 +2912,33 @@ function saveProject() {
   }
 }
 
+function isProjectOverdue(p) {
+  if (!p || !p.deadline) return false;
+  const s = String(p.status || '').toLowerCase();
+  if (s === 'completed' || s === 'delivered' || s === 'done' || s === 'cancelled') {
+    return false;
+  }
+  const dlStr = String(p.deadline).trim();
+  if (!dlStr) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let dlDate = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dlStr)) {
+    const parts = dlStr.split('-');
+    dlDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  } else {
+    dlDate = new Date(dlStr);
+  }
+  if (!dlDate || isNaN(dlDate.getTime())) return false;
+  dlDate.setHours(0, 0, 0, 0);
+
+  // Overdue strictly if the deadline day has PASSED (< today's date)
+  return dlDate.getTime() < today.getTime();
+}
+window.isProjectOverdue = isProjectOverdue;
+
 let _activeFilter = 'all';
 function filterProjects(filter, el) {
   _activeFilter = filter;
@@ -2931,7 +2963,7 @@ function renderProjects() {
       const s = p.status || '';
       if (_activeFilter === 'Assigned') return s === 'Assigned';
       if (_activeFilter === 'In Progress') return s === 'In Progress';
-      if (_activeFilter === 'Completed') return s === 'Completed';
+      if (_activeFilter === 'Completed') return s === 'Completed' || s === 'Delivered';
       if (_activeFilter === 'Review') return s === 'Review' || s === 'In Review';
       if (_activeFilter === 'Cancelled') return s === 'Cancelled';
       return true;
@@ -2956,12 +2988,11 @@ function renderProjects() {
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   const deadlineWarning = (dl, status) => {
     if (!dl) return '<span class="proj-deadline">📅 Ongoing</span>';
-    const isCompleted = status === 'Completed' || status === 'Cancelled';
-    if (!isCompleted && dl < todayStr) {
-      return `<span class="proj-deadline overdue" style="background:rgba(239,68,68,0.22);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-weight:700">⚠️ Pending (Due: ${dl})</span>`;
+    const isCompleted = status === 'Completed' || status === 'Cancelled' || status === 'Delivered';
+    if (!isCompleted && isProjectOverdue({ deadline: dl, status })) {
+      return `<span class="proj-deadline overdue" style="background:rgba(239,68,68,0.22);color:#ef4444;border:1px solid rgba(239,68,68,0.5);font-weight:700">⚠️ Overdue (Due: ${dl})</span>`;
     }
     const d = new Date(dl);
     const diff = d - Date.now();
@@ -2969,14 +3000,14 @@ function renderProjects() {
     return `<span class="proj-deadline ${near ? 'near' : ''}">📅 ${dl}</span>`;
   };
 
-  const statusClass = (s) => s ? s.replace(/\s+/g, '-') : 'Assigned';
+  const statusClass = (s) => (s === 'Delivered' || s === 'Completed') ? 'Completed' : (s ? s.replace(/\s+/g, '-') : 'Assigned');
 
   grid.className = 'projects-list-wrap';
   grid.innerHTML = list.map(p => {
     const isActive = STATE.activeProjectTimer && STATE.activeProjectTimer.projectId === p.id;
     const liveElapsed = isActive ? (Date.now() - STATE.activeProjectTimer.startTime) : 0;
     const timeDisplay = isActive ? fmtHHMMSS(liveElapsed) : (p.totalTimeSpent ? fmtDuration(p.totalTimeSpent) : '0h 0m');
-    const isPending = p.deadline && p.deadline < todayStr && p.status !== 'Completed' && p.status !== 'Cancelled';
+    const isPending = isProjectOverdue(p);
     const isOriginalWorker = (p.acceptedBy && p.acceptedBy === STATE.employee.name) || (p.completedBy && p.completedBy === STATE.employee.name);
 
     return `
@@ -2988,7 +3019,7 @@ function renderProjects() {
           <div class="proj-row-title-box">
             <span class="proj-row-name">${p.name}</span>
             <span class="proj-row-client">🏢 ${p.client || 'Client'}</span>
-            ${isPending ? `<span style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);border-radius:4px;font-size:10px;font-weight:800;padding:2px 6px;margin-top:3px;display:inline-block;width:fit-content;letter-spacing:0.5px">⚠️ PENDING ASSIGNMENT</span>` : ''}
+            ${isPending ? `<span style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);border-radius:4px;font-size:10px;font-weight:800;padding:2px 6px;margin-top:3px;display:inline-block;width:fit-content;letter-spacing:0.5px">⚠️ OVERDUE DEADLINE</span>` : ''}
           </div>
         </div>
 
@@ -3001,7 +3032,7 @@ function renderProjects() {
 
         <div class="proj-row-right">
           ${deadlineWarning(p.deadline, p.status)}
-          <span class="proj-status-pill ${statusClass(p.status)}">${p.status || 'Assigned'}</span>
+          <span class="proj-status-pill ${statusClass(p.status)}">${(p.status === 'Completed' || p.status === 'Delivered') ? 'Delivered' : (p.status || 'Assigned')}</span>
 
           ${(p.status === 'Assigned' && (isProjectAssignedTo(p, STATE.employee) || isMgr)) ? `
             <button class="btn-small" onclick="acceptDeliverable('${p.id}', event)" style="font-size:11px;padding:4px 10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px;box-shadow:0 0 10px rgba(16,185,129,0.35);cursor:pointer;white-space:nowrap" title="Accept deliverable and start working">
@@ -3011,10 +3042,10 @@ function renderProjects() {
 
           <div class="proj-timer-compact" onclick="event.stopPropagation()">
             <span class="proj-timer-time" id="proj-clock-${p.id}">${timeDisplay}</span>
-            ${p.status === 'Completed' ? `
+            ${(p.status === 'Completed' || p.status === 'Delivered') ? `
               <div style="display:inline-flex;align-items:center;gap:4px">
-                <span class="btn-timer-icon done-pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;padding:4px 8px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:3px" title="Deliverable Completed">
-                  ✓ Done
+                <span class="btn-timer-icon done-pill" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;padding:4px 8px;border-radius:6px;font-size:11px;display:inline-flex;align-items:center;gap:3px" title="Deliverable Delivered">
+                  ✓ Delivered
                 </span>
                 ${((isProjectAssignedTo(p, STATE.employee) || isOriginalWorker || isMgr)) ? `
                   <button class="btn-timer-icon changes" onclick="startProjectChanges('${p.id}', event)" title="Client requested changes: Start tracking revision work on this project">
@@ -3036,12 +3067,20 @@ function renderProjects() {
                   <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
                   <span>Stop</span>
                 </button>
+                <button class="btn-timer-icon deliver" onclick="quickCompleteProject('${p.id}', event)" title="Deliver Project (Overdue se hatayein aur deliver mark karein)" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-weight:700;font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:pointer">
+                  <span>🚀 Deliver</span>
+                </button>
               </div>
             ` : ((isProjectAssignedTo(p, STATE.employee) || isOriginalWorker || isMgr) ? `
-              <button class="btn-timer-icon ${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'resume' : 'start'}" onclick="startProjectWork('${p.id}')" title="${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume Timer' : 'Start Timer'}">
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span>${p.isPaused ? 'Resume' : ((p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume' : (p.status === 'Assigned' ? 'Accept & Start' : 'Start'))}</span>
-              </button>
+              <div style="display:inline-flex;align-items:center;gap:4px">
+                <button class="btn-timer-icon ${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'resume' : 'start'}" onclick="startProjectWork('${p.id}')" title="${(p.isPaused || p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume Timer' : 'Start Timer'}">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span>${p.isPaused ? 'Resume' : ((p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? 'Resume' : (p.status === 'Assigned' ? 'Accept & Start' : 'Start'))}</span>
+                </button>
+                <button class="btn-timer-icon deliver" onclick="quickCompleteProject('${p.id}', event)" title="Deliver Project (Overdue se hatayein aur deliver mark karein)" style="background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;border-radius:6px;padding:3px 8px;font-weight:700;font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:pointer">
+                  <span>🚀 Deliver</span>
+                </button>
+              </div>
             ` : `
               <span style="font-size:11px;color:#94a3b8;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)" title="Assigned to ${p.assignedTo || 'Specialist'}">
                 🔒 Assigned
@@ -3049,11 +3088,15 @@ function renderProjects() {
             `)))}
           </div>
 
-          ${((isProjectAssignedTo(p, STATE.employee) || isMgr) && p.status !== 'Completed' && p.status !== 'Cancelled') ? `
-            <button class="btn-small btn-complete-task" onclick="quickCompleteProject('${p.id}', event)" style="font-size:11px;padding:4px 8px;background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.3);border-radius:6px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px" title="Mark deliverable as Completed">
-              ✓ Complete
+          ${((isProjectAssignedTo(p, STATE.employee) || isMgr) && p.status !== 'Completed' && p.status !== 'Cancelled' && p.status !== 'Delivered') ? `
+            <button class="btn-small btn-complete-task" onclick="quickCompleteProject('${p.id}', event)" style="font-size:11px;padding:4px 10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;box-shadow:0 0 10px rgba(16,185,129,0.3)" title="Deliver deliverable & remove from Overdue">
+              🚀 Deliver
             </button>
           ` : ''}
+
+          <span class="proj-row-chevron" title="Click to open deliverable details">›</span>
+        </div>
+      </div>
 
           <span class="proj-row-chevron" title="Click to open deliverable details">›</span>
         </div>
@@ -3160,9 +3203,9 @@ function openProjectDetail(id) {
     const isMgr = isManagerRole();
     const canIWork = isAssigned || isMgr;
 
-    if (isCompleted) {
+    if (isCompleted || p.status === 'Delivered') {
       btnWrap.innerHTML = `
-        <span class="stat-badge green" style="padding:6px 14px;font-size:12px;font-weight:700">✓ Deliverable Completed</span>
+        <span class="stat-badge green" style="padding:6px 14px;font-size:12px;font-weight:700">✓ Deliverable Delivered</span>
         ${canIWork ? `
           <button class="btn-small" onclick="startProjectChanges('${p.id}');openProjectDetail('${p.id}')" style="font-size:11.5px;padding:6px 12px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;border-radius:6px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:4px">
             ✏️ Start Changes / Resume Work
@@ -3192,8 +3235,8 @@ function openProjectDetail(id) {
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
           <span>Stop Work</span>
         </button>
-        <button class="proj-timer-btn btn-green" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981">
-          <span>✓ Mark Completed</span>
+        <button class="proj-timer-btn btn-green" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,0.4)">
+          <span>🚀 Deliver Project</span>
         </button>
       `;
     } else {
@@ -3207,8 +3250,8 @@ function openProjectDetail(id) {
           <svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
           <span>${p.isPaused ? '▶ Resume Work' : ((p.totalTimeSpent > 0 || (p.sessions && p.sessions.length > 0)) ? '▶ Resume Work' : (p.status === 'Assigned' ? 'Accept & Start Work' : 'Start Work'))}</span>
         </button>
-        <button class="proj-timer-btn" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.3);color:#34d399">
-          <span>✓ Mark Completed</span>
+        <button class="proj-timer-btn" onclick="quickCompleteProject('${p.id}');openProjectDetail('${p.id}')" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;box-shadow:0 0 10px rgba(16,185,129,0.3)">
+          <span>🚀 Deliver Project</span>
         </button>
       `;
     }
@@ -3315,8 +3358,8 @@ function quickCompleteProject(id, e) {
   triggerConfetti();
   renderProjects();
   updateDashCounts();
-  addActivity(`Completed deliverable: "${p.name}"`, 'green');
-  toast(`🎉 Deliverable "${p.name}" marked as Completed!`, 'success');
+  addActivity(`Delivered deliverable: "${p.name}"`, 'green');
+  toast(`🚀 Deliverable "${p.name}" successfully Delivered & Completed! Removed from Overdue.`, 'success');
   save();
 
   if (typeof SupabaseData !== 'undefined') {
@@ -3327,6 +3370,13 @@ function quickCompleteProject(id, e) {
   }
 }
 window.quickCompleteProject = quickCompleteProject;
+
+function deliverActiveProjectWork() {
+  if (STATE.activeProjectTimer) {
+    quickCompleteProject(STATE.activeProjectTimer.projectId);
+  }
+}
+window.deliverActiveProjectWork = deliverActiveProjectWork;
 
 function reopenProject(id) {
   const p = STATE.projects.find(x => x.id === id);
@@ -5168,8 +5218,7 @@ function updateDashCounts() {
     return isProjectAssignedTo(p, STATE.employee);
   });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const pendingProjects = myProjects.filter(p => p.deadline && p.deadline < todayStr);
+  const pendingProjects = myProjects.filter(p => isProjectOverdue(p));
 
   const countEl = document.getElementById('dash-proj-count');
   if (countEl) countEl.textContent = myProjects.length;

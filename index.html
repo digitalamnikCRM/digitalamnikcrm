@@ -261,6 +261,8 @@
             title="Pause Work (Bich me koi kaam agya to pause karein)">⏸ Pause</button>
           <button class="active-task-stop-chip" onclick="stopActiveProjectWork()" title="Stop &amp; Log Session"
             style="margin-left:4px">⏹ Stop</button>
+          <button class="active-task-deliver-chip" onclick="deliverActiveProjectWork()" title="Deliver Project (Overdue se hatayein aur deliver mark karein)"
+            style="margin-left:4px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer">🚀 Deliver</button>
         </div>
 
         <!-- Live Cyber Clock -->
@@ -841,8 +843,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Deadline</label>
-            <input type="date" class="form-input" id="proj-deadline" />
+            <label class="form-label">Delivery Deadline <span style="color:#ef4444;font-weight:700">* (Compulsory)</span></label>
+            <input type="date" class="form-input" id="proj-deadline" required />
           </div>
         </div>
         <div class="form-group">
