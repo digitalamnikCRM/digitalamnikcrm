@@ -4893,21 +4893,37 @@
         const dayOfWeek = d.getDay(); // 0 is Sunday
         const isToday = (day === curDateNum);
 
-        const matched = attLogsAll.find(a => {
-          if (!a) return false;
-          const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
-          if (aId !== normTargetEmpId && aName !== normTargetEmpName) return false;
-          const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
-          const aTime = Number(a.check_in) || 0;
-          return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dayTs));
-        });
+        let matched = null;
+        if (isToday) {
+          const allTodayMatches = attLogsAll.filter(a => {
+            if (!a) return false;
+            const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+            if (aId !== normTargetEmpId && aName !== normTargetEmpName) return false;
+            const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+            const aTime = Number(a.check_in) || 0;
+            return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dayTs)) || (a.date && isSameCalendarDay(a.date, dayTs));
+          });
+          matched = allTodayMatches.find(a => a.status === 'in' || a.status === 'lunch' || a.status === 'done' || (a.check_in && a.status !== 'absent')) || allTodayMatches[0];
+        } else {
+          matched = attLogsAll.find(a => {
+            if (!a) return false;
+            const aId = String(a.employee_id || a.employeeId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const aName = String(a.employee_name || a.employeeName || '').toLowerCase().trim();
+            if (aId !== normTargetEmpId && aName !== normTargetEmpName) return false;
+            const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
+            const aTime = Number(a.check_in) || 0;
+            return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dayTs)) || (a.date && isSameCalendarDay(a.date, dayTs));
+          });
+        }
 
         if (matched) {
           const rawSt = String(matched.status || '').toLowerCase();
           if (rawSt === 'absent') {
             empAbsCount++;
             empMonthRows.push({ date: dStr, status: 'Absent', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: '0h 0m', badge: 'red' });
+          } else if (rawSt === 'off') {
+            empMonthRows.push({ date: dStr, status: 'Sunday Off', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Off', badge: 'blue' });
           } else {
             empPresCount++;
             const ciTime = Number(matched.check_in) || 0;
@@ -4927,7 +4943,8 @@
             empMonthRows.push({ date: dStr, status: 'Present', checkIn: ciStr, lunch: lStr, checkOut: coStr, hours: hrsStr, badge: 'green' });
           }
         } else {
-          if (dayOfWeek === 0 && isToday) {
+          if (dayOfWeek === 0) {
+            // Sunday: Weekly Off
             empMonthRows.push({ date: dStr, status: 'Sunday Off', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Off', badge: 'blue' });
           } else if (isToday) {
             if (todayAttDate.getHours() >= 19) {
@@ -4936,6 +4953,10 @@
             } else {
               empMonthRows.push({ date: dStr, status: 'Pending', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: 'Pending', badge: 'orange' });
             }
+          } else {
+            // Past working day without attendance log -> Automatically Absent!
+            empAbsCount++;
+            empMonthRows.push({ date: dStr, status: 'Absent', checkIn: '--:--', lunch: 'None', checkOut: '--:--', hours: '0h 0m', badge: 'red' });
           }
         }
       }
