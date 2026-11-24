@@ -957,6 +957,15 @@ const SupabaseData = {
         const retryRes = await window.sbClient.from('attendance_logs').upsert(baseRow, { onConflict: 'id' });
         if (retryRes.error) {
           console.error('Supabase logAttendance fallback error:', retryRes.error);
+          try {
+            const rawQueue = localStorage.getItem('da_pending_attendance_queue');
+            const q = rawQueue ? JSON.parse(rawQueue) : [];
+            const qIdx = q.findIndex(item => item.id === baseRow.id);
+            if (qIdx !== -1) q[qIdx] = baseRow;
+            else q.push(baseRow);
+            localStorage.setItem('da_pending_attendance_queue', JSON.stringify(q));
+            console.log('📦 Queued attendance offline for auto-sync retry:', baseRow.id);
+          } catch(qErr) {}
         } else {
           console.log('✅ Attendance logged via resilient base schema for:', rawEmpId);
         }
@@ -1404,22 +1413,43 @@ function openSupabaseModal() {
 function closeSupabaseModal() {}
 function saveSupabaseConfig() {}
 
+// Offline Attendance Queue auto-recovery
+async function syncPendingAttendanceQueue() {
+  if (!window.sbClient) return;
+  try {
+    const rawQueue = localStorage.getItem('da_pending_attendance_queue');
+    if (!rawQueue) return;
+    const queue = JSON.parse(rawQueue);
+    if (!Array.isArray(queue) || queue.length === 0) return;
+    const remaining = [];
+    for (const item of queue) {
+      try {
+        const { error } = await window.sbClient.from('attendance_logs').upsert(item, { onConflict: 'id' });
+        if (error) remaining.push(item);
+        else console.log('✅ Auto-drained offline attendance queue item:', item.id);
+      } catch (err) {
+        remaining.push(item);
+      }
+    }
+    if (remaining.length > 0) {
+      localStorage.setItem('da_pending_attendance_queue', JSON.stringify(remaining));
+    } else {
+      localStorage.removeItem('da_pending_attendance_queue');
+    }
+  } catch (e) {}
+}
+window.syncPendingAttendanceQueue = syncPendingAttendanceQueue;
+
 // Global initialization - zero latency immediate cloud hydration
 function initSupabaseApp() {
   SupabaseConfig.initClient();
   if (SupabaseConfig.isConfigured()) {
     SupabaseData.loadAll().then(ok => {
       if (ok) {
-        if (typeof renderProjects === 'function') renderProjects();
-        if (typeof renderCalendars === 'function') renderCalendars();
-        if (typeof updateDashCounts === 'function') updateDashCounts();
-        if (typeof syncAttendanceUI === 'function') syncAttendanceUI();
-        if (typeof renderAttLog === 'function') renderAttLog();
-        if (typeof STATE !== 'undefined' && STATE.attendance && (STATE.attendance.status === 'in' || STATE.attendance.status === 'lunch')) {
-          if (typeof startAttElapsed === 'function') startAttElapsed();
-        }
+        triggerAllUIRenders();
       }
     });
+    syncPendingAttendanceQueue();
   }
 }
 

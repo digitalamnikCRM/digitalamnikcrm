@@ -1410,6 +1410,10 @@
           </div>
         </div>
         <div class="topbar-right admin-topbar-actions-wrap">
+          <button class="btn-secondary btn-small" onclick="manualSyncAdminAll(this)" style="gap:5px;font-size:12px;padding:6px 12px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.35);color:#34d399;cursor:pointer" title="Sync live cloud data instantly">
+            <svg id="admin-sync-icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+            <span class="btn-label">⚡ Sync Cloud</span>
+          </button>
           <button class="btn-primary btn-small btn-glow" onclick="openAdminProjectModal()" style="background:linear-gradient(135deg, #8b5cf6, #3b82f6);gap:5px;font-size:12px;padding:6px 12px" title="New Deliverable">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             <span class="btn-label">+ Deliverable</span>
@@ -2876,6 +2880,15 @@
       // Instant cloud hydration from Supabase
       loadAdminAll();
 
+      // Start lightning-fast 4-second cloud poll so attendance and project changes appear immediately
+      if (!_adminCloudPollInterval) {
+        _adminCloudPollInterval = setInterval(async () => {
+          if (!document.hidden) {
+            await loadAdminAll();
+          }
+        }, 4000);
+      }
+
       // Start 1-second live ticker for running project timers
       if (!_liveTimerTicker) {
         _liveTimerTicker = setInterval(() => {
@@ -2888,6 +2901,25 @@
           });
         }, 1000);
       }
+    }
+
+    let _adminCloudPollInterval = null;
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        loadAdminAll();
+      }
+    });
+
+    async function manualSyncAdminAll(btn) {
+      const icon = document.getElementById('admin-sync-icon');
+      if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+      toast('⚡ Syncing live data from Supabase Cloud...', 'info');
+      await loadAdminAll();
+      setTimeout(() => {
+        if (icon) icon.style.animation = '';
+        toast('✅ Cloud sync complete! Live attendance and deliverables updated.', 'success');
+      }, 500);
     }
 
     // Direct Supabase Cloud Hydration for Executive Admin
@@ -3569,7 +3601,7 @@
               if (aId !== normEmpId && aName !== normEmpName) return false;
               const aDateStr = a.date || (a.check_in ? fmtDate(a.check_in) : '');
               const aTime = Number(a.check_in) || 0;
-              return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dTs));
+              return (aDateStr === dStr) || (aTime > 0 && isSameCalendarDay(aTime, dTs)) || (a.date && isSameCalendarDay(a.date, dTs));
             });
           }
 
@@ -3577,7 +3609,7 @@
             combinedLedger.push(matched);
           } else {
             // No log found for this day
-            if (dayOfWeek === 0 && isTodayDay) {
+            if (dayOfWeek === 0) {
               // Sunday: Weekly Off
               combinedLedger.push({
                 id: 'off_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
@@ -3600,66 +3632,92 @@
                 is_late: false,
                 is_lunch_late: false,
                 projects_worked: [],
-                tasks_summary: '',
+                tasks_summary: 'Weekly Off — Sunday',
                 created_at: new Date(dTs).toISOString()
               });
             } else if (isTodayDay) {
-                const currentHour = new Date().getHours();
-                if (currentHour >= 19) {
-                  // Today past 7:00 PM deadline without punch in -> ABSENT!
-                  combinedLedger.push({
-                    id: 'att_absent_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
-                    employee_id: m.id,
-                    employee_name: m.name,
-                    employeeId: m.id,
-                    employeeName: m.name,
-                    date: dStr,
-                    check_in: null,
-                    checkIn: '--:--',
-                    lunch_start: null,
-                    lunch_end: null,
-                    lunch_duration: '0m',
-                    lunch: 'None',
-                    check_out: null,
-                    checkOut: '--:--',
-                    effective_hours: '0h 0m',
-                    status: 'absent',
-                    photo_url: null,
-                    is_late: false,
-                    is_lunch_late: false,
-                    projects_worked: [],
-                    tasks_summary: 'Shift Missed - Did not check in by 7:00 PM',
-                    created_at: new Date(dTs).toISOString()
-                  });
-                } else {
-                  // Today before 7:00 PM -> Pending Punch In
-                  combinedLedger.push({
-                    id: 'pending_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
-                    employee_id: m.id,
-                    employee_name: m.name,
-                    employeeId: m.id,
-                    employeeName: m.name,
-                    date: dStr,
-                    check_in: null,
-                    checkIn: '--:--',
-                    lunch_start: null,
-                    lunch_end: null,
-                    lunch_duration: '0m',
-                    lunch: 'None',
-                    check_out: null,
-                    checkOut: '--:--',
-                    effective_hours: '0h 0m',
-                    status: 'pending',
-                    photo_url: null,
-                    is_late: false,
-                    is_lunch_late: false,
-                    projects_worked: [],
-                    tasks_summary: 'Shift in progress (Pending check in)',
-                    created_at: new Date(dTs).toISOString()
-                  });
-                }
+              const currentHour = new Date().getHours();
+              if (currentHour >= 19) {
+                // Today past 7:00 PM deadline without punch in -> ABSENT!
+                combinedLedger.push({
+                  id: 'att_absent_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
+                  employee_id: m.id,
+                  employee_name: m.name,
+                  employeeId: m.id,
+                  employeeName: m.name,
+                  date: dStr,
+                  check_in: null,
+                  checkIn: '--:--',
+                  lunch_start: null,
+                  lunch_end: null,
+                  lunch_duration: '0m',
+                  lunch: 'None',
+                  check_out: null,
+                  checkOut: '--:--',
+                  effective_hours: '0h 0m',
+                  status: 'absent',
+                  photo_url: null,
+                  is_late: false,
+                  is_lunch_late: false,
+                  projects_worked: [],
+                  tasks_summary: 'Shift Missed - Did not check in by 7:00 PM',
+                  created_at: new Date(dTs).toISOString()
+                });
+              } else {
+                // Today before 7:00 PM -> Pending Punch In
+                combinedLedger.push({
+                  id: 'pending_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
+                  employee_id: m.id,
+                  employee_name: m.name,
+                  employeeId: m.id,
+                  employeeName: m.name,
+                  date: dStr,
+                  check_in: null,
+                  checkIn: '--:--',
+                  lunch_start: null,
+                  lunch_end: null,
+                  lunch_duration: '0m',
+                  lunch: 'None',
+                  check_out: null,
+                  checkOut: '--:--',
+                  effective_hours: '0h 0m',
+                  status: 'pending',
+                  photo_url: null,
+                  is_late: false,
+                  is_lunch_late: false,
+                  projects_worked: [],
+                  tasks_summary: 'Shift in progress (Pending check in)',
+                  created_at: new Date(dTs).toISOString()
+                });
               }
+            } else {
+              // Past working day without attendance log -> Shift Missed - ABSENT!
+              combinedLedger.push({
+                id: 'att_absent_' + normEmpId + '_' + dStr.replace(/[^a-zA-Z0-9]/g, '_'),
+                employee_id: m.id,
+                employee_name: m.name,
+                employeeId: m.id,
+                employeeName: m.name,
+                date: dStr,
+                check_in: null,
+                checkIn: '--:--',
+                lunch_start: null,
+                lunch_end: null,
+                lunch_duration: '0m',
+                lunch: 'None',
+                check_out: null,
+                checkOut: '--:--',
+                effective_hours: '0h 0m',
+                status: 'absent',
+                photo_url: null,
+                is_late: false,
+                is_lunch_late: false,
+                projects_worked: [],
+                tasks_summary: 'Shift Missed - Absent',
+                created_at: new Date(dTs).toISOString()
+              });
             }
+          }
         });
       });
 
@@ -3953,7 +4011,12 @@
             ${isPresent ? `
               <span class="stat-badge green">● Present</span>
             ` : `
-              <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent</span>
+              <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">
+                <span class="stat-badge red" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">● Absent / Pending</span>
+                <button type="button" class="btn-small" onclick="adminMarkStaffPresent('${m.id}', '${m.name.replace(/'/g, "\\'")}')" style="font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;border-radius:4px;cursor:pointer;font-weight:700" title="Verify check-in & mark Present for today">
+                  ✓ Mark Present
+                </button>
+              </div>
             `}
           </td>
           <td data-label="Snapshot Selfie">
@@ -3978,6 +4041,52 @@
         </tr>
       `;
       }).join('');
+    }
+
+    async function adminMarkStaffPresent(empId, empName) {
+      if (!confirm(`Verify check-in & mark "${empName}" (${empId}) as Present for today?`)) return;
+      const now = Date.now();
+      const todayDateStr = fmtDate(now);
+      const sanitizedDate = todayDateStr.replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanId = String(empId).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const docId = `att_${cleanId}_${sanitizedDate}`;
+
+      const row = {
+        id: docId,
+        employee_id: empId,
+        employee_name: empName,
+        date: todayDateStr,
+        check_in: now,
+        status: 'in',
+        effective_hours: 'In Progress',
+        is_late: false,
+        late_minutes: 0,
+        lunch_duration: '0m',
+        is_lunch_late: false,
+        projects_worked: [],
+        projects_count: 0,
+        tasks_summary: 'Verified by Admin',
+        created_at: new Date().toISOString()
+      };
+
+      if (window.sbClient) {
+        try {
+          const { error } = await window.sbClient.from('attendance_logs').upsert(row, { onConflict: 'id' });
+          if (error) console.warn('Admin mark present error:', error);
+        } catch(e) {
+          console.warn(e);
+        }
+      }
+
+      if (!Array.isArray(window._adminAttLogs)) window._adminAttLogs = [];
+      const idx = window._adminAttLogs.findIndex(a => a.id === docId);
+      if (idx !== -1) window._adminAttLogs[idx] = row;
+      else window._adminAttLogs.unshift(row);
+
+      renderAdminAttendanceTable();
+      renderAdminAttendanceHistory();
+      updateAdminKpis();
+      toast(`✅ "${empName}" verified & marked Present for today!`, 'success');
     }
 
     function updateAdminKpis() {

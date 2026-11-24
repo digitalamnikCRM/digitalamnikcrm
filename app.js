@@ -1062,10 +1062,21 @@ async function handleEmployeeLogin(e) {
     return;
   }
 
-  const normId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (/^\d+$/.test(cleanId)) {
+    cleanId = 'emp' + (cleanId.length === 1 ? '00' + cleanId : (cleanId.length === 2 ? '0' + cleanId : cleanId));
+  } else if (/^emp\d+$/.test(cleanId)) {
+    const numPart = cleanId.replace('emp', '');
+    cleanId = 'emp' + (numPart.length === 1 ? '00' + numPart : (numPart.length === 2 ? '0' + numPart : numPart));
+  }
+  const searchName = id.toLowerCase().trim();
 
   // 1. Try finding in loaded team state
-  let member = (STATE.team || []).find(m => m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normId);
+  let member = (STATE.team || []).find(m => {
+    const mId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const mName = (m.name || '').toLowerCase().trim();
+    return mId === cleanId || mName === searchName || mName.startsWith(searchName);
+  });
 
   // 2. Query Supabase directly for real-time authentication
   if (window.sbClient) {
@@ -1075,7 +1086,11 @@ async function handleEmployeeLogin(e) {
         .select('*');
 
       if (!error && Array.isArray(data)) {
-        const matchedDb = data.find(m => m.id && m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normId);
+        const matchedDb = data.find(m => {
+          const mId = (m.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const mName = (m.name || '').toLowerCase().trim();
+          return mId === cleanId || mName === searchName || mName.startsWith(searchName);
+        });
         if (matchedDb) {
           if (!member) {
             member = {
@@ -2409,6 +2424,7 @@ function renderAttLog() {
     // Look for logged entry
     const matchedLog = myLogs.find(l => {
       if (l.date && l.date === dateStr) return true;
+      if (l.date && isSameCalendarDay(l.date, dayTs)) return true;
       const lTime = Number(l.checkIn || l.check_in) || (l.created_at ? new Date(l.created_at).getTime() : 0);
       if (lTime > 0 && isSameCalendarDay(lTime, dayTs)) return true;
       return false;
@@ -2485,6 +2501,40 @@ function renderAttLog() {
         presentDaysCount++;
       }
       historyList.push(matchedLog);
+    } else {
+      // Past day without logged attendance
+      if (dayOfWeek === 0) {
+        // Sunday: Weekly Off
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: 'Off',
+          effectiveHours: 'Off',
+          status: 'off'
+        });
+      } else {
+        // Past working day without punch in -> ABSENT!
+        absentDaysCount++;
+        historyList.push({
+          date: dateStr,
+          employeeId: STATE.employee?.id,
+          employeeName: STATE.employee?.name,
+          checkIn: '--:--',
+          lunch: 'None',
+          lunchDuration: '0m',
+          projectsWorked: [],
+          checkOut: '--:--',
+          workHrs: '0h 0m',
+          effectiveHours: '0h 0m',
+          status: 'absent'
+        });
+      }
     }
   }
 
@@ -5247,6 +5297,15 @@ function init() {
     evaluateAutoCheckout();
   }, 30000);
 
+  // Background cloud polling every 6 seconds so assignments & live changes arrive immediately
+  if (!_specialistCloudPollInterval) {
+    _specialistCloudPollInterval = setInterval(() => {
+      if (!document.hidden && typeof SupabaseData !== 'undefined') {
+        SupabaseData.loadAll();
+      }
+    }, 6000);
+  }
+
   if (STATE.activeProjectTimer) {
     updateProjectTimerTicker();
     syncActiveTaskTopbar();
@@ -5260,6 +5319,23 @@ function init() {
   console.log('%c DIGITAL AMNIK OS v2.5 ', 'background:#7c3aed;color:#fff;padding:6px 14px;border-radius:4px;font-weight:900;letter-spacing:1px');
   console.log('Digital Amnik Agency Operating System Ready');
 }
+
+let _specialistCloudPollInterval = null;
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && typeof SupabaseData !== 'undefined') {
+    SupabaseData.loadAll();
+  }
+});
+
+window.addEventListener('online', () => {
+  if (typeof SupabaseData !== 'undefined') {
+    SupabaseData.loadAll();
+    if (typeof syncPendingAttendanceQueue === 'function') {
+      syncPendingAttendanceQueue();
+    }
+  }
+});
 
 document.addEventListener('DOMContentLoaded', init);
 if (document.readyState === 'interactive' || document.readyState === 'complete') {
